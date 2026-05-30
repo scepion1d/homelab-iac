@@ -1,0 +1,28 @@
+# Cluster-wide constants. Single source of truth for values used across the
+# repo. Merged into the root ApplicationSet template context (matrix generator),
+# so every Application sees these as `{{ .repoUrl }}`, `{{ .lanDomain }}`, etc.
+#
+# What references each value:
+#
+#   repoUrl       — cluster/root-appset.yaml (templatePatch → default git source)
+#                   `{{ .repoUrl }}`
+#
+#   lanDomain     — cluster/root-appset.yaml (templatePatch)
+#                   Injected per-app when the app's `_appset.yaml` declares
+#                   `ingressHost`:
+#                     • Kustomize apps → kustomize patch adds
+#                       `<ingressHost>.<lanDomain>` to the Ingress
+#                       (server-alias annotation + tls.hosts entry).
+#                     • Helm apps      → helm.parameter sets the chart's
+#                       `<ingressHelmParam>` to `https://<ingressHost>.<lanDomain>`.
+#                   DNS for `*.<lanDomain>` is served by the MikroTik router
+#                   (static A records pointing at the Mac's LAN IP). Update DNS
+#                   AND this value together if the domain changes.
+#
+#   slackChannel  — cluster/apps/argocd-notifications/configmap.yaml
+#                   ConfigMap content is not templated by the ApplicationSet,
+#                   so the literal channel name is hard-coded there. Keep this
+#                   value in sync with the `subscriptions:` block.
+repoUrl: https://github.com/scepion1d/homelab-iac.git
+lanDomain: int
+slackChannel: argocd-alerts

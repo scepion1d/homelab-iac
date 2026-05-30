@@ -1,52 +1,195 @@
-## Connection
+# homelab-iac
+
+GitOps-managed k3d homelab on an Intel Mac. One `bootstrap.sh` brings up
+Colima → k3d → Argo CD → app-of-apps; after that, `git push` is the
+deployment workflow.
+
+## Connect
 
 ```bash
 ssh homlab-admin@homelab
 ```
 
+## Bootstrap (fresh Mac)
+
+```bash
+git clone https://github.com/scepion1d/homelab-iac.git
+cd homelab-iac/bootstrap
+chmod +x *.sh
+./bootstrap.sh
+```
+
+Then add the two secrets that don't live in git:
+
+```bash
+# 1. Slack token for Argo CD notifications
+kubectl -n argocd patch secret argocd-notifications-secret \
+  --patch="{\"stringData\":{\"slack-token\":\"xoxb-YOUR-TOKEN\"}}"
+
+# 2. Private repo access (fine-grained PAT, Contents: Read-only)
+source scripts/argocd-login.sh && argocd-login
+argocd repo add https://github.com/scepion1d/homelab-iac.git \
+  --username scepion1d --password github_pat_YOUR_TOKEN
+```
+
+## Wipe & rebuild
+
+```bash
+./bootstrap/teardown.sh           # stop everything, keep Colima VM & images
+./bootstrap/teardown.sh --purge   # also delete the Colima profile
+
+./bootstrap/bootstrap.sh          # rebuild from scratch
+# then redo the two secrets above
+```
+
+## Argo CD
+
+UI: https://argocd.localhost (self-signed cert — accept the warning).
+
+```bash
+# Login helper (sources a function into the shell)
+source scripts/argocd-login.sh && argocd-login
+
+# Day-to-day
+argocd app list
+argocd app sync <name>
+argocd app sync -l argocd.argoproj.io/application-set-name=root   # sync all
+argocd app diff <name>
+argocd app logs <name> -f
+stern -n argocd argocd-application-controller                     # live controller logs
+```
+
+Push changes: `git push` → auto-synced within ~3 min, or force with
+`argocd app sync <name>`. New app folders need the ApplicationSet to
+re-scan:
+
+```bash
+kubectl -n argocd annotate applicationset root \
+  argocd.argoproj.io/refresh=hard --overwrite
+```
+
+## LAN access
+
+The UIs are exposed to the LAN under a custom domain (default: `.int`),
+resolved by the MikroTik router's built-in DNS to the Mac's LAN IP.
+
+The domain lives in [cluster/globals.yaml](cluster/globals.yaml) as `lanDomain`
+and is injected into each Ingress by the root ApplicationSet (see the
+*Constants* section below). On a domain change, update both this value AND
+the MikroTik static DNS entries.
+
+**MikroTik setup** (one-time):
+
+```
+/ip dns set allow-remote-requests=yes
+/ip dns static add name=argocd.int  address=192.168.10.3 type=A
+/ip dns static add name=grafana.int address=192.168.10.3 type=A
+/ip dhcp-server network set [find] dns-server=192.168.10.1
+```
+
+(Replace `192.168.10.3` with the Mac's IP and `192.168.10.1` with the router's.)
+
+From any LAN device:
+
+- Argo CD:  https://argocd.int
+- Grafana:  https://grafana.int
+
+From the Mac itself, `*.localhost` URLs still work.
+
+> macOS firewall: if connections from other devices time out, allow inbound
+> on 80/443 (System Settings → Network → Firewall, or turn it off for
+> homelab simplicity).
+
+## TLS / certificates
+
+Every ingress automatically gets a real TLS certificate signed by an
+in-cluster CA managed by [cert-manager](cluster/apps/cert-manager/).
+Browsers will warn until you install the **CA certificate** once per device
+— after that, every current AND future app's cert is trusted.
+
+```bash
+# Export the CA cert from the cluster
+./scripts/export-ca.sh                 # writes ./homelab-ca.crt
+```
+
+Then install it on each device (instructions in the script's header
+comments cover Mac, iOS, Android, Linux, Windows, and Firefox).
+
+**Adding TLS to a new app's ingress:** annotate + add a secretName.
+cert-manager does the rest.
+
+```yaml
+metadata:
+  annotations:
+    cert-manager.io/cluster-issuer: homelab-ca
+spec:
+  tls:
+    - secretName: <app>-tls
+      hosts:
+        - <app>.localhost
+```
+
+## Grafana
+
+UI: https://grafana.localhost (user `admin`).
+
+```bash
+# Login helper (prints URL + password, copies password to clipboard, opens browser)
+source scripts/grafana-login.sh && grafana-login
+
+# Or fetch the password directly
+kubectl -n monitoring get secret grafana \
+  -o jsonpath='{.data.admin-password}' | base64 -d && echo
+```
+
 ## Repository layout
 
 ```
-homelab-iac/
-├── bootstrap/                          # One-shot scripts to bring up a fresh Mac
-│   ├── bootstrap.sh                    #   orchestrator (runs 00 → 05)
-│   ├── 00-install-deps.sh              #   brew + CLI tooling
-│   ├── 01-start-runtime.sh             #   start Colima (container runtime)
-│   ├── 02-create-cluster.sh            #   k3d cluster create
-│   ├── 03-install-argocd.sh            #   install Argo CD
-│   ├── 04-bootstrap-apps.sh            #   apply root "app-of-apps"
-│   ├── 05-enable-autostart.sh          #   install LaunchAgents
-│   ├── teardown.sh                     #   reverse of bootstrap (stop & remove)
-│   └── launchd/                        #   macOS LaunchAgent plists
-│       ├── com.homelab.colima.plist    #     starts Colima at login
-│       └── com.homelab.k3d.plist       #     starts k3d cluster after Colima
-├── cluster/                            # Declarative cluster-level IaC
-│   ├── k3d-config.yaml                 #   cluster definition (nodes, ports)
-│   ├── root-appset.yaml                #   ApplicationSet — scans apps/*/_appset.yaml
-│   └── apps/                           #   One folder per Argo CD Application
-│       ├── argocd-notifications/       #     Slack notifications ConfigMap
-│       │   ├── _appset.yaml            #       metadata for the ApplicationSet
-│       │   ├── kustomization.yaml
-│       │   └── configmap.yaml
-│       ├── argocd-server-ingress/      #     Argo CD UI ingress + insecure mode patch
-│       │   ├── _appset.yaml
-│       │   ├── kustomization.yaml
-│       │   ├── cmd-params-cm.yaml
-│       │   └── ingress.yaml
-│       └── ingress-nginx/              #     Helm chart (no local manifests)
-│           └── _appset.yaml            #       source: { helm chart from upstream }
-└── README.md
+bootstrap/                  one-shot scripts + launchd plists (Colima, k3d)
+scripts/                    day-to-day helpers (source into shell)
+├── argocd-login.sh         → argocd-login [host]
+├── grafana-login.sh        → grafana-login [url]
+└── export-ca.sh            → write homelab-ca.crt for device install
+cluster/
+├── k3d-config.yaml         cluster shape (nodes, host port mapping)
+├── globals.yaml            shared constants (repoUrl, lanDomain, slackChannel)
+├── root-appset.yaml        single ApplicationSet — scans apps/*/_appset.yaml
+└── apps/                   one folder per Argo CD Application
+    └── <name>/
+        ├── _appset.yaml          metadata (namespace, optional Helm source)
+        ├── kustomization.yaml    local manifests, OR
+        └── *.yaml                ↳ omitted if _appset.yaml has `source:`
 ```
 
-### Adding a new app
+### Constants
 
-1. Create `cluster/apps/<name>/` with a `_appset.yaml` (at minimum `namespace: <ns>`).
-2. Drop your manifests + a `kustomization.yaml` next to it.
-3. `git push` — the ApplicationSet picks it up automatically.
+[cluster/globals.yaml](cluster/globals.yaml) is the single source of truth for
+shared values:
 
-For a remote Helm chart, the folder only needs `_appset.yaml` with a `source:` block (see [cluster/apps/ingress-nginx/_appset.yaml](cluster/apps/ingress-nginx/_appset.yaml) as an example).
+| Key            | How it's used                                                                                  |
+| -------------- | ---------------------------------------------------------------------------------------------- |
+| `repoUrl`      | [cluster/root-appset.yaml](cluster/root-appset.yaml) — templated as `{{ .repoUrl }}`           |
+| `lanDomain`    | Injected per-app by the root ApplicationSet when `_appset.yaml` declares `ingressHost`. Kustomize apps get a patch that adds `<ingressHost>.<lanDomain>` to the Ingress; Helm apps get a `helm.parameter` setting `<ingressHelmParam>` to the same URL. DNS for `*.<lanDomain>` is served by the MikroTik router. |
+| `slackChannel` | [cluster/apps/argocd-notifications/configmap.yaml](cluster/apps/argocd-notifications/configmap.yaml) — referenced by comment, not templated (ConfigMap content). |
 
-## Tooling
+Only `repoUrl` and `lanDomain` are interpolated. `slackChannel` is tracked in
+`globals.yaml` purely as a single place to look — change both the global and
+the literal site together.
+
+Adding LAN access to a new app: set `ingressHost: <subdomain>` in its
+`_appset.yaml` (and `ingressHelmParam:` for a Helm chart). No literal IPs.
+
+### Add a new app
+
+```bash
+mkdir cluster/apps/<name>
+# write _appset.yaml + manifests
+git add cluster/apps/<name> && git commit -m "add <name>" && git push
+kubectl -n argocd annotate applicationset root \
+  argocd.argoproj.io/refresh=hard --overwrite
+```
+
+## Tooling installed by bootstrap
 
 | Tool      | Purpose                                              |
 | --------- | ---------------------------------------------------- |
@@ -59,55 +202,3 @@ For a remote Helm chart, the folder only needs `_appset.yaml` with a `source:` b
 | k9s       | Terminal UI for navigating Kubernetes                |
 | stern     | Multi-pod / multi-container log tailing              |
 | argocd    | Argo CD CLI (GitOps continuous delivery)             |
-
-## First-time bootstrap
-
-On the Mac, after cloning this repo:
-
-```bash
-cd bootstrap
-chmod +x *.sh
-./bootstrap.sh
-```
-
-This installs tooling, starts Colima, creates the cluster, installs Argo CD,
-applies the root app-of-apps, and installs LaunchAgents so everything comes
-back up automatically on the next login.
-
-## Manage auto-start
-
-```bash
-# Disable
-launchctl unload ~/Library/LaunchAgents/com.homelab.k3d.plist
-launchctl unload ~/Library/LaunchAgents/com.homelab.colima.plist
-
-# Re-enable (or update after editing plists)
-./bootstrap/05-enable-autostart.sh
-```
-
-## Accessing Argo CD
-
-Exposed via ingress-nginx (also managed by Argo CD):
-
-- UI:  https://argocd.localhost  (self-signed cert — accept the warning)
-- CLI: `argocd login argocd.localhost --grpc-web --insecure`
-
-Browsers and `curl` resolve `*.localhost` to 127.0.0.1 automatically — no
-`/etc/hosts` edit needed. Host ports 80/443 are mapped to the cluster's
-load balancer in [cluster/k3d-config.yaml](cluster/k3d-config.yaml).
-
-The initial admin password:
-
-```bash
-kubectl -n argocd get secret argocd-initial-admin-secret \
-  -o jsonpath='{.data.password}' | base64 -d && echo
-```
-
-## Teardown
-
-```bash
-./bootstrap/teardown.sh           # stop everything, keep Colima VM & images
-./bootstrap/teardown.sh --purge   # also delete the Colima profile (loses cached images)
-```
-
-Brew-installed tools stay; uninstall them manually with `brew uninstall …` if desired.

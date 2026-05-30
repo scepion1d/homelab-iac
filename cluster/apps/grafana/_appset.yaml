@@ -1,0 +1,31 @@
+# Grafana — installed as a test to verify the ApplicationSet pulls new apps
+# from this repo automatically.
+namespace: monitoring
+
+# The root ApplicationSet injects a helm.parameter that sets `ingressHelmParam`
+# to `https://<ingressHost>.<lanDomain>`. This is what tells Grafana the
+# external URL for its share/invite links.
+# `lanDomain` lives in cluster/globals.yaml.
+ingressHost: grafana
+ingressHelmParam: 'grafana\.ini.server.root_url'
+
+source:
+  repoURL: https://grafana.github.io/helm-charts
+  chart: grafana
+  targetRevision: 8.5.1
+  helm:
+    values: |
+      # Admin password is auto-generated and stored in the `grafana` Secret
+      # in the monitoring namespace. Retrieve with:
+      #   kubectl -n monitoring get secret grafana \
+      #     -o jsonpath='{.data.admin-password}' | base64 -d
+      adminUser: admin
+
+      service:
+        type: ClusterIP
+
+      grafana.ini:
+        server:
+          # root_url is set via helm.parameters by the root ApplicationSet —
+          # see ingressHost / ingressHelmParam above.
+          serve_from_sub_path: false

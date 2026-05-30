@@ -1,0 +1,38 @@
+# Public entry point for Grafana.
+# TLS cert is auto-issued by cert-manager from the `homelab-ca` cluster issuer.
+#
+# Reachable via:
+#   https://grafana.localhost                     — from the Mac itself
+#   https://grafana.<lanDomain>                   — from any LAN device
+# k3d forwards host :80/:443 → ingress-nginx (see cluster/k3d-config.yaml).
+#
+# The LAN-reachable host (server-alias annotation + extra tls.hosts entry)
+# is injected by the root ApplicationSet via a kustomize patch, using
+# `ingressHost` from _appset.yaml and `lanDomain` from cluster/globals.yaml.
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: grafana
+  namespace: monitoring
+  annotations:
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/force-ssl-redirect: "true"
+    cert-manager.io/cluster-issuer: homelab-ca
+spec:
+  ingressClassName: nginx
+  rules:
+    - host: grafana.localhost
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                # Default svc name & port from the bitnami/grafana chart.
+                name: grafana
+                port:
+                  number: 80
+  tls:
+    - secretName: grafana-tls
+      hosts:
+        - grafana.localhost

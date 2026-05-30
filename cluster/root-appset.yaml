@@ -4,6 +4,10 @@
 # Per-app metadata lives in `_appset.yaml`. Minimum: `namespace: <ns>`.
 # To pull from a remote source (e.g. Helm chart), set `source:` in the file
 # and it fully overrides the default git source.
+#
+# Cluster-wide constants (repoUrl, etc.) live in cluster/globals.yaml and are
+# merged in via a matrix generator — accessible as `{{ .repoUrl }}` in the
+# template.
 apiVersion: argoproj.io/v1alpha1
 kind: ApplicationSet
 metadata:
@@ -16,11 +20,32 @@ spec:
   # strict missingkey checking that errors instead of evaluating to false.
 
   generators:
-    - git:
-        repoURL: https://github.com/scepion1d/homelab-iac.git
-        revision: main
-        files:
-          - path: cluster/apps/*/_appset.yaml
+    # Matrix = cartesian product of inner generators. The globals file yields
+    # one row (constants); the apps glob yields one row per app folder.
+    # Result: every Application gets `{{ .repoUrl }}` etc. merged in.
+    #
+    # IMPORTANT: both inner generators are file-based and produce a `path`
+    # parameter. Without `pathParamPrefix` on the globals generator they
+    # collide and the merged context ends up with `path.basename = "cluster"`
+    # (the parent dir of globals.yaml) for EVERY app — making the Application
+    # name the same for all, which the controller rejects with
+    # "duplicate name" and then DELETES all existing apps (with their
+    # resources, because of the finalizer). The prefix isolates globals'
+    # path metadata under `.globals` and leaves `.path` to mean the per-app
+    # path only.
+    - matrix:
+        generators:
+          - git:
+              repoURL: https://github.com/scepion1d/homelab-iac.git
+              revision: main
+              pathParamPrefix: globals
+              files:
+                - path: cluster/globals.yaml
+          - git:
+              repoURL: https://github.com/scepion1d/homelab-iac.git
+              revision: main
+              files:
+                - path: cluster/apps/*/_appset.yaml
 
   template:
     metadata:
@@ -45,13 +70,43 @@ spec:
   #   - if _appset.yaml has `source:` → use it as-is (Helm, etc.)
   #   - otherwise → point at the app's own folder in this repo (Kustomize)
   # `hasKey` (sprig) safely tests presence without erroring on a missing key.
+  #
+  # `ingressHost` (optional) — if set in an app's _appset.yaml, the patch
+  # injects the LAN-reachable hostname `<ingressHost>.<lanDomain>`:
+  #   - Kustomize apps  → kustomize.patches add server-alias annotation
+  #                       and append to spec.tls[0].hosts on the Ingress
+  #   - Helm apps       → helm.parameters sets `<ingressHelmParam>` to the
+  #                       full URL (e.g. Grafana's grafana.ini.server.root_url)
   templatePatch: |
     spec:
       source:
         {{- if hasKey . "source" }}
-        {{- toYaml .source | nindent 8 }}
+        {{- /* Explicit source from _appset.yaml (Helm chart). Merge in a
+               helm.parameter override when ingressHost is declared. */}}
+        {{- $src := .source }}
+        {{- if hasKey . "ingressHost" }}
+        {{- $url := printf "https://%s.%s" .ingressHost .lanDomain }}
+        {{- $param := dict "name" .ingressHelmParam "value" $url }}
+        {{- $overlay := dict "helm" (dict "parameters" (list $param)) }}
+        {{- $src = mergeOverwrite (deepCopy $src) $overlay }}
+        {{- end }}
+        {{- toYaml $src | nindent 8 }}
         {{- else }}
-        repoURL: https://github.com/scepion1d/homelab-iac.git
+        repoURL: {{ .repoUrl }}
         targetRevision: main
         path: '{{ .path.path }}'
+        {{- if hasKey . "ingressHost" }}
+        {{- $host := printf "%s.%s" .ingressHost .lanDomain }}
+        kustomize:
+          patches:
+            - target:
+                kind: Ingress
+              patch: |-
+                - op: add
+                  path: /metadata/annotations/nginx.ingress.kubernetes.io~1server-alias
+                  value: "{{ $host }}"
+                - op: add
+                  path: /spec/tls/0/hosts/-
+                  value: "{{ $host }}"
+        {{- end }}
         {{- end }}

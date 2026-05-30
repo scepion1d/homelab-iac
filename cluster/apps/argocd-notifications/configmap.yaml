@@ -21,17 +21,25 @@ data:
   # ---------------------------------------------------------------------------
   template.app-deployed: |
     message: |
-      :white_check_mark: Application *{{.app.metadata.name}}* is now running new version of deployments manifests.
+      :white_check_mark: *{{.app.metadata.name}}* deployed
     slack:
+      # Slack auto-unfurls GitHub commit URLs into a rich card showing the
+      # commit message, author, and changed files — so we just embed the link
+      # rather than trying to fetch commit metadata ourselves.
+      # For Helm chart apps the "revision" is a chart version (e.g. "8.5.1"),
+      # not a git SHA — show chart info instead.
       attachments: |
         [{
-          "title": "{{ .app.metadata.name}}",
+          "title": "{{.app.metadata.name}}",
           "title_link": "{{.context.argocdUrl}}/applications/{{.app.metadata.name}}",
           "color": "#18be52",
           "fields": [
-            {"title": "Sync Status", "value": "{{.app.status.sync.status}}", "short": true},
-            {"title": "Repository",  "value": "{{.app.spec.source.repoURL}}",  "short": true},
-            {"title": "Revision",    "value": "{{.app.status.sync.revision}}", "short": true}
+            {"title": "Status", "value": "Synced + Healthy", "short": true},
+            {{- if .app.spec.source.chart}}
+            {"title": "Chart", "value": "{{.app.spec.source.chart}} @ {{.app.spec.source.targetRevision}}", "short": true}
+            {{- else}}
+            {"title": "Commit", "value": "<{{trimSuffix ".git" .app.spec.source.repoURL}}/commit/{{.app.status.sync.revision}}|{{.app.status.sync.revision | trunc 7}}>", "short": true}
+            {{- end}}
           ]
         }]
 
@@ -88,15 +96,18 @@ data:
       when: app.status.health.status == 'Degraded'
 
   # ---------------------------------------------------------------------------
-  # Default subscriptions: every Application notifies #homelab-argocd unless
+  # Default subscriptions: every Application notifies #argocd-alerts unless
   # an annotation on the Application overrides it.
   # Per-app overrides:
   #   annotations:
   #     notifications.argoproj.io/subscribe.on-deployed.slack: my-other-channel
+  #
+  # The channel name `argocd-alerts` is tracked in cluster/globals.yaml under
+  # `slackChannel` — keep both in sync.
   # ---------------------------------------------------------------------------
   subscriptions: |
     - recipients:
-        - slack:homelab-argocd
+        - slack:argocd-alerts
       triggers:
         - on-deployed
         - on-sync-failed
