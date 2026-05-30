@@ -1,0 +1,23 @@
+# k3d cluster definition for the homelab.
+# Docs: https://k3d.io/stable/usage/configfile/
+apiVersion: k3d.io/v1alpha5
+kind: Simple
+metadata:
+  name: homelab
+servers: 1
+agents: 2
+ports:
+  # Expose HTTP/HTTPS on the host so ingress works on http://homelab
+  - port: 80:80
+    nodeFilters:
+      - loadbalancer
+  - port: 443:443
+    nodeFilters:
+      - loadbalancer
+options:
+  k3s:
+    extraArgs:
+      # Disable bundled Traefik — we'll manage ingress via Argo CD instead.
+      - arg: --disable=traefik
+        nodeFilters:
+          - server:*

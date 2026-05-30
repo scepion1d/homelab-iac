@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  LaunchAgent: starts the k3d 'homelab' cluster after Colima is reachable.
+  Waits up to 2 minutes for `docker info` to succeed, then runs `k3d cluster start`.
+  Installed by bootstrap/05-enable-autostart.sh into ~/Library/LaunchAgents/.
+
+  Logs: /tmp/homelab-k3d.{log,err}
+-->
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.homelab.k3d</string>
+
+    <key>ProgramArguments</key>
+    <array>
+        <string>/bin/zsh</string>
+        <string>-lc</string>
+        <string>for i in {1..60}; do /usr/local/bin/docker info >/dev/null 2>&amp;1 &amp;&amp; break; sleep 2; done; /usr/local/bin/k3d cluster start homelab</string>
+    </array>
+
+    <key>EnvironmentVariables</key>
+    <dict>
+        <key>PATH</key>
+        <string>/usr/local/bin:/usr/bin:/bin</string>
+    </dict>
+
+    <key>RunAtLoad</key>
+    <true/>
+
+    <key>KeepAlive</key>
+    <false/>
+
+    <key>StandardOutPath</key>
+    <string>/tmp/homelab-k3d.log</string>
+
+    <key>StandardErrorPath</key>
+    <string>/tmp/homelab-k3d.err</string>
+</dict>
+</plist>
