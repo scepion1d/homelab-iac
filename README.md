@@ -22,9 +22,29 @@ homelab-iac/
 │       └── com.homelab.k3d.plist       #     starts k3d cluster after Colima
 ├── cluster/                            # Declarative cluster-level IaC
 │   ├── k3d-config.yaml                 #   cluster definition (nodes, ports)
-│   └── root-app.yaml                   #   Argo CD root Application
-└── apps/                               # Everything Argo CD manages lives here
+│   ├── root-appset.yaml                #   ApplicationSet — scans apps/*/_appset.yaml
+│   └── apps/                           #   One folder per Argo CD Application
+│       ├── argocd-notifications/       #     Slack notifications ConfigMap
+│       │   ├── _appset.yaml            #       metadata for the ApplicationSet
+│       │   ├── kustomization.yaml
+│       │   └── configmap.yaml
+│       ├── argocd-server-ingress/      #     Argo CD UI ingress + insecure mode patch
+│       │   ├── _appset.yaml
+│       │   ├── kustomization.yaml
+│       │   ├── cmd-params-cm.yaml
+│       │   └── ingress.yaml
+│       └── ingress-nginx/              #     Helm chart (no local manifests)
+│           └── _appset.yaml            #       source: { helm chart from upstream }
+└── README.md
 ```
+
+### Adding a new app
+
+1. Create `cluster/apps/<name>/` with a `_appset.yaml` (at minimum `namespace: <ns>`).
+2. Drop your manifests + a `kustomization.yaml` next to it.
+3. `git push` — the ApplicationSet picks it up automatically.
+
+For a remote Helm chart, the folder only needs `_appset.yaml` with a `source:` block (see [cluster/apps/ingress-nginx/_appset.yaml](cluster/apps/ingress-nginx/_appset.yaml) as an example).
 
 ## Tooling
 
@@ -63,6 +83,24 @@ launchctl unload ~/Library/LaunchAgents/com.homelab.colima.plist
 
 # Re-enable (or update after editing plists)
 ./bootstrap/05-enable-autostart.sh
+```
+
+## Accessing Argo CD
+
+Exposed via ingress-nginx (also managed by Argo CD):
+
+- UI:  https://argocd.localhost  (self-signed cert — accept the warning)
+- CLI: `argocd login argocd.localhost --grpc-web --insecure`
+
+Browsers and `curl` resolve `*.localhost` to 127.0.0.1 automatically — no
+`/etc/hosts` edit needed. Host ports 80/443 are mapped to the cluster's
+load balancer in [cluster/k3d-config.yaml](cluster/k3d-config.yaml).
+
+The initial admin password:
+
+```bash
+kubectl -n argocd get secret argocd-initial-admin-secret \
+  -o jsonpath='{.data.password}' | base64 -d && echo
 ```
 
 ## Teardown

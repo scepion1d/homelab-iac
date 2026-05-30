@@ -1,0 +1,4 @@
+# Per-app metadata read by the root ApplicationSet.
+# Underscore prefix keeps this file invisible to Kustomize (it lists
+# resources explicitly in kustomization.yaml).
+namespace: argocd

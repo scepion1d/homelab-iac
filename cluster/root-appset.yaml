@@ -1,0 +1,57 @@
+# Single ApplicationSet that scans cluster/apps/*/_appset.yaml and renders
+# one Argo CD Application per match. Each app folder is self-contained.
+#
+# Per-app metadata lives in `_appset.yaml`. Minimum: `namespace: <ns>`.
+# To pull from a remote source (e.g. Helm chart), set `source:` in the file
+# and it fully overrides the default git source.
+apiVersion: argoproj.io/v1alpha1
+kind: ApplicationSet
+metadata:
+  name: root
+  namespace: argocd
+spec:
+  goTemplate: true
+  # NOTE: do NOT set goTemplateOptions: ["missingkey=error"] — the templatePatch
+  # below uses `{{ if .source }}` to optionally pick up a Helm source, and with
+  # strict missingkey checking that errors instead of evaluating to false.
+
+  generators:
+    - git:
+        repoURL: https://github.com/scepion1d/homelab-iac.git
+        revision: main
+        files:
+          - path: cluster/apps/*/_appset.yaml
+
+  template:
+    metadata:
+      # Folder name becomes the Application name.
+      name: '{{ .path.basename }}'
+      finalizers:
+        - resources-finalizer.argocd.argoproj.io/foreground
+    spec:
+      project: default
+      destination:
+        server: https://kubernetes.default.svc
+        namespace: '{{ .namespace }}'
+      syncPolicy:
+        automated:
+          prune: true
+          selfHeal: true
+        syncOptions:
+          - CreateNamespace=true
+          - ServerSideApply=true
+
+  # The source block is set entirely by templatePatch:
+  #   - if _appset.yaml has `source:` → use it as-is (Helm, etc.)
+  #   - otherwise → point at the app's own folder in this repo (Kustomize)
+  # `hasKey` (sprig) safely tests presence without erroring on a missing key.
+  templatePatch: |
+    spec:
+      source:
+        {{- if hasKey . "source" }}
+        {{- toYaml .source | nindent 8 }}
+        {{- else }}
+        repoURL: https://github.com/scepion1d/homelab-iac.git
+        targetRevision: main
+        path: '{{ .path.path }}'
+        {{- end }}

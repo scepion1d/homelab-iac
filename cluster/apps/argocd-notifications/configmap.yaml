@@ -1,0 +1,103 @@
+# Argo CD notifications configuration.
+# Docs: https://argo-cd.readthedocs.io/en/stable/operator-manual/notifications/
+#
+# The Slack bot token is NOT stored here — it lives in the `argocd-notifications-secret`
+# Secret (see ./SLACK_SETUP.md for one-time setup).
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: argocd-notifications-cm
+  namespace: argocd
+data:
+  # ---------------------------------------------------------------------------
+  # Services: where to send notifications.
+  # `$slack-token` is resolved from the argocd-notifications-secret Secret.
+  # ---------------------------------------------------------------------------
+  service.slack: |
+    token: $slack-token
+
+  # ---------------------------------------------------------------------------
+  # Templates: message bodies. Reference Slack Block Kit for richer formatting.
+  # ---------------------------------------------------------------------------
+  template.app-deployed: |
+    message: |
+      :white_check_mark: Application *{{.app.metadata.name}}* is now running new version of deployments manifests.
+    slack:
+      attachments: |
+        [{
+          "title": "{{ .app.metadata.name}}",
+          "title_link": "{{.context.argocdUrl}}/applications/{{.app.metadata.name}}",
+          "color": "#18be52",
+          "fields": [
+            {"title": "Sync Status", "value": "{{.app.status.sync.status}}", "short": true},
+            {"title": "Repository",  "value": "{{.app.spec.source.repoURL}}",  "short": true},
+            {"title": "Revision",    "value": "{{.app.status.sync.revision}}", "short": true}
+          ]
+        }]
+
+  template.app-sync-failed: |
+    message: |
+      :exclamation: Sync of *{{.app.metadata.name}}* failed at {{.app.status.operationState.finishedAt}}.
+      Reason: {{.app.status.operationState.message}}
+    slack:
+      attachments: |
+        [{
+          "title": "{{ .app.metadata.name}}",
+          "title_link": "{{.context.argocdUrl}}/applications/{{.app.metadata.name}}",
+          "color": "#E96D76",
+          "fields": [
+            {"title": "Sync Status", "value": "{{.app.status.sync.status}}", "short": true},
+            {"title": "Repository",  "value": "{{.app.spec.source.repoURL}}",  "short": true}
+          ]
+        }]
+
+  template.app-health-degraded: |
+    message: |
+      :warning: Application *{{.app.metadata.name}}* has degraded health.
+    slack:
+      attachments: |
+        [{
+          "title": "{{ .app.metadata.name}}",
+          "title_link": "{{.context.argocdUrl}}/applications/{{.app.metadata.name}}",
+          "color": "#f4c030",
+          "fields": [
+            {"title": "Health Status", "value": "{{.app.status.health.status}}", "short": true},
+            {"title": "Repository",    "value": "{{.app.spec.source.repoURL}}",  "short": true}
+          ]
+        }]
+
+  # ---------------------------------------------------------------------------
+  # Triggers: conditions that fire templates.
+  # ---------------------------------------------------------------------------
+  trigger.on-deployed: |
+    - description: Application is synced and healthy.
+      send:
+        - app-deployed
+      when: app.status.operationState.phase in ['Succeeded'] and app.status.health.status == 'Healthy'
+
+  trigger.on-sync-failed: |
+    - description: Application sync has failed.
+      send:
+        - app-sync-failed
+      when: app.status.operationState.phase in ['Error', 'Failed']
+
+  trigger.on-health-degraded: |
+    - description: Application has degraded health.
+      send:
+        - app-health-degraded
+      when: app.status.health.status == 'Degraded'
+
+  # ---------------------------------------------------------------------------
+  # Default subscriptions: every Application notifies #homelab-argocd unless
+  # an annotation on the Application overrides it.
+  # Per-app overrides:
+  #   annotations:
+  #     notifications.argoproj.io/subscribe.on-deployed.slack: my-other-channel
+  # ---------------------------------------------------------------------------
+  subscriptions: |
+    - recipients:
+        - slack:homelab-argocd
+      triggers:
+        - on-deployed
+        - on-sync-failed
+        - on-health-degraded

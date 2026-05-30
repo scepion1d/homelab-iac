@@ -1,0 +1,25 @@
+# Per-app metadata read by the root ApplicationSet.
+# `source:` is present → fully overrides the default git source so Argo CD
+# pulls the chart from the upstream Helm repo. The folder containing this
+# file has no other manifests; it exists only to be discovered by the
+# generator and to give the Application a name.
+namespace: ingress-nginx
+source:
+  repoURL: https://kubernetes.github.io/ingress-nginx
+  chart: ingress-nginx
+  targetRevision: 4.11.3
+  helm:
+    values: |
+      controller:
+        service:
+          type: LoadBalancer
+        # Single-node homelab — avoid scheduling pressure.
+        replicaCount: 1
+        # Allow Ingress objects without specifying `ingressClassName: nginx`.
+        ingressClassResource:
+          default: true
+        # Lower memory footprint for a homelab.
+        resources:
+          requests:
+            cpu: 50m
+            memory: 90Mi

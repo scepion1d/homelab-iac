@@ -1,0 +1,31 @@
+# Public entry point for Argo CD.
+# nginx terminates TLS with a self-signed cert it generates on the fly
+# (ssl-redirect annotation forces http → https).
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: argocd-server
+  namespace: argocd
+  annotations:
+    # gRPC support: Argo CD CLI uses HTTP/2 + gRPC. nginx needs this hint.
+    nginx.ingress.kubernetes.io/backend-protocol: "HTTP"
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/force-ssl-redirect: "true"
+spec:
+  ingressClassName: nginx
+  rules:
+    - host: argocd.localhost
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: argocd-server
+                port:
+                  number: 80
+  tls:
+    # No `secretName` → nginx serves its built-in self-signed cert.
+    # Replace with cert-manager later for a real cert.
+    - hosts:
+        - argocd.localhost

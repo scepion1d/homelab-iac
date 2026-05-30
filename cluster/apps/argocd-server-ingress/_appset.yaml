@@ -1,0 +1,2 @@
+# Per-app metadata read by the root ApplicationSet.
+namespace: argocd
