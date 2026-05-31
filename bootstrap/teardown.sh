@@ -99,6 +99,14 @@ for plist in launchd/*.plist; do
   fi
 done
 
+echo "==> Removing heal.sh socat bridges (if present)"
+for c in apibridge http https dns-udp dns-tcp; do
+  name="k3d-${CLUSTER_NAME}-${c}"
+  if docker rm -f "${name}" >/dev/null 2>&1; then
+    echo "    removed ${name}"
+  fi
+done
+
 echo "==> Deleting k3d cluster '${CLUSTER_NAME}'"
 if k3d cluster list --no-headers 2>/dev/null | awk '{print $1}' | grep -qx "${CLUSTER_NAME}"; then
   k3d cluster delete "${CLUSTER_NAME}"

@@ -5,11 +5,11 @@ generatorOptions:
   disableNameSuffixHash: true
 
 configMapGenerator:
-  - name: dashboard-kube-state
+  - name: dashboard-host
     files:
       # Unique key so this doesn't collide with sibling dashboards in
       # the sidecar's /tmp/dashboards/ output directory.
-      - kube-state.json=dashboard.json
+      - host.json=dashboard.json
     options:
       labels:
         grafana_dashboard: "1"

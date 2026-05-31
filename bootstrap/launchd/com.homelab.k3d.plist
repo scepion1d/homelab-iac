@@ -1,8 +1,12 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!--
-  LaunchAgent: starts the k3d 'homelab' cluster after Colima is reachable.
-  Waits up to 2 minutes for `docker info` to succeed, then runs `k3d cluster start`.
-  Installed by bootstrap/05-enable-autostart.sh into ~/Library/LaunchAgents/.
+  LaunchAgent: starts the k3d 'homelab' cluster after Colima is reachable,
+  then runs bootstrap/heal.sh to recover from the well-known Colima-restart
+  wedge where the k3d serverlb crash-loops on
+      nginx: [emerg] host not found in upstream "k3d-homelab-agent-X:443"
+  heal.sh detects that and falls back to a set of alpine/socat bridges so
+  the cluster is reachable on its expected host ports (6445 for API,
+  80/443/53 for ingress + DNS).
 
   Logs: /tmp/homelab-k3d.{log,err}
 -->
@@ -16,7 +20,7 @@
     <array>
         <string>/bin/zsh</string>
         <string>-lc</string>
-        <string>for i in {1..60}; do /usr/local/bin/docker info >/dev/null 2>&amp;1 &amp;&amp; break; sleep 2; done; /usr/local/bin/k3d cluster start homelab</string>
+        <string>for i in {1..60}; do /usr/local/bin/docker info >/dev/null 2>&amp;1 &amp;&amp; break; sleep 2; done; /usr/local/bin/k3d cluster start homelab; sleep 5; HEAL=&quot;$HOME/src/homelab-iac/bootstrap/heal.sh&quot;; [ -x &quot;$HEAL&quot; ] &amp;&amp; &quot;$HEAL&quot; || true</string>
     </array>
 
     <key>EnvironmentVariables</key>

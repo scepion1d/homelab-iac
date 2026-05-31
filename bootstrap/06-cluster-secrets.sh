@@ -44,6 +44,15 @@ create_secret_if_missing monitoring grafana-admin \
   --from-literal=admin-user=admin \
   --from-literal=admin-password="${GRAFANA_PASSWORD}"
 
+# AdGuard exporter credentials (mandatory for adguard-exporter to scrape AdGuard API).
+if [[ -n "${ADGUARD_USER:-}" && -n "${ADGUARD_PASSWORD:-}" ]]; then
+  create_secret_if_missing dns adguard-credentials \
+    --from-literal=username="${ADGUARD_USER}" \
+    --from-literal=password="${ADGUARD_PASSWORD}"
+else
+  echo "    dns/adguard-credentials: skipped (ADGUARD_USER/ADGUARD_PASSWORD not set)"
+fi
+
 # MikroTik exporter (optional; only if credentials provided).
 if [[ -n "${MIKROTIK_USER:-}" && -n "${MIKROTIK_PASSWORD:-}" ]]; then
   create_secret_if_missing monitoring mikrotik-exporter-credentials \

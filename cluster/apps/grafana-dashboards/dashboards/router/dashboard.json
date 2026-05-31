@@ -1,6 +1,6 @@
 {
   "title": "Router",
-  "uid": "mikrotik-homelab",
+  "uid": "router-overview",
   "tags": ["mikrotik", "network"],
   "schemaVersion": 39,
   "timezone": "",

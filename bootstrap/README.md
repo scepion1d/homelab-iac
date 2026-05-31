@@ -213,6 +213,63 @@ Teardown does **not** uninstall brew tooling and does **not** touch the secrets
 listed above — those live only in the cluster, so deleting the cluster
 deletes them. You'll need to recreate them after the next `bootstrap.sh`.
 
+## Recovery (`heal.sh`)
+
+After `colima stop && colima start` (or a Mac sleep/wake cycle), the
+k3d serverlb sometimes crash-loops with
+`nginx: [emerg] host not found in upstream "k3d-homelab-agent-X:443"`,
+and **`k3d cluster start` can't bring it back**. Symptoms: kubectl times
+out, `https://argocd.int` is unreachable, the host-side dns-proxy times
+out (`dig @192.168.10.3 cloudflare.com` → `connection timed out`).
+
+When that happens, run:
+
+```bash
+./bootstrap/heal.sh
+```
+
+It is idempotent and will:
+
+1. Restart the Colima VM if its DNS is wedged (`docker pull` fails).
+2. Re-`mask` `dnsmasq` inside the VM (regression-proofs the upgrade path
+   from older deployments that only `disabled` it).
+3. Restart the k3d node containers so kubelets re-register their IPs
+   (fixes `kubectl logs` returning `502 Bad Gateway`).
+4. If the k3d serverlb is missing or crash-looping, install five
+   `alpine/socat` bridges to publish 6443 (→ host :6445), 80, 443, and
+   53 UDP/TCP from the VM into `k3d-homelab-server-0`.
+5. Re-point `kubectl` at whichever apiserver port is now correct.
+6. Smoke-test ingress and DNS.
+
+The same logic runs automatically on next login via
+[launchd/com.homelab.k3d.plist](launchd/com.homelab.k3d.plist).
+
+**When to stop healing and rebuild:** if heal.sh runs cleanly but
+metrics/UIs still don't work, or if the socat fallback stack feels
+unsustainable, the heavy hammer is `./bootstrap/teardown.sh &&
+./bootstrap/bootstrap.sh` — that gives you a real k3d serverlb back at
+the cost of the AdGuard PVC (filter lists; re-tick them in the UI).
+
+## Operational restart (`restart.sh`)
+
+For a deterministic full runtime restart (Colima + k3d + healing + DNS
+proxy refresh), run:
+
+```bash
+./bootstrap/restart.sh
+```
+
+This is useful after host reboot/sleep, or when DNS/ingress look stale.
+It will:
+
+1. Restart the Colima profile.
+2. Re-run [01-start-runtime.sh](01-start-runtime.sh) to keep VM prerequisites
+   in place (`dnsmasq` masked).
+3. Start the existing `homelab` k3d cluster.
+4. Run [heal.sh](heal.sh).
+5. Re-run [08-dns-proxy.sh](08-dns-proxy.sh) so the forwarder tracks VM IP
+   changes.
+
 ## Order of operations diagram
 
 ```mermaid

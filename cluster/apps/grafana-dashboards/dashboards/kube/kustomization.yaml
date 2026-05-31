@@ -5,11 +5,11 @@ generatorOptions:
   disableNameSuffixHash: true
 
 configMapGenerator:
-  - name: dashboard-mikrotik
+  - name: dashboard-kube
     files:
       # Unique key so this doesn't collide with sibling dashboards in
       # the sidecar's /tmp/dashboards/ output directory.
-      - mikrotik.json=dashboard.json
+      - kube.json=dashboard.json
     options:
       labels:
         grafana_dashboard: "1"

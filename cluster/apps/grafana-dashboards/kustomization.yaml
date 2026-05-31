@@ -19,7 +19,8 @@ namespace: monitoring
 
 resources:
   # Keep this list sorted alphabetically.
+  - dashboards/adguard
   - dashboards/homelab
-  - dashboards/host-hardware
-  - dashboards/kube-state
-  - dashboards/mikrotik
+  - dashboards/host
+  - dashboards/kube
+  - dashboards/router

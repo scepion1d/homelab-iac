@@ -1,6 +1,6 @@
 {
-  "title": "K8S",
-  "uid": "k8s-homelab",
+  "title": "Kube",
+  "uid": "kube-overview",
   "tags": ["k8s", "kube-state-metrics"],
   "schemaVersion": 39,
   "timezone": "",

@@ -1,6 +1,6 @@
 {
-  "title": "Host Hardware",
-  "uid": "host-homelab",
+  "title": "Host",
+  "uid": "host-overview",
   "tags": ["host-exporter", "infra"],
   "schemaVersion": 39,
   "timezone": "",

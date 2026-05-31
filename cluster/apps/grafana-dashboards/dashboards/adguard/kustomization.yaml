@@ -5,11 +5,9 @@ generatorOptions:
   disableNameSuffixHash: true
 
 configMapGenerator:
-  - name: dashboard-host-hardware
+  - name: dashboard-adguard
     files:
-      # Unique key so this doesn't collide with sibling dashboards in
-      # the sidecar's /tmp/dashboards/ output directory.
-      - host-hardware.json=dashboard.json
+      - adguard.json=dashboard.json
     options:
       labels:
         grafana_dashboard: "1"

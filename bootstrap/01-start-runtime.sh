@@ -51,8 +51,15 @@ echo "Docker engine reachable via Colima (cpu=${CPU}, mem=${MEMORY}GiB, disk=${D
 # Lima then forwards to host :53. That blocks k3d (step 02) from publishing
 # AdGuard's DNS service on host :53 ("address already in use"). We don't need
 # the VM's dnsmasq — step 02 wires k3d nodes' /etc/resolv.conf to public DNS.
+#
+# We `mask` as well as `disable` because a plain `disable` lets dnsmasq come
+# back on the next `colima stop && colima start`, which has bitten us:
+# after the VM restarts the k3d serverlb fails to bind :53 and the whole
+# DNS path breaks. mask is the only way to make the disable survive.
 if colima ssh --profile "${PROFILE}" -- systemctl is-active dnsmasq >/dev/null 2>&1 \
-   || colima ssh --profile "${PROFILE}" -- systemctl is-enabled dnsmasq >/dev/null 2>&1; then
-  echo "Disabling dnsmasq inside the Colima VM (frees :53 for k3d)..."
-  colima ssh --profile "${PROFILE}" -- sudo systemctl disable --now dnsmasq
+   || colima ssh --profile "${PROFILE}" -- systemctl is-enabled dnsmasq >/dev/null 2>&1 \
+   || ! colima ssh --profile "${PROFILE}" -- systemctl is-enabled dnsmasq 2>&1 | grep -q masked; then
+  echo "Disabling + masking dnsmasq inside the Colima VM (frees :53 for k3d)..."
+  colima ssh --profile "${PROFILE}" -- sudo systemctl disable --now dnsmasq 2>/dev/null || true
+  colima ssh --profile "${PROFILE}" -- sudo systemctl mask dnsmasq 2>/dev/null || true
 fi
