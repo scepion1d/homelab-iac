@@ -1,7 +1,5 @@
-# Grafana — installed as a test to verify the ApplicationSet pulls new apps
-# from this repo automatically.
 namespace: monitoring
-revision: 1
+revision: 8
 
 # The root ApplicationSet injects a helm.parameter that sets `ingressHelmParam`
 # to `https://<ingressHost>.<lanDomain>`. This is what tells Grafana the
@@ -15,15 +13,35 @@ source:
   chart: grafana
   targetRevision: 8.5.1
   helm:
-    values: |
-      # Admin password is auto-generated and stored in the `grafana` Secret
-      # in the monitoring namespace. Retrieve with:
-      #   kubectl -n monitoring get secret grafana \
-      #     -o jsonpath='{.data.admin-password}' | base64 -d
-      adminUser: admin
+    # `values:` accepts either a literal-block string or (as here) a normal
+    # YAML map. The root ApplicationSet converts maps to a string for Argo CD.
+    values:
+      # Admin credentials come from the `grafana-admin` Secret created out of
+      # band (see README "Bootstrap" section). Without `existingSecret` the
+      # chart re-rolls a random password on every helm render → Argo CD
+      # rewrites the Secret on every sync.
+      admin:
+        existingSecret: grafana-admin
+        userKey: admin-user
+        passwordKey: admin-password
 
       service:
         type: ClusterIP
+
+      # Sidecar watches namespace for ConfigMaps labeled `grafana_dashboard=1`
+      # and imports their JSON keys into Grafana. Dashboards live in the
+      # sibling `grafana-dashboards` app (per-folder structure).
+      sidecar:
+        dashboards:
+          enabled: true
+          label: grafana_dashboard
+          labelValue: "1"
+          searchNamespace: monitoring
+          # Read `grafana_folder` annotation on the ConfigMap and place the
+          # dashboard in that Grafana folder (auto-created).
+          folderAnnotation: grafana_folder
+          provider:
+            foldersFromFilesStructure: true
 
       # Provision the Prometheus datasource at startup (no clicking in the UI).
       # Points at the in-cluster service from cluster/apps/prometheus/.
@@ -37,8 +55,14 @@ source:
               url: http://prometheus-server.monitoring.svc:80
               isDefault: true
 
-      grafana.ini:
+      # root_url is set via helm.parameters by the root ApplicationSet —
+      # see ingressHost / ingressHelmParam above.
+      "grafana.ini":
         server:
-          # root_url is set via helm.parameters by the root ApplicationSet —
-          # see ingressHost / ingressHelmParam above.
           serve_from_sub_path: false
+        dashboards:
+          # Each dashboard ConfigMap in cluster/apps/grafana-dashboards/
+          # uses `<name>.json=dashboard.json` so the sidecar writes them to
+          #   /tmp/dashboards/<name>.json
+          # Point home at the homelab overview file.
+          default_home_dashboard_path: /tmp/dashboards/homelab.json

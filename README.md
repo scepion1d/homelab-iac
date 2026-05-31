@@ -14,6 +14,12 @@ kubectl -n argocd patch secret argocd-notifications-secret \
 source scripts/argocd-login.sh && argocd-login
 argocd repo add https://github.com/scepion1d/homelab-iac.git \
   --username scepion1d --password github_pat_YOUR_TOKEN
+
+# Grafana admin Secret — picked up by the chart via `admin.existingSecret`.
+# Required, otherwise the chart re-rolls the password on every sync.
+kubectl -n monitoring create secret generic grafana-admin \
+  --from-literal=admin-user=admin \
+  --from-literal=admin-password="$(openssl rand -base64 24)"
 ```
 
 Wipe & rebuild: `./bootstrap/teardown.sh [--purge]` then `./bootstrap/bootstrap.sh`.
@@ -95,6 +101,31 @@ MikroTik SNMP setup (one-time on router):
 /snmp community add name=homelab addresses=192.168.10.0/24 read-access=yes
 /snmp set enabled=yes
 ```
+
+## Grafana dashboards
+
+Dashboards live as JSON files under
+[cluster/apps/grafana-dashboards/dashboards/](cluster/apps/grafana-dashboards/dashboards/).
+Each dashboard is its own folder (`dashboards/<name>/dashboard.json` +
+`kustomization.yaml`). Kustomize turns each into a ConfigMap; Grafana's
+sidecar watches the `monitoring` namespace and imports anything labeled
+`grafana_dashboard=1`.
+
+Add a dashboard:
+
+1. Build/edit it in the Grafana UI.
+2. **Share → Export → Save to file** (toggle "Export for sharing externally"
+   OFF — we want the resolved Prometheus datasource).
+3. Drop the file at
+   `cluster/apps/grafana-dashboards/dashboards/<name>/dashboard.json`.
+4. Copy a sibling `kustomization.yaml` and rename `dashboard-<name>` +
+   `grafana_folder: <Folder>`.
+5. Add `- dashboards/<name>` to the top-level
+   [kustomization.yaml](cluster/apps/grafana-dashboards/kustomization.yaml).
+6. `git commit && git push`. Sidecar imports it within ~30s of the next
+   Argo CD sync.
+
+Remove one: delete its folder and the matching `resources:` line, commit.
 
 ## Repository layout
 

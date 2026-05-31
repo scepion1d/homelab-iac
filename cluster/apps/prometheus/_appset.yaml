@@ -17,17 +17,17 @@
 # anyone on the network can query metrics. Fine for a trusted home network;
 # add nginx basic-auth via ingress annotations if that ever changes.
 namespace: monitoring
-revision: 1
+revision: 11
 
 source:
   repoURL: https://prometheus-community.github.io/helm-charts
   chart: prometheus
   targetRevision: 25.27.0
   helm:
-    values: |
+    values:
       server:
         # Trim retention; with all the kube-state + node-exporter metrics
-        # at default 15s scrape, 7 days at 50k series is plenty for a homelab.
+        # at 15s scrape, 7 days at 50k series is plenty for a homelab.
         retention: "7d"
         persistentVolume:
           enabled: true
@@ -35,6 +35,13 @@ source:
         service:
           type: ClusterIP
           servicePort: 80
+        # Chart default is 1m, which is too coarse for a small cluster —
+        # CPU/network graphs end up step-shaped. 15s matches what most
+        # Grafana dashboards (and our `$__rate_interval`) assume. The
+        # mikrotik job overrides this with its own 30s interval below.
+        global:
+          scrape_interval: 30s
+          scrape_timeout: 20s
 
       alertmanager:
         # Disable persistence — we don't route alerts anywhere yet.
@@ -42,30 +49,16 @@ source:
           enabled: false
 
       # Don't ship pushgateway; we don't have batch jobs to scrape.
-      prometheus-pushgateway:
+      "prometheus-pushgateway":
         enabled: false
 
-      # Custom scrape configs added on top of the chart's defaults
-      # (which already cover kubelet, cAdvisor, kube-state-metrics, node-exporter,
-      # and anything annotated `prometheus.io/scrape: "true"`).
-      extraScrapeConfigs: |
-        # MikroTik router via snmp-exporter.
-        # snmp-exporter is the *real* scrape target; Prometheus passes the
-        # router's IP and module name via URL params (relabel below).
-        # Router IP `192.168.10.1` is hard-coded here — it doesn't fit the
-        # globals.yaml pattern (this whole values block is one string).
-        - job_name: mikrotik
-          static_configs:
-            - targets:
-                - 192.168.10.1
-          metrics_path: /snmp
-          params:
-            module: [mikrotik]
-            auth:   [homelab_v2]   # matches `auths:` key in snmp-exporter config
-          relabel_configs:
-            - source_labels: [__address__]
-              target_label: __param_target
-            - source_labels: [__param_target]
-              target_label: instance
-            - target_label: __address__
-              replacement: snmp-exporter-prometheus-snmp-exporter.monitoring.svc:9116
+      # No custom scrape configs at the moment. The MikroTik router is
+      # exported by `mikrotik-exporter` (mktxp) and is picked up by the
+      # chart's default `kubernetes-service-endpoints` job via the
+      # `prometheus.io/scrape: "true"` annotation on its Service.
+      #
+      # If you ever need to add a static-target job, the working pattern
+      # is `serverFiles.<name>.yml: { scrape_configs: [...] }` plus
+      # `scrapeConfigFiles: [/etc/config/<name>.yml]`. The chart's
+      # `extraScrapeConfigs:` (stringified YAML) and `scrapeConfigs:`
+      # (map) both proved fragile — see git history for the autopsy.

@@ -19,10 +19,10 @@
 #                   (static A records pointing at the Mac's LAN IP). Update DNS
 #                   AND this value together if the domain changes.
 #
-#   slackChannel  — cluster/apps/argocd-notifications/configmap.yaml
-#                   ConfigMap content is not templated by the ApplicationSet,
-#                   so the literal channel name is hard-coded there. Keep this
-#                   value in sync with the `subscriptions:` block.
+#   infraSlackChannel  — cluster/apps/argocd-notifications/configmap.yaml
+#                       ConfigMap content is not templated by the ApplicationSet,
+#                       so the literal channel name is hard-coded there. Keep this
+#                       value in sync with the `subscriptions:` block.
 repoUrl: https://github.com/scepion1d/homelab-iac.git
 lanDomain: int
-slackChannel: argocd-alerts
+infraSlackChannel: infra-alerts

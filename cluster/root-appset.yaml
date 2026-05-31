@@ -51,6 +51,10 @@ spec:
     metadata:
       # Folder name becomes the Application name.
       name: '{{ .path.basename }}'
+      # Surface the per-app revision as an annotation on the Application
+      # itself so notifications can read it via .app.metadata.annotations.
+      annotations:
+        homelab.iac/revision: '{{ default 1 .revision }}'
       finalizers:
         - resources-finalizer.argocd.argoproj.io/foreground
     spec:
@@ -97,9 +101,15 @@ spec:
         {{- $src = mergeOverwrite (deepCopy $src) $overlay }}
         {{- end }}
         {{- /* Cache-bust: append revision marker as a YAML comment to helm.values. */}}
+        {{- /* `helm.values` may be a string (literal block) or a map — Argo CD */}}
+        {{- /* itself only accepts a string here, so we render maps via toYaml. */}}
         {{- $oldValues := "" }}
         {{- if and (hasKey $src "helm") (hasKey $src.helm "values") }}
-        {{- $oldValues = $src.helm.values }}
+          {{- if kindIs "string" $src.helm.values }}
+            {{- $oldValues = $src.helm.values }}
+          {{- else }}
+            {{- $oldValues = toYaml $src.helm.values }}
+          {{- end }}
         {{- end }}
         {{- $newValues := printf "%s\n# homelab-revision: %v\n" $oldValues $rev }}
         {{- $src = mergeOverwrite (deepCopy $src) (dict "helm" (dict "values" $newValues)) }}

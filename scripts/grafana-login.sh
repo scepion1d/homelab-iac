@@ -17,15 +17,15 @@ grafana-login() {
   local namespace="${GRAFANA_NAMESPACE:-monitoring}"
   local pwd
 
-  pwd="$(kubectl -n "${namespace}" get secret grafana \
+  pwd="$(kubectl -n "${namespace}" get secret grafana-admin \
     -o jsonpath='{.data.admin-password}' 2>/dev/null | base64 -d)" || {
-    echo "❌ Could not read 'grafana' secret in namespace '${namespace}'." >&2
-    echo "   Is Grafana deployed? Check: kubectl -n ${namespace} get pods" >&2
+    echo "❌ Could not read 'grafana-admin' secret in namespace '${namespace}'." >&2
+    echo "   Create it: see README \"Bootstrap\" section." >&2
     return 1
   }
 
   if [[ -z "${pwd}" ]]; then
-    echo "❌ Admin password is empty in the 'grafana' secret." >&2
+    echo "❌ Admin password is empty in the 'grafana-admin' secret." >&2
     return 1
   fi
 

@@ -1,0 +1,15 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+generatorOptions:
+  disableNameSuffixHash: true
+
+configMapGenerator:
+  - name: dashboard-host-hardware
+    files:
+      # Unique key so this doesn't collide with sibling dashboards in
+      # the sidecar's /tmp/dashboards/ output directory.
+      - host-hardware.json=dashboard.json
+    options:
+      labels:
+        grafana_dashboard: "1"

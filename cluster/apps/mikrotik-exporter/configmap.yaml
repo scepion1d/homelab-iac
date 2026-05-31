@@ -1,0 +1,72 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: mikrotik-exporter
+  namespace: monitoring
+data:
+  # System-level config — server bind, scrape timeouts, parallel fetch.
+  # https://github.com/akpw/mktxp#mktxp-system-configuration
+  _mktxp.conf: |
+    [MKTXP]
+        listen = '0.0.0.0:49090'
+        socket_timeout = 5
+
+        initial_delay_on_failure = 30
+        max_delay_on_failure = 300
+        delay_inc_div = 5
+
+        bandwidth = False
+        minimal_collect_interval = 5
+
+        verbose_mode = False
+        fetch_routers_in_parallel = False
+        max_worker_threads = 5
+        max_scrape_duration = 10
+        total_max_scrape_duration = 30
+        persistent_router_connection_pool = True
+        persistent_dhcp_cache = True
+        compact_default_conf_values = False
+        prometheus_headers_deduplication = False
+
+  # Per-router config — what to collect, plus where to find the creds.
+  # `credentials_file` points at the Secret mounted alongside this CM.
+  # Anything not listed inherits mktxp defaults.
+  mktxp.conf: |
+    [homelab]
+        enabled = True
+        hostname = 192.168.10.1
+        port = 8728
+        credentials_file = /etc/mktxp/credentials.yaml
+        use_ssl = False
+        plaintext_login = True
+
+        # What to collect.
+        dhcp = True
+        dhcp_lease = True
+        interface = True
+        route = True
+        pool = True
+        firewall = True
+        monitor = True
+        netwatch = True
+        public_ip = True
+        wireless = True
+        wireless_clients = True
+        capsman = True
+        capsman_clients = True
+        user = True
+        queue = True
+        dns = True
+
+        # Skip for now — adds cardinality / requires extra perms.
+        bandwidth = False
+        connections = True
+        connection_stats = False
+        connection_stats_destinations = False
+        routerboard = True
+        installed_packages = False
+        health = True
+
+        # Use interface name + comment in labels so dashboards can show
+        # human-readable names alongside ether1/etc.
+        interface_name_format = combined

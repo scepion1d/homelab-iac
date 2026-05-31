@@ -1,0 +1,25 @@
+# Each dashboard lives in its own folder under dashboards/ with:
+#   dashboards/<name>/
+#     ├── kustomization.yaml   # generates the ConfigMap from dashboard.json
+#     └── dashboard.json        # exported / downloaded grafana JSON
+#
+# Grafana's sidecar (cluster/apps/grafana/_appset.yaml) watches the
+# `monitoring` namespace for ConfigMaps with label `grafana_dashboard=1`
+# and imports them. The `grafana_folder` annotation puts them in folders.
+#
+# Add a new one:
+#   ./scripts/add-dashboard.sh <grafana.com-id> <short-name> [folder]
+#
+# Remove one:
+#   1. Delete its folder under dashboards/
+#   2. Delete the matching line from `resources:` below
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: monitoring
+
+resources:
+  # Keep this list sorted alphabetically.
+  - dashboards/homelab
+  - dashboards/host-hardware
+  - dashboards/kube-state
+  - dashboards/mikrotik
