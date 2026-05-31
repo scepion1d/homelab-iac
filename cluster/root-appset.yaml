@@ -77,12 +77,18 @@ spec:
   #                       and append to spec.tls[0].hosts on the Ingress
   #   - Helm apps       → helm.parameters sets `<ingressHelmParam>` to the
   #                       full URL (e.g. Grafana's grafana.ini.server.root_url)
+  #
+  # `revision` (optional, default 1) — manual cache-buster. Bump it whenever
+  # Argo CD's repo-server gets stuck on a stale render (the dreaded
+  # "Manifest generation error (cached)"). Helm apps: appended to values as
+  # a comment, so the chart ignores it but the cache key changes. Kustomize
+  # apps: added as a `homelab.iac/revision` commonAnnotation on every resource.
   templatePatch: |
     spec:
       source:
+        {{- $rev := default 1 .revision }}
         {{- if hasKey . "source" }}
-        {{- /* Explicit source from _appset.yaml (Helm chart). Merge in a
-               helm.parameter override when ingressHost is declared. */}}
+        {{- /* Explicit source from _appset.yaml (Helm chart). */}}
         {{- $src := .source }}
         {{- if hasKey . "ingressHost" }}
         {{- $url := printf "https://%s.%s" .ingressHost .lanDomain }}
@@ -90,14 +96,23 @@ spec:
         {{- $overlay := dict "helm" (dict "parameters" (list $param)) }}
         {{- $src = mergeOverwrite (deepCopy $src) $overlay }}
         {{- end }}
+        {{- /* Cache-bust: append revision marker as a YAML comment to helm.values. */}}
+        {{- $oldValues := "" }}
+        {{- if and (hasKey $src "helm") (hasKey $src.helm "values") }}
+        {{- $oldValues = $src.helm.values }}
+        {{- end }}
+        {{- $newValues := printf "%s\n# homelab-revision: %v\n" $oldValues $rev }}
+        {{- $src = mergeOverwrite (deepCopy $src) (dict "helm" (dict "values" $newValues)) }}
         {{- toYaml $src | nindent 8 }}
         {{- else }}
         repoURL: {{ .repoUrl }}
         targetRevision: main
         path: '{{ .path.path }}'
-        {{- if hasKey . "ingressHost" }}
-        {{- $host := printf "%s.%s" .ingressHost .lanDomain }}
         kustomize:
+          commonAnnotations:
+            homelab.iac/revision: "{{ $rev }}"
+          {{- if hasKey . "ingressHost" }}
+          {{- $host := printf "%s.%s" .ingressHost .lanDomain }}
           patches:
             - target:
                 kind: Ingress
@@ -108,5 +123,5 @@ spec:
                 - op: add
                   path: /spec/tls/0/hosts/-
                   value: "{{ $host }}"
-        {{- end }}
+          {{- end }}
         {{- end }}

@@ -1,26 +1,15 @@
-# Public entry point for Argo CD.
-# TLS cert is auto-issued by cert-manager from the `homelab-ca` cluster issuer
-# (see cluster/apps/cluster-issuer/). The cert covers every host listed in
-# spec.tls[*].hosts and is stored in the `argocd-tls` Secret.
-#
-# Reachable via:
-#   https://argocd.localhost                      — from the Mac itself
-#   https://argocd.<lanDomain>                    — from any other device on the LAN
-#
-# The LAN-reachable host (server-alias annotation + extra tls.hosts entry)
-# is injected by the root ApplicationSet via a kustomize patch, using
-# `ingressHost` from _appset.yaml and `lanDomain` from cluster/globals.yaml.
+# Argo CD ingress. The LAN host (server-alias + tls entry) is injected by
+# the root ApplicationSet from `ingressHost` + `lanDomain`.
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
   name: argocd-server
   namespace: argocd
   annotations:
-    # gRPC support: Argo CD CLI uses HTTP/2 + gRPC. nginx needs this hint.
+    # gRPC: argocd CLI uses HTTP/2 + gRPC; nginx needs the hint.
     nginx.ingress.kubernetes.io/backend-protocol: "HTTP"
     nginx.ingress.kubernetes.io/ssl-redirect: "true"
     nginx.ingress.kubernetes.io/force-ssl-redirect: "true"
-    # cert-manager picks this up and auto-creates a Certificate for tls.hosts.
     cert-manager.io/cluster-issuer: homelab-ca
 spec:
   ingressClassName: nginx
@@ -36,6 +25,6 @@ spec:
                 port:
                   number: 80
   tls:
-    - secretName: argocd-tls    # cert-manager populates this Secret
+    - secretName: argocd-tls
       hosts:
         - argocd.localhost

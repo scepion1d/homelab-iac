@@ -1,0 +1,38 @@
+# Annotate the installer-owned Argo CD metrics Services so Prometheus'
+# kubernetes-service-endpoints job scrapes them. ServerSideApply lets our
+# field manager claim only annotations, leaving spec/ports to the installer.
+apiVersion: v1
+kind: Service
+metadata:
+  name: argocd-metrics
+  namespace: argocd
+  annotations:
+    prometheus.io/scrape: "true"
+    prometheus.io/port: "8082"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: argocd-server-metrics
+  namespace: argocd
+  annotations:
+    prometheus.io/scrape: "true"
+    prometheus.io/port: "8083"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: argocd-repo-server
+  namespace: argocd
+  annotations:
+    prometheus.io/scrape: "true"
+    prometheus.io/port: "8084"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: argocd-applicationset-controller
+  namespace: argocd
+  annotations:
+    prometheus.io/scrape: "true"
+    prometheus.io/port: "8080"

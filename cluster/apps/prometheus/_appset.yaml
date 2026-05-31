@@ -1,0 +1,71 @@
+# Prometheus — metrics storage + query engine.
+#
+# Bundled with this chart:
+#   - prometheus-server     (the TSDB + UI we expose)
+#   - alertmanager          (alert routing; unused here yet, harmless)
+#   - node-exporter         (per-node host metrics: cpu/mem/disk/network)
+#   - kube-state-metrics    (cluster object metrics: pods, deployments, ...)
+#   - pushgateway           (for short-lived job metrics; unused, harmless)
+#
+# Grafana auto-uses this as its default datasource — see
+# cluster/apps/grafana/_appset.yaml (`datasources` block).
+#
+# Ingress is in the sibling `prometheus-ingress` app so this file stays
+# pure Helm.
+#
+# Security note: the Prometheus UI has NO auth. Exposing on the LAN means
+# anyone on the network can query metrics. Fine for a trusted home network;
+# add nginx basic-auth via ingress annotations if that ever changes.
+namespace: monitoring
+revision: 1
+
+source:
+  repoURL: https://prometheus-community.github.io/helm-charts
+  chart: prometheus
+  targetRevision: 25.27.0
+  helm:
+    values: |
+      server:
+        # Trim retention; with all the kube-state + node-exporter metrics
+        # at default 15s scrape, 7 days at 50k series is plenty for a homelab.
+        retention: "7d"
+        persistentVolume:
+          enabled: true
+          size: 8Gi
+        service:
+          type: ClusterIP
+          servicePort: 80
+
+      alertmanager:
+        # Disable persistence — we don't route alerts anywhere yet.
+        persistence:
+          enabled: false
+
+      # Don't ship pushgateway; we don't have batch jobs to scrape.
+      prometheus-pushgateway:
+        enabled: false
+
+      # Custom scrape configs added on top of the chart's defaults
+      # (which already cover kubelet, cAdvisor, kube-state-metrics, node-exporter,
+      # and anything annotated `prometheus.io/scrape: "true"`).
+      extraScrapeConfigs: |
+        # MikroTik router via snmp-exporter.
+        # snmp-exporter is the *real* scrape target; Prometheus passes the
+        # router's IP and module name via URL params (relabel below).
+        # Router IP `192.168.10.1` is hard-coded here — it doesn't fit the
+        # globals.yaml pattern (this whole values block is one string).
+        - job_name: mikrotik
+          static_configs:
+            - targets:
+                - 192.168.10.1
+          metrics_path: /snmp
+          params:
+            module: [mikrotik]
+            auth:   [homelab_v2]   # matches `auths:` key in snmp-exporter config
+          relabel_configs:
+            - source_labels: [__address__]
+              target_label: __param_target
+            - source_labels: [__param_target]
+              target_label: instance
+            - target_label: __address__
+              replacement: snmp-exporter-prometheus-snmp-exporter.monitoring.svc:9116

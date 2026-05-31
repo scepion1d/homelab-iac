@@ -1,7 +1,5 @@
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
-namespace: argocd
+namespace: monitoring
 resources:
-  - cmd-params-cm.yaml
   - ingress.yaml
-  - metrics-services.yaml

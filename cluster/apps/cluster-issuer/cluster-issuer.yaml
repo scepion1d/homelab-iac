@@ -1,20 +1,8 @@
-# Self-signed cluster CA setup.
-#
-# Three steps, each signed by the previous:
-#   1. SelfSigned ClusterIssuer  — bootstrap; can issue any cert from thin air
-#   2. CA Certificate            — a long-lived cert signed by (1), marked isCA
-#   3. CA ClusterIssuer          — uses the cert from (2) to sign all our app certs
-#
-# Why bother with the indirection? So every cert in the cluster chains back
-# to the SAME root → installing one CA cert on a device trusts every current
-# AND future app. If we used SelfSigned directly, each cert would be its own
-# root and devices would need to trust each one individually.
-#
-# NOTE: This app depends on cert-manager's CRDs existing. If both apps sync
-# at the same time on a fresh cluster, this one fails on first attempt and
-# Argo CD retries automatically once cert-manager is up.
+# Self-signed cluster CA. Chain: SelfSigned issuer → CA cert (isCA) → CA issuer.
+# Every app cert chains back to the same root → install one CA on a device
+# and every current/future app is trusted.
+# Depends on cert-manager CRDs; Argo CD retries until cert-manager is up.
 
-# 1. Bootstrap issuer — needed only to sign the CA certificate below.
 apiVersion: cert-manager.io/v1
 kind: ClusterIssuer
 metadata:
@@ -22,19 +10,17 @@ metadata:
 spec:
   selfSigned: {}
 ---
-# 2. The CA certificate itself. Lives in the cert-manager namespace because
-#    ClusterIssuer (below) looks there by default for its CA secret.
 apiVersion: cert-manager.io/v1
 kind: Certificate
 metadata:
   name: homelab-ca
-  namespace: cert-manager
+  namespace: cert-manager   # ClusterIssuer below looks here by default
 spec:
   isCA: true
   commonName: homelab-ca
-  secretName: homelab-ca-key-pair   # cert-manager creates this Secret
-  duration: 87600h                  # 10 years — long enough to forget about
-  renewBefore: 720h                 # auto-renew with 30 days remaining
+  secretName: homelab-ca-key-pair
+  duration: 87600h     # 10 years
+  renewBefore: 720h    # auto-renew with 30 days remaining
   privateKey:
     algorithm: ECDSA
     size: 256
@@ -43,8 +29,6 @@ spec:
     kind: ClusterIssuer
     group: cert-manager.io
 ---
-# 3. The real issuer used by every app's Ingress (via the
-#    `cert-manager.io/cluster-issuer: homelab-ca` annotation).
 apiVersion: cert-manager.io/v1
 kind: ClusterIssuer
 metadata:

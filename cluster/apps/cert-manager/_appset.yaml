@@ -1,16 +1,9 @@
-# cert-manager — automates TLS cert issuance via Kubernetes CRDs.
-# Watches Ingress resources for `cert-manager.io/cluster-issuer` annotations
-# and creates Certificate CRs that get signed by the named issuer.
-#
-# We use it with a self-signed cluster CA (see cluster/apps/cluster-issuer/)
-# so every ingress in the homelab gets a real cert signed by ONE root that
-# we install on devices once.
 namespace: cert-manager
+revision: 1
 source:
   repoURL: https://charts.jetstack.io
   chart: cert-manager
   targetRevision: v1.15.3
   helm:
     values: |
-      # CRDs ship with the chart; without this they'd need a separate install.
       installCRDs: true

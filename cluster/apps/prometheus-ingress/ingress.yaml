@@ -1,8 +1,9 @@
-# Grafana ingress. LAN host injected by root ApplicationSet.
+# Prometheus ingress. LAN host injected by root ApplicationSet.
+# NOTE: Prometheus has no auth — keep on the LAN.
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
-  name: grafana
+  name: prometheus
   namespace: monitoring
   annotations:
     nginx.ingress.kubernetes.io/ssl-redirect: "true"
@@ -11,17 +12,17 @@ metadata:
 spec:
   ingressClassName: nginx
   rules:
-    - host: grafana.localhost
+    - host: prometheus.localhost
       http:
         paths:
           - path: /
             pathType: Prefix
             backend:
               service:
-                name: grafana
+                name: prometheus-server
                 port:
                   number: 80
   tls:
-    - secretName: grafana-tls
+    - secretName: prometheus-tls
       hosts:
-        - grafana.localhost
+        - prometheus.localhost

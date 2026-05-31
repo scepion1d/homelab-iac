@@ -1,8 +1,7 @@
-# Per-app metadata read by the root ApplicationSet.
-namespace: argocd
+namespace: monitoring
 revision: 1
 # Subdomain for the LAN-reachable hostname.
 # The root ApplicationSet injects a kustomize patch that adds
 # `<ingressHost>.<lanDomain>` to the Ingress's server-alias + tls.hosts.
 # `lanDomain` lives in cluster/globals.yaml.
-ingressHost: argocd
+ingressHost: prometheus

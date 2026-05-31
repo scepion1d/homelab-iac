@@ -1,6 +1,7 @@
 # Grafana — installed as a test to verify the ApplicationSet pulls new apps
 # from this repo automatically.
 namespace: monitoring
+revision: 1
 
 # The root ApplicationSet injects a helm.parameter that sets `ingressHelmParam`
 # to `https://<ingressHost>.<lanDomain>`. This is what tells Grafana the
@@ -23,6 +24,18 @@ source:
 
       service:
         type: ClusterIP
+
+      # Provision the Prometheus datasource at startup (no clicking in the UI).
+      # Points at the in-cluster service from cluster/apps/prometheus/.
+      datasources:
+        datasources.yaml:
+          apiVersion: 1
+          datasources:
+            - name: Prometheus
+              type: prometheus
+              access: proxy
+              url: http://prometheus-server.monitoring.svc:80
+              isDefault: true
 
       grafana.ini:
         server:
