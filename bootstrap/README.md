@@ -9,53 +9,68 @@ the only ongoing workflow is `git push`.
 ```bash
 git clone https://github.com/scepion1d/homelab-iac.git && cd homelab-iac
 chmod +x bootstrap/*.sh
+
+# One-time: provide creds (AdGuard password is required, the rest optional).
+cp bootstrap/.env.example bootstrap/.env
+${EDITOR:-vi} bootstrap/.env
+
 ./bootstrap/bootstrap.sh
 ```
 
-Then create the ad-hoc secrets in the [Secrets](#secrets-create-these-once)
-section below.
+When it finishes, `colima status` should show an `address: 192.168.x.y` line
+— that's the VM IP the on-Mac DNS forwarder proxies to. AdGuard is
+configured, the LAN DNS forwarder is running, and Argo CD is reconciling
+everything else.
 
 ## What `bootstrap.sh` does
 
-Runs the numbered scripts in order. Each is idempotent — safe to re-run.
+Reads `bootstrap/.env`, then runs the numbered scripts in order. Each is
+idempotent — safe to re-run.
 
 | # | Script | What it does |
 |---|---|---|
 | 00 | [00-install-deps.sh](00-install-deps.sh) | `brew install` colima, docker, k3d, kubectl, helm, kustomize, k9s, stern, argocd |
-| 01 | [01-start-runtime.sh](01-start-runtime.sh) | `colima start` (defaults: 6 CPU, 24 GiB RAM, 100 GiB disk) |
-| 02 | [02-create-cluster.sh](02-create-cluster.sh) | `k3d cluster create` per [cluster/k3d-config.yaml](../cluster/k3d-config.yaml) (1 server + 2 agents, Traefik disabled, host ports 80/443) |
+| 01 | [01-start-runtime.sh](01-start-runtime.sh) | `colima start --network-address` (defaults: 6 CPU, 24 GiB RAM, 100 GiB disk) so the VM gets a LAN-routable IP, then disable the VM's dnsmasq so :53 is free for k3d |
+| 02 | [02-create-cluster.sh](02-create-cluster.sh) | `k3d cluster create` per [cluster/k3d-config.yaml](../cluster/k3d-config.yaml) (1 server + 2 agents, Traefik disabled, host ports 80/443/53) + patch each node's `/etc/resolv.conf` to public DNS (so kubelet can pull images after dnsmasq is gone) |
 | 03 | [03-install-argocd.sh](03-install-argocd.sh) | `kubectl apply --server-side` the upstream Argo CD stable manifests |
 | 04 | [04-bootstrap-apps.sh](04-bootstrap-apps.sh) | `kubectl apply` the root ApplicationSet — Argo CD now owns the cluster |
 | 05 | [05-enable-autostart.sh](05-enable-autostart.sh) | Install LaunchAgents from [launchd/](launchd/) so Colima + k3d start at login |
+| 06 | [06-cluster-secrets.sh](06-cluster-secrets.sh) | Create cluster-side secrets that aren't in git: `grafana-admin` always (auto-generated password if not in `.env`); `mikrotik-exporter-credentials` and `argocd-notifications-secret` only if the matching env vars are set |
+| 07 | [07-adguard-setup.sh](07-adguard-setup.sh) | Wait for the AdGuard Deployment to come up, port-forward to the wizard, POST the configuration (admin creds from `.env`), wait for rollout |
+| 08 | [08-dns-proxy.sh](08-dns-proxy.sh) | Install [dns-proxy.py](dns-proxy.py) as a LaunchDaemon listening on `<mac-lan-ip>:53/udp` and proxying to the Colima VM. Also opens the macOS application firewall for `python3` + `colima` if the firewall is on |
 
 `bootstrap.sh` finishes by printing the Argo CD initial admin password
-(`argocd-initial-admin-secret`).
+(`argocd-initial-admin-secret`). The grafana admin password (if 06
+generated one) is printed at the end of step 06.
 
-## Tunables
+## bootstrap/.env
 
-Environment variables read by the runtime script:
+Copy `bootstrap/.env.example` to `bootstrap/.env` and edit. The file is
+in `.gitignore`. Every numbered script sources it via `lib.sh::load_env`.
 
-| Var | Default | Notes |
+| Var | Required | Purpose |
 |---|---|---|
-| `COLIMA_PROFILE` | `default` | profile name |
-| `COLIMA_CPU` | `6` | CPU cores allocated to the VM |
-| `COLIMA_MEMORY` | `24` | GiB of RAM |
-| `COLIMA_DISK` | `100` | GiB (sparse, only grows as used) |
+| `ADGUARD_USER` | yes | Admin user the wizard creates in step 07 |
+| `ADGUARD_PASSWORD` | yes | Admin password (bcrypted into the AdGuard PVC; not stored anywhere else) |
+| `GRAFANA_ADMIN_PASSWORD` | no | If unset, step 06 auto-generates one and prints it once |
+| `MIKROTIK_USER` / `MIKROTIK_PASSWORD` | no | If both set, step 06 creates `mikrotik-exporter-credentials` |
+| `SLACK_TOKEN` | no | If set and the notifications secret already exists, step 06 patches it |
+| `COLIMA_PROFILE` / `COLIMA_CPU` / `COLIMA_MEMORY` / `COLIMA_DISK` / `COLIMA_NETWORK_ADDRESS` | no | Override Colima defaults |
 
-Re-tune later:
+Defaults for Colima: profile `default`, 6 CPU, 24 GiB RAM, 100 GiB sparse
+disk, `--network-address` on. Re-tune later by editing `.env` and re-running:
 
 ```bash
 colima stop
-COLIMA_CPU=8 COLIMA_MEMORY=32 ./bootstrap/01-start-runtime.sh
+./bootstrap/01-start-runtime.sh
 ```
 
-## Secrets (create these once)
+## Secrets (created automatically, mostly)
 
-Argo CD will reconcile every app, but a few apps need credentials that
-**must not** live in git. Create them by hand after `bootstrap.sh` finishes,
-**before** the corresponding apps will go healthy.
+`06-cluster-secrets.sh` handles the cluster-side secrets Argo CD apps need.
+The two below still require you to do something by hand:
 
-### 1. Argo CD: Git repo credentials (PAT)
+### Argo CD: Git repo credentials (PAT, only for the private repo)
 
 So Argo CD can pull from this private repo:
 
@@ -69,54 +84,12 @@ argocd repo add https://github.com/scepion1d/homelab-iac.git \
 GitHub → Settings → Developer settings → Personal access tokens (fine-grained) →
 read-only on `Contents` for this repo.
 
-### 2. Argo CD: Slack notifications token (optional)
+### AdGuard upstreams + blocklists
 
-```bash
-kubectl -n argocd patch secret argocd-notifications-secret \
-  --patch='{"stringData":{"slack-token":"xoxb-YOUR-TOKEN"}}'
-```
-
-Without this the notifications controller logs auth errors but everything
-else keeps working. See
-[cluster/apps/argocd-notifications/configmap.yaml](../cluster/apps/argocd-notifications/configmap.yaml)
-for channel config.
-
-### 3. Grafana admin password
-
-The chart is wired to `existingSecret: grafana-admin`. **If you skip this**,
-the chart auto-rolls a new password on every sync and you can't log in.
-
-```bash
-kubectl -n monitoring create secret generic grafana-admin \
-  --from-literal=admin-user=admin \
-  --from-literal=admin-password="$(openssl rand -base64 24)"
-```
-
-Retrieve later with `scripts/grafana-login.sh`.
-
-### 4. MikroTik exporter credentials
-
-The `mikrotik-exporter` Deployment mounts a Secret containing a YAML
-blob with the RouterOS API user/password. Full instructions:
-[cluster/apps/mikrotik-exporter/README.md](../cluster/apps/mikrotik-exporter/README.md).
-
-Short form (after creating the `mktxp_user` on the router):
-
-```bash
-kubectl -n monitoring create secret generic mikrotik-exporter-credentials \
-  --from-literal=credentials.yaml="username: mktxp_user
-password: <router-api-password>
-"
-```
-
-### 5. AdGuard Home first-run wizard
-
-AdGuard stores its admin user/password (bcrypted) inside the PVC — not in
-git, not a Kubernetes Secret. The pod is **NotReady until the wizard is
-done** (the readiness probe targets :53, which only binds after setup).
-
-Full walkthrough (terminal-only API flow + LAN DHCP wiring):
-[cluster/apps/adguard/README.md](../cluster/apps/adguard/README.md).
+The wizard (step 07) sets up the admin user and binds :53/:80. Upstream
+DNS servers and blocklists are still chosen via the UI:
+[cluster/apps/adguard/README.md](../cluster/apps/adguard/README.md) sections
+"Configure upstream DNS" and "Enable blocklists".
 
 ## Trust the in-cluster CA
 
@@ -145,34 +118,89 @@ App-by-app sync progress in the Argo CD UI: `https://argocd.int` or
 
 ## Gotchas
 
-### Colima's VM dnsmasq holds host :53
+### LAN DNS on :53 — vmnet + userspace forwarder on the Mac
 
-k3d publishes the AdGuard DNS port via the loadbalancer (see
-[cluster/k3d-config.yaml](../cluster/k3d-config.yaml)). Colima's VM ships
-with dnsmasq bound to :53 inside the VM, and Lima forwards that to the
-Mac. On a fresh install, `k3d cluster edit ... --port-add 53:53` will
-fail with `bind host port 0.0.0.0:53: address already in use`.
+Making AdGuard reachable on UDP/53 from the LAN takes two pieces:
 
-Fix:
+1. **The VM needs a routable IP** (so the Mac itself can hit it without going
+   through Lima's TCP-only SSH tunnel). [01-start-runtime.sh](01-start-runtime.sh)
+   passes `--network-address`; `colima status` then shows a vmnet IP
+   (commonly `192.168.64.x` on macOS shared-vmnet, or `192.168.106.x` on
+   bridged setups).
+2. **LAN clients need a path to it.** The vmnet subnet is private to the
+   Mac — phones and laptops on `192.168.10.0/24` can't reach
+   `192.168.64.3` on their own. Two ways to fix it:
+
+#### 2a. Userspace UDP/53 forwarder on the Mac (default, automated)
+
+[08-dns-proxy.sh](08-dns-proxy.sh) installs [dns-proxy.py](dns-proxy.py)
+to `/usr/local/lib/homelab/dns-proxy.py` and a LaunchDaemon
+([launchd-system/com.homelab.dns-proxy.plist](launchd-system/com.homelab.dns-proxy.plist))
+that runs it as root, bound to the Mac's LAN IP on `53/udp`. Every
+incoming query is relayed to the Colima VM IP on UDP/53 via a fresh
+ephemeral socket, and the reply is sent back to the original client.
 
 ```bash
-colima ssh -- sudo systemctl disable --now dnsmasq
+./bootstrap/08-dns-proxy.sh   # safe to re-run any time the VM IP changes
 ```
 
-This breaks the k3d nodes' own DNS resolution (they were inheriting
-dnsmasq via Docker's internal resolver). Patch each node's resolv.conf
-to point at public DNS:
+Clients then point at the **Mac's LAN IP**. MikroTik DHCP / static DNS:
+`adguard.int -> <mac-lan-ip>`, etc.
+
+> **Re-run when:** Colima is recreated (`colima delete && colima start`)
+> or the Mac's LAN IP changes (new Wi-Fi).
+
+**Why not pf NAT?** The original 06 script used pf `rdr`/`nat` to forward
+`<mac-lan-ip>:53/udp` to the VM. On the wire that worked, but Windows
+clients silently dropped every reply with `DropReason INET: checksum is
+invalid` (pktmon, tcpip.sys L3/L4). Apple's pf is a 15-year-old fork of
+OpenBSD pf — its `scrub` directive does not recompute UDP checksums
+after NAT rewrite, and the Wi-Fi driver does not expose a `txcsum` knob
+to disable hardware checksum offload (`ifconfig en1 -txcsum` →
+"does not support"). The forwarder sidesteps the whole class of bug by
+letting the kernel build fresh UDP packets in both directions. The
+upgrade path in 08-dns-proxy.sh tears the old pf anchors down
+automatically.
+
+#### 2b. Static route via the Mac (no forwarder, no rewrite)
+
+If you'd rather not run pf, give the LAN a route to the vmnet subnet:
 
 ```bash
-for n in $(docker ps --format '{{.Names}}' | grep -E '^k3d-homelab-(server|agent)'); do
-  docker exec "$n" sh -c 'printf "nameserver 1.1.1.1\nnameserver 9.9.9.9\noptions ndots:0\n" > /etc/resolv.conf'
-done
-kubectl -n kube-system rollout restart deploy/coredns
+# On the Mac: enable forwarding
+sudo sysctl -w net.inet.ip.forwarding=1
+echo 'net.inet.ip.forwarding=1' | sudo tee -a /etc/sysctl.conf
 ```
 
-Not yet baked into the bootstrap scripts — this whole sequence is needed
-only on first AdGuard setup.
+```
+# On MikroTik: route the vmnet subnet via the Mac's LAN IP
+/ip route add dst-address=192.168.64.0/24 gateway=<mac-lan-ip>
+```
 
+Clients then point straight at the **VM IP**. Skip step 08.
+
+#### Bonus context — the in-VM gotchas (handled by 01/02)
+
+Even with the routing piece solved, two things bite on a fresh VM:
+
+1. **VM dnsmasq holds :53.** Colima's VM ships with dnsmasq listening on
+   `:53` inside the VM, which Lima forwards to host `:53/tcp`. k3d's
+   serverlb then can't bind the same port ("address already in use").
+   Fix: [01-start-runtime.sh](01-start-runtime.sh) disables it right after
+   `colima start`.
+2. **Disabling dnsmasq breaks node DNS.** k3d nodes were resolving via
+   Docker's internal resolver → forwarded to dnsmasq → now dead. Image pulls
+   start failing on step 03. Fix: [02-create-cluster.sh](02-create-cluster.sh)
+   writes `nameserver 1.1.1.1 / 9.9.9.9` into each k3d node's
+   `/etc/resolv.conf` immediately after `k3d cluster create`.
+
+#### Why not Lima `portForwards`?
+
+Earlier attempts tried to publish UDP/53 by editing
+`~/.colima/_lima/colima/lima.yaml`. That path is broken: Colima owns the
+file and any external edit causes the next `limactl start` to recreate the
+instance from `template:default` (fresh image download, fresh disk — your
+cluster is gone). The portForward never registers anyway.
 ## Teardown / rebuild
 
 ```bash
@@ -189,13 +217,15 @@ deletes them. You'll need to recreate them after the next `bootstrap.sh`.
 
 ```mermaid
 flowchart TD
-  A[00 install brew tools] --> B[01 colima start]
-  B --> C[02 k3d cluster create]
+  A[00 install brew tools] --> B[01 colima start --network-address<br/>+ disable VM dnsmasq]
+  B --> C[02 k3d cluster create<br/>+ patch node /etc/resolv.conf]
   C --> D[03 kubectl apply argocd]
   D --> E[04 apply root ApplicationSet]
   E --> F[05 install LaunchAgents]
-  F --> G[Create ad-hoc secrets:<br/>repo PAT, slack, grafana-admin,<br/>mikrotik-exporter-credentials]
-  G --> H[Argo CD reconciles<br/>everything to Healthy]
+  F --> G2[06 create cluster secrets<br/>grafana-admin etc.]
+  G2 --> H[Argo CD reconciles<br/>everything to Healthy]
+  H --> J[07 AdGuard wizard via API]
+  J --> X[08 dns-proxy: userspace<br/>UDP/53 forwarder on Mac -> VM]
+  X --> K[Point router/DHCP DNS<br/>at mac LAN IP for LAN-wide AdGuard]
   H --> I[export-ca.sh<br/>+ trust on each device]
-  H --> J[AdGuard first-run wizard<br/>via API or :3000 port-forward]
 ```

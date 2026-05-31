@@ -1,0 +1,15 @@
+# Exported homelab CA certs (regenerated per cluster; no need to track)
+homelab-ca.crt
+homelab-ca-secret.yaml
+
+# Bootstrap env file (holds passwords + tokens). See bootstrap/.env.example.
+bootstrap/.env
+
+# Editor / OS noise
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp
+*.bak
+*.bak.*
