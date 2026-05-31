@@ -108,7 +108,7 @@ data:
   # ---------------------------------------------------------------------------
   subscriptions: |
     - recipients:
-        - slack:infra-alerts
+        - slack:cluster
       triggers:
         - on-deployed
         - on-sync-failed

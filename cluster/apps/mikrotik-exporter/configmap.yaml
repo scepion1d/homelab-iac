@@ -5,6 +5,10 @@ metadata:
   namespace: monitoring
 data:
   # System-level config — server bind, scrape timeouts, parallel fetch.
+  # Keep in sync with mktxp's upstream defaults for the pinned image
+  # version (see deployment.yaml). Missing keys trigger
+  # "Please update _mktxp.conf to its latest version manually" on
+  # startup.
   # https://github.com/akpw/mktxp#mktxp-system-configuration
   _mktxp.conf: |
     [MKTXP]
@@ -16,6 +20,8 @@ data:
         delay_inc_div = 5
 
         bandwidth = False
+        bandwidth_test_dns_server = 8.8.8.8
+        bandwidth_test_interval = 600
         minimal_collect_interval = 5
 
         verbose_mode = False
@@ -28,10 +34,107 @@ data:
         compact_default_conf_values = False
         prometheus_headers_deduplication = False
 
+        # mktxp 1.2.17 added these for the /probe multi-target endpoint.
+        # We don't use /probe but the keys still need to be present.
+        probe_connection_pool = False
+        probe_connection_pool_ttl = 300
+        probe_connection_pool_max_size = 128
+
+        # mktxp 1.2.17 also added this for the metrics HTTP server.
+        http_server_threads = 5
+
   # Per-router config — what to collect, plus where to find the creds.
   # `credentials_file` points at the Secret mounted alongside this CM.
-  # Anything not listed inherits mktxp defaults.
+  #
+  # [default] holds every key with its upstream-default value. mktxp 1.2.17
+  # logs "Please update mktxp.conf to its latest version manually" and
+  # tries to write the missing keys back into this file at startup; the
+  # file is a read-only configmap mount, so the write fails with EROFS.
+  # Enumerating every key here keeps the file in sync with upstream and
+  # silences the warning.
+  #
+  # [homelab] is the actual router entry. It only needs to set values that
+  # differ from [default].
   mktxp.conf: |
+    [default]
+        enabled = True
+        module_only = False
+        hostname = localhost
+        port = 8728
+        username = username
+        password = password
+        credentials_file = ""
+        custom_labels = None
+
+        use_ssl = False
+        no_ssl_certificate = False
+        ssl_certificate_verify = False
+        ssl_check_hostname = True
+        ssl_ca_file = ""
+        plaintext_login = True
+
+        routerboard = False
+        health = True
+        installed_packages = True
+        dhcp = True
+        dhcp_lease = True
+
+        connections = True
+        connection_stats = False
+        connection_stats_destinations = False
+
+        interface = True
+        wireguard_peers = False
+        bridge_vlan = False
+
+        route = True
+        pool = True
+        firewall = True
+        neighbor = True
+        address_list = None
+        dns = False
+
+        ipv6_route = False
+        ipv6_pool = False
+        ipv6_firewall = False
+        ipv6_neighbor = False
+        ipv6_address_list = None
+
+        poe = True
+        monitor = True
+        netwatch = True
+        public_ip = True
+        wireless = True
+        wireless_clients = True
+        capsman = True
+        capsman_clients = True
+        w60g = False
+
+        eoip = False
+        gre = False
+        ipip = False
+        lte = False
+        ipsec = False
+        switch_port = False
+
+        kid_control_assigned = False
+        kid_control_dynamic = False
+
+        user = True
+        queue = True
+
+        bfd = False
+        bgp = False
+        routing_stats = False
+        certificate = False
+        container = False
+
+        remote_dhcp_entry = None
+        remote_capsman_entry = None
+
+        interface_name_format = name
+        check_for_updates = False
+
     [homelab]
         enabled = True
         hostname = 192.168.10.1
@@ -40,7 +143,7 @@ data:
         use_ssl = False
         plaintext_login = True
 
-        # What to collect.
+        # What to collect (overrides of [default] above).
         dhcp = True
         dhcp_lease = True
         interface = True
