@@ -14,6 +14,15 @@ ports:
   - port: 443:443
     nodeFilters:
       - loadbalancer
+  # AdGuard Home DNS resolver. Both UDP and TCP — RFC 7766 requires
+  # resolvers to support TCP (large responses, EDNS0 fallback).
+  # Bound to the Mac's LAN IP so LAN devices can use it via DHCP.
+  - port: 53:53/udp
+    nodeFilters:
+      - loadbalancer
+  - port: 53:53/tcp
+    nodeFilters:
+      - loadbalancer
 options:
   k3s:
     extraArgs:

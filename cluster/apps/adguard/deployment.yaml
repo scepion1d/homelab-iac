@@ -1,0 +1,75 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: adguard
+  namespace: dns
+  labels:
+    app.kubernetes.io/name: adguard
+spec:
+  replicas: 1
+  # PVC is RWO + we want zero downtime on rollout to skip the
+  # "two pods fighting for the same volume" window: Recreate over RollingUpdate.
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: adguard
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: adguard
+    spec:
+      containers:
+        - name: adguardhome
+          # Pin once tested in your env. Floating tag is fine for first
+          # bring-up; bump deliberately afterwards.
+          image: adguard/adguardhome:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: dns-udp
+              containerPort: 53
+              protocol: UDP
+            - name: dns-tcp
+              containerPort: 53
+              protocol: TCP
+            - name: http
+              containerPort: 80
+              protocol: TCP
+            # First-run wizard. After initial setup the UI moves to :80
+            # and this port stops accepting connections. Left exposed so
+            # a re-init (delete PVC → redeploy) doesn't require an edit.
+            - name: setup
+              containerPort: 3000
+              protocol: TCP
+          resources:
+            requests:
+              cpu: 50m
+              memory: 256Mi
+            # Big blocklists + AdGuard's in-process DNS cache (default 4M
+            # entries) and stats DB sit in resident memory. 512Mi is
+            # enough for a vanilla install but the container OOMs (exit
+            # 137) the moment you add a few large filter lists. 4Gi
+            # comfortably fits 20+ aggregated lists.
+            limits:
+              memory: 4Gi
+          livenessProbe:
+            tcpSocket:
+              port: dns-tcp
+            initialDelaySeconds: 30
+            periodSeconds: 30
+          readinessProbe:
+            tcpSocket:
+              port: dns-tcp
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          volumeMounts:
+            - name: data
+              mountPath: /opt/adguardhome/conf
+              subPath: conf
+            - name: data
+              mountPath: /opt/adguardhome/work
+              subPath: work
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: adguard-data

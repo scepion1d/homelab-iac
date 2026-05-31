@@ -1,0 +1,78 @@
+# AdGuard Home ingress. Four hosts in one resource:
+#
+#   adguard.int                                        → UI on :80 (LAN, via
+#                                                       MikroTik DNS CNAME to
+#                                                       the nip.io host)
+#   adguard.localhost                                  → UI on :80 (local only)
+#   adguard.192-168-10-3.nip.io                        → UI on :80 from any
+#                                                       device that has internet
+#                                                       (nip.io resolves to the
+#                                                       Mac IP without local DNS)
+#   adguard-setup.localhost                            → first-run wizard on :3000
+#                                                       (returns 502 after wizard
+#                                                       completes; leave or delete
+#                                                       the rule)
+#
+# NOTE: hosts are listed explicitly here — we do NOT use the root
+# ApplicationSet's `ingressHost` injection because its `server-alias`
+# annotation would bleed into the :3000 wizard server block and route
+# adguard.int there, producing 502 after setup.
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: adguard
+  namespace: dns
+  annotations:
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/force-ssl-redirect: "true"
+    cert-manager.io/cluster-issuer: homelab-ca
+spec:
+  ingressClassName: nginx
+  rules:
+    - host: adguard.int
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: adguard-ui
+                port:
+                  number: 80
+    - host: adguard.localhost
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: adguard-ui
+                port:
+                  number: 80
+    - host: adguard.192-168-10-3.nip.io
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: adguard-ui
+                port:
+                  number: 80
+    - host: adguard-setup.localhost
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: adguard-ui
+                port:
+                  number: 3000
+  tls:
+    - secretName: adguard-tls
+      hosts:
+        - adguard.int
+        - adguard.localhost
+        - adguard.192-168-10-3.nip.io
+        - adguard-setup.localhost

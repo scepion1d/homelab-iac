@@ -1,0 +1,22 @@
+# ClusterIP for the web UI. Reachable in-cluster from the Ingress.
+# Port 3000 (setup wizard) is also exposed here so it can be reached
+# via `kubectl port-forward svc/adguard-ui 3000:setup` during initial
+# bring-up without touching the LoadBalancer.
+apiVersion: v1
+kind: Service
+metadata:
+  name: adguard-ui
+  namespace: dns
+  labels:
+    app.kubernetes.io/name: adguard
+spec:
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/name: adguard
+  ports:
+    - name: http
+      port: 80
+      targetPort: http
+    - name: setup
+      port: 3000
+      targetPort: setup
