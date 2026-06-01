@@ -1,0 +1,350 @@
+# Grafana managed alert rules — router entity.
+# Folder: Router Alerts
+# Group: router.homelab (eval every 1m)
+# Source exporter: mktxp (https://github.com/akpw/mktxp)
+#
+# Rule shape identical to cluster/rules.yaml; see header there.
+apiVersion: 1
+groups:
+  - orgId: 1
+    name: router.homelab
+    folder: Router
+    interval: 1m
+    rules:
+      # ─────────────────────────────────────────────────────────────────────
+      # When the in-cluster mktxp exporter goes blind we route to #cluster
+      # (it's a cluster-side failure: the cluster's view of the router is
+      # broken, not the router itself). The inhibit rule in
+      # notifications/inhibit-rules.yaml uses this alert to suppress every
+      # other router-* rule for the duration — once the scraper is dead,
+      # downstream values are stale and would all flap.
+      - uid: router-mktxp-exporter-down
+        title: router-mktxp-exporter-down
+        condition: B
+        for: 2m
+        noDataState: Alerting
+        execErrState: Error
+        data:
+          - refId: A
+            datasourceUid: prometheus
+            relativeTimeRange: {from: 600, to: 0}
+            model:
+              refId: A
+              instant: true
+              editorMode: code
+              expr: 'up{service="mikrotik-exporter"}'
+          - refId: B
+            datasourceUid: __expr__
+            relativeTimeRange: {from: 0, to: 0}
+            model:
+              refId: B
+              type: math
+              expression: '$A < 1'
+              datasource: {type: __expr__, uid: __expr__}
+        labels:
+          severity: critical
+          entity: router
+          component: exporter
+          channel: cluster
+        annotations:
+          summary: 'Router exporter (mktxp) down'
+          description: 'mktxp exporter has been down for 2m. Router visibility lost; downstream router alerts suppressed.'
+          dashboard_url: 'https://grafana.int/d/router-overview/router-overview?viewPanel=1'
+          value_label: 'up'
+        isPaused: false
+
+      # ─────────────────────────────────────────────────────────────────────
+      # No first-class "quarantined" metric — convention is to mark leases
+      # via the DHCP comment field on the RouterOS side. This matches the
+      # Homelab dashboard's "Quarantined leases" tile.
+      - uid: router-dhcp-quarantined-lease
+        title: router-dhcp-quarantined-lease
+        condition: B
+        for: 0m
+        noDataState: OK
+        execErrState: Error
+        data:
+          - refId: A
+            datasourceUid: prometheus
+            relativeTimeRange: {from: 600, to: 0}
+            model:
+              refId: A
+              instant: true
+              editorMode: code
+              expr: 'count(mktxp_dhcp_lease_info{active_address!="",comment=~"(?i).*quarantine.*"})'
+          - refId: B
+            datasourceUid: __expr__
+            relativeTimeRange: {from: 0, to: 0}
+            model:
+              refId: B
+              type: math
+              expression: '$A > 0'
+              datasource: {type: __expr__, uid: __expr__}
+        labels:
+          severity: critical
+          entity: router
+          component: dhcp
+          channel: network
+        annotations:
+          summary: '{{ printf "%.0f" $values.A.Value }} quarantined DHCP lease(s) active'
+          description: 'RouterOS has active lease(s) tagged as quarantined. Verify intentional.'
+          dashboard_url: 'https://grafana.int/d/homelab-overview/home-lab?viewPanel=4'
+          value_label: 'leases'
+        isPaused: false
+
+      # ─────────────────────────────────────────────────────────────────────
+      - uid: router-temperature-warning
+        title: router-temperature-warning
+        condition: B
+        for: 5m
+        noDataState: OK
+        execErrState: Error
+        data:
+          - refId: A
+            datasourceUid: prometheus
+            relativeTimeRange: {from: 600, to: 0}
+            model:
+              refId: A
+              instant: true
+              editorMode: code
+              expr: 'mktxp_system_cpu_temperature'
+          - refId: B
+            datasourceUid: __expr__
+            relativeTimeRange: {from: 0, to: 0}
+            model:
+              refId: B
+              type: math
+              expression: '$A >= 60'
+              datasource: {type: __expr__, uid: __expr__}
+        labels:
+          severity: warning
+          entity: router
+          component: temperature
+          channel: infra
+        annotations:
+          summary: 'Router CPU temp {{ printf "%.0f" $values.A.Value }}°C'
+          description: 'mktxp reports CPU temperature ≥60°C for 5m on `{{ $labels.routerboard_name }}`.'
+          dashboard_url: 'https://grafana.int/d/router-overview/router-overview?viewPanel=3'
+          value_label: '°C'
+        isPaused: false
+
+      # ─────────────────────────────────────────────────────────────────────
+      - uid: router-temperature-critical
+        title: router-temperature-critical
+        condition: B
+        for: 2m
+        noDataState: OK
+        execErrState: Error
+        data:
+          - refId: A
+            datasourceUid: prometheus
+            relativeTimeRange: {from: 600, to: 0}
+            model:
+              refId: A
+              instant: true
+              editorMode: code
+              expr: 'mktxp_system_cpu_temperature'
+          - refId: B
+            datasourceUid: __expr__
+            relativeTimeRange: {from: 0, to: 0}
+            model:
+              refId: B
+              type: math
+              expression: '$A >= 75'
+              datasource: {type: __expr__, uid: __expr__}
+        labels:
+          severity: critical
+          entity: router
+          component: temperature
+          channel: infra
+        annotations:
+          summary: 'Router CPU temp {{ printf "%.0f" $values.A.Value }}°C (critical)'
+          description: 'mktxp reports CPU temperature ≥75°C for 2m on `{{ $labels.routerboard_name }}`. Investigate cooling.'
+          dashboard_url: 'https://grafana.int/d/router-overview/router-overview?viewPanel=3'
+          value_label: '°C'
+        isPaused: false
+
+      # ─────────────────────────────────────────────────────────────────────
+      # RouterOS CPU load metric is already a percentage 0..100.
+      # Threshold 15% is intentionally low — owner wants early visibility.
+      - uid: router-cpu-load-warning
+        title: router-cpu-load-warning
+        condition: B
+        for: 10m
+        noDataState: OK
+        execErrState: Error
+        data:
+          - refId: A
+            datasourceUid: prometheus
+            relativeTimeRange: {from: 600, to: 0}
+            model:
+              refId: A
+              instant: true
+              editorMode: code
+              expr: 'mktxp_system_cpu_load'
+          - refId: B
+            datasourceUid: __expr__
+            relativeTimeRange: {from: 0, to: 0}
+            model:
+              refId: B
+              type: math
+              expression: '$A >= 15'
+              datasource: {type: __expr__, uid: __expr__}
+        labels:
+          severity: warning
+          entity: router
+          component: cpu
+          channel: infra
+        annotations:
+          summary: 'Router CPU load {{ printf "%.0f" $values.A.Value }}%'
+          description: 'RouterOS CPU load ≥15% for 10m on `{{ $labels.routerboard_name }}`.'
+          dashboard_url: 'https://grafana.int/d/router-overview/router-overview?viewPanel=4'
+          value_label: 'load%'
+        isPaused: false
+
+      # ─────────────────────────────────────────────────────────────────────
+      - uid: router-cpu-load-critical
+        title: router-cpu-load-critical
+        condition: B
+        for: 5m
+        noDataState: OK
+        execErrState: Error
+        data:
+          - refId: A
+            datasourceUid: prometheus
+            relativeTimeRange: {from: 600, to: 0}
+            model:
+              refId: A
+              instant: true
+              editorMode: code
+              expr: 'mktxp_system_cpu_load'
+          - refId: B
+            datasourceUid: __expr__
+            relativeTimeRange: {from: 0, to: 0}
+            model:
+              refId: B
+              type: math
+              expression: '$A >= 50'
+              datasource: {type: __expr__, uid: __expr__}
+        labels:
+          severity: critical
+          entity: router
+          component: cpu
+          channel: infra
+        annotations:
+          summary: 'Router CPU load {{ printf "%.0f" $values.A.Value }}% (critical)'
+          description: 'RouterOS CPU load ≥50% for 5m on `{{ $labels.routerboard_name }}`.'
+          dashboard_url: 'https://grafana.int/d/router-overview/router-overview?viewPanel=4'
+          value_label: 'load%'
+        isPaused: false
+
+      # ─────────────────────────────────────────────────────────────────────
+      - uid: router-memory-warning
+        title: router-memory-warning
+        condition: B
+        for: 10m
+        noDataState: OK
+        execErrState: Error
+        data:
+          - refId: A
+            datasourceUid: prometheus
+            relativeTimeRange: {from: 600, to: 0}
+            model:
+              refId: A
+              instant: true
+              editorMode: code
+              expr: '(1 - mktxp_system_free_memory / mktxp_system_total_memory) * 100'
+          - refId: B
+            datasourceUid: __expr__
+            relativeTimeRange: {from: 0, to: 0}
+            model:
+              refId: B
+              type: math
+              expression: '$A >= 50'
+              datasource: {type: __expr__, uid: __expr__}
+        labels:
+          severity: warning
+          entity: router
+          component: memory
+          channel: infra
+        annotations:
+          summary: 'Router RAM {{ printf "%.0f" $values.A.Value }}% used'
+          description: 'RouterOS memory ≥50% used for 10m on `{{ $labels.routerboard_name }}`.'
+          dashboard_url: 'https://grafana.int/d/router-overview/router-overview?viewPanel=5'
+          value_label: 'used%'
+        isPaused: false
+
+      # ─────────────────────────────────────────────────────────────────────
+      - uid: router-memory-critical
+        title: router-memory-critical
+        condition: B
+        for: 5m
+        noDataState: OK
+        execErrState: Error
+        data:
+          - refId: A
+            datasourceUid: prometheus
+            relativeTimeRange: {from: 600, to: 0}
+            model:
+              refId: A
+              instant: true
+              editorMode: code
+              expr: '(1 - mktxp_system_free_memory / mktxp_system_total_memory) * 100'
+          - refId: B
+            datasourceUid: __expr__
+            relativeTimeRange: {from: 0, to: 0}
+            model:
+              refId: B
+              type: math
+              expression: '$A >= 75'
+              datasource: {type: __expr__, uid: __expr__}
+        labels:
+          severity: critical
+          entity: router
+          component: memory
+          channel: infra
+        annotations:
+          summary: 'Router RAM {{ printf "%.0f" $values.A.Value }}% used (critical)'
+          description: 'RouterOS memory ≥75% used for 5m on `{{ $labels.routerboard_name }}`.'
+          dashboard_url: 'https://grafana.int/d/router-overview/router-overview?viewPanel=5'
+          value_label: 'used%'
+        isPaused: false
+
+      # ─────────────────────────────────────────────────────────────────────
+      # Interface flapping: ≥4 state changes within 15m. Excludes the
+      # back-to-home-vpn tunnel (flapping is expected on roaming VPN) and
+      # anything else with "vpn" in the interface name.
+      - uid: router-iface-flapping
+        title: router-iface-flapping
+        condition: B
+        for: 10m
+        noDataState: OK
+        execErrState: Error
+        data:
+          - refId: A
+            datasourceUid: prometheus
+            relativeTimeRange: {from: 900, to: 0}
+            model:
+              refId: A
+              instant: true
+              editorMode: code
+              expr: 'changes(mktxp_interface_running{name!~".*vpn.*"}[15m])'
+          - refId: B
+            datasourceUid: __expr__
+            relativeTimeRange: {from: 0, to: 0}
+            model:
+              refId: B
+              type: math
+              expression: '$A >= 4'
+              datasource: {type: __expr__, uid: __expr__}
+        labels:
+          severity: warning
+          entity: router
+          component: iface
+          channel: network
+        annotations:
+          summary: 'Interface {{ $labels.name }} flapping'
+          description: 'Interface `{{ $labels.name }}` changed state {{ printf "%.0f" $values.A.Value }}× in 15m.'
+          dashboard_url: 'https://grafana.int/d/homelab-overview/home-lab?viewPanel=20'
+          value_label: 'changes/15m'
+        isPaused: false

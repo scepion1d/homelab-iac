@@ -1,0 +1,58 @@
+# Grafana Slack contact points — one per channel.
+# Auth: Slack Bot token (xoxb-…) mounted from Secret `grafana-slack` (key `token`)
+#       via env `SLACK_BOT_TOKEN` (see cluster/apps/grafana/_appset.yaml).
+# Title / text / color are rendered via shared templates defined in
+# notifications/templates.yaml (named template family `slack.homelab.*`).
+apiVersion: 1
+contactPoints:
+  - orgId: 1
+    name: slack-infra
+    receivers:
+      - uid: slack-infra
+        type: slack
+        disableResolveMessage: false
+        settings:
+          token: '$SLACK_BOT_TOKEN'
+          recipient: '#infra'
+          title: '{{ template "slack.homelab.title" . }}'
+          text: '{{ template "slack.homelab.text" . }}'
+          color: '{{ template "slack.homelab.color" . }}'
+
+  - orgId: 1
+    name: slack-cluster
+    receivers:
+      - uid: slack-cluster
+        type: slack
+        disableResolveMessage: false
+        settings:
+          token: '$SLACK_BOT_TOKEN'
+          recipient: '#cluster'
+          title: '{{ template "slack.homelab.title" . }}'
+          text: '{{ template "slack.homelab.text" . }}'
+          color: '{{ template "slack.homelab.color" . }}'
+
+  - orgId: 1
+    name: slack-network
+    receivers:
+      - uid: slack-network
+        type: slack
+        disableResolveMessage: false
+        settings:
+          token: '$SLACK_BOT_TOKEN'
+          recipient: '#network'
+          title: '{{ template "slack.homelab.title" . }}'
+          text: '{{ template "slack.homelab.text" . }}'
+          color: '{{ template "slack.homelab.color" . }}'
+
+  - orgId: 1
+    name: slack-dns
+    receivers:
+      - uid: slack-dns
+        type: slack
+        disableResolveMessage: false
+        settings:
+          token: '$SLACK_BOT_TOKEN'
+          recipient: '#dns'
+          title: '{{ template "slack.homelab.title" . }}'
+          text: '{{ template "slack.homelab.text" . }}'
+          color: '{{ template "slack.homelab.color" . }}'

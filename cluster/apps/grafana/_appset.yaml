@@ -1,5 +1,5 @@
 namespace: monitoring
-revision: 8
+revision: 9
 
 # The root ApplicationSet injects a helm.parameter that sets `ingressHelmParam`
 # to `https://<ingressHost>.<lanDomain>`. This is what tells Grafana the
@@ -42,18 +42,44 @@ source:
           folderAnnotation: grafana_folder
           provider:
             foldersFromFilesStructure: true
+        # Watches namespace for ConfigMaps labeled `grafana_alert=1` and
+        # imports each `<key>.yaml` value into /etc/grafana/provisioning/
+        # alerting/. Alert rules + contact points + policies + templates +
+        # mute timings + inhibit rules live in the sibling `grafana-alerts`
+        # app.
+        alerts:
+          enabled: true
+          label: grafana_alert
+          labelValue: "1"
+          searchNamespace: monitoring
 
       # Provision the Prometheus datasource at startup (no clicking in the UI).
       # Points at the in-cluster service from cluster/apps/prometheus/.
+      # `uid` is pinned so alert rules in `grafana-alerts` can reference
+      # it by string (alerts use datasourceUid, not name).
       datasources:
         datasources.yaml:
           apiVersion: 1
           datasources:
             - name: Prometheus
+              uid: prometheus
               type: prometheus
               access: proxy
               url: http://prometheus-server.monitoring.svc:80
               isDefault: true
+
+      # Mount the Slack bot token from out-of-band Secret `grafana-slack`
+      # (key `token`) as env `SLACK_BOT_TOKEN`. The Slack contact points in
+      # `grafana-alerts/notifications/contact-points.yaml` reference it as
+      # `$SLACK_BOT_TOKEN` so the token never lives in Git.
+      # Bootstrap: set GRAFANA_SLACK_BOT_TOKEN in bootstrap/.env and run
+      # `./bootstrap/06-cluster-secrets.sh`. Without the Secret this pod
+      # CrashLoops (envValueFrom requires its source to exist).
+      envValueFrom:
+        SLACK_BOT_TOKEN:
+          secretKeyRef:
+            name: grafana-slack
+            key: token
 
       # root_url is set via helm.parameters by the root ApplicationSet —
       # see ingressHost / ingressHelmParam above.
