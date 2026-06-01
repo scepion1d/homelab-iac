@@ -1,0 +1,105 @@
+#!/usr/bin/env bash
+# Pre-commit hook: auto-bump `revision:` in `cluster/apps/<app>/_appset.yaml`
+# whenever files inside that app's folder are staged.
+#
+# Bash, not zsh — git-bash on Windows ships bash but not zsh. The same
+# `#!/usr/bin/env bash` shebang resolves on macOS, Linux, and Windows (where
+# git invokes hooks via its bundled MSYS bash).
+#
+# Activate (one-time):
+#   ./init.sh        # macOS/Linux
+#   .\init.ps1       # Windows
+# Or directly:  git config core.hooksPath .github/hooks
+#
+# Bypass (rare):
+#   git commit --no-verify
+#
+# Behavior:
+#   - For each staged path under `cluster/apps/<app>/...`:
+#       * Find `cluster/apps/<app>/_appset.yaml`.
+#       * If you already bumped `revision:` above HEAD's value, skip.
+#       * Otherwise revision = revision + 1, and the file is re-staged.
+#   - Touches nothing outside `cluster/apps/<app>/`.
+#   - Aborts the commit (exit 1) on any error — half-bumped state is worse
+#     than no bump at all.
+#
+# Out of scope (intentional):
+#   - `host/apps/*` — host apps aren't reconciled by Argo, no revision.
+#   - `cluster/globals.yaml`, `cluster/root-appset.yaml` — they affect every
+#     app; bulk-bumping all of them is rarely what you want. Bump manually.
+#   - `bootstrap/`, `scripts/`, repo-root files — not deployable units.
+set -euo pipefail
+
+# --- prerequisites ---------------------------------------------------------
+
+if ! command -v yq >/dev/null 2>&1; then
+  printf 'pre-commit: `yq` is required.\n  macOS:   brew install yq\n  Windows: winget install MikeFarah.yq\n' >&2
+  exit 1
+fi
+
+repo_root="$(git rev-parse --show-toplevel)"
+cd "$repo_root"
+
+# --- discover affected apps ------------------------------------------------
+
+# Staged files only (--cached), all change types, NUL-delimited for safety
+# against weird filenames. Dedup affected app names via an associative array.
+declare -A seen=()
+affected=()
+while IFS= read -r -d '' path; do
+  case "$path" in
+    cluster/apps/*/*)
+      app="${path#cluster/apps/}"
+      app="${app%%/*}"
+      [[ -z "$app" ]] && continue
+      if [[ -z "${seen[$app]+x}" ]]; then
+        seen[$app]=1
+        affected+=("$app")
+      fi
+      ;;
+  esac
+done < <(git diff --cached --name-only -z --diff-filter=ACMRD)
+
+if (( ${#affected[@]} == 0 )); then
+  exit 0
+fi
+
+# --- bump ------------------------------------------------------------------
+
+bumped_count=0
+for app in "${affected[@]}"; do
+  appset="cluster/apps/${app}/_appset.yaml"
+
+  if [[ ! -f "$appset" ]]; then
+    # Folder under cluster/apps/ without _appset.yaml — not an app (probably
+    # a stray dir or in-progress scaffolding). Skip silently.
+    continue
+  fi
+
+  current="$(yq '.revision // 0' "$appset")"
+  if [[ -z "$current" || "$current" == "null" ]]; then
+    printf 'pre-commit: %s: missing or unparseable `revision:`\n' "$appset" >&2
+    exit 1
+  fi
+
+  # What's in HEAD (last committed value). Missing file at HEAD = new app,
+  # baseline of 0, so we still increment to 1 here on first commit.
+  head_val="$(git show "HEAD:${appset}" 2>/dev/null | yq '.revision // 0' - 2>/dev/null || printf '0')"
+  [[ -z "$head_val" || "$head_val" == "null" ]] && head_val=0
+
+  if (( current > head_val )); then
+    # User (or an earlier run) already bumped — respect their choice.
+    continue
+  fi
+
+  new=$(( current + 1 ))
+  yq -i ".revision = ${new}" "$appset"
+  git add -- "$appset"
+  printf 'pre-commit: %s: revision %s -> %s\n' "$appset" "$current" "$new"
+  bumped_count=$(( bumped_count + 1 ))
+done
+
+if (( bumped_count > 0 )); then
+  printf 'pre-commit: bumped %s app revision(s).\n' "$bumped_count"
+fi
+exit 0

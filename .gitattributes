@@ -1,0 +1,14 @@
+# Keep git hooks LF-terminated so they're executable both on macOS/Linux
+# (zsh/bash) and on Windows via git-bash. Without this, a Windows checkout
+# can CRLF-corrupt the shebang line and silently break commits.
+.github/hooks/* text eol=lf
+
+# Same rule for repo-root init scripts that intentionally target one shell.
+init.sh text eol=lf
+init.ps1 text eol=crlf
+
+# All shell scripts must stay LF — they're consumed by zsh/bash on the
+# Mac (and via git-bash on Windows when authored here). A CRLF in the
+# shebang line is a silent, surprising break.
+*.sh text eol=lf
+*.py text eol=lf
