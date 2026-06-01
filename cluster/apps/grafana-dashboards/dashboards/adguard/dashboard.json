@@ -1,5 +1,5 @@
 {
-  "title": "AdGuard",
+  "title": "AdGuard Overview",
   "uid": "adguard-home",
   "tags": ["dns", "adguard", "exporter"],
   "schemaVersion": 39,
@@ -136,7 +136,7 @@
       "type": "timeseries",
       "title": "Latency",
       "datasource": "Prometheus",
-      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 12 },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 12 },
       "targets": [
         { "expr": "adguard_avg_processing_time", "legendFormat": "avg processing (ms)", "refId": "A" },
         { "expr": "1000 * max(adguard_upstream_avg_response_time_seconds)", "legendFormat": "max upstream avg (ms)", "refId": "B" },
@@ -155,7 +155,7 @@
       "type": "timeseries",
       "title": "Query Types Per Interval",
       "datasource": "Prometheus",
-      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 20 },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 28 },
       "targets": [{ "expr": "sum by (type) (increase(adguard_query_type_total[$__rate_interval]))", "legendFormat": "{{type}}", "refId": "A" }],
       "fieldConfig": {
         "defaults": {
@@ -166,11 +166,74 @@
       "options": { "tooltip": { "mode": "multi" }, "legend": { "displayMode": "list", "placement": "bottom" } }
     },
     {
+      "id": 20,
+      "type": "timeseries",
+      "title": "Upstream Latency Buckets (% of queries)",
+      "description": "What share of upstream queries fall in each latency band. Buckets match the exporter's powers-of-two histogram (8/64/256/512 ms boundaries). A fat 'fast' band means cache + LAN are doing the work; a fat 'slow' band points at cold DoH handshakes or a slow upstream PoP.",
+      "datasource": "Prometheus",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 12 },
+      "interval": "1m",
+      "targets": [
+        {
+          "expr": "100 * sum(increase(adguard_upstream_latency_seconds_bucket{le=\"0.008\"}[1m])) / clamp_min(sum(increase(adguard_upstream_latency_seconds_count[1m])), 1)",
+          "legendFormat": "≤ 8 ms",
+          "refId": "A"
+        },
+        {
+          "expr": "100 * (sum(increase(adguard_upstream_latency_seconds_bucket{le=\"0.064\"}[1m])) - sum(increase(adguard_upstream_latency_seconds_bucket{le=\"0.008\"}[1m]))) / clamp_min(sum(increase(adguard_upstream_latency_seconds_count[1m])), 1)",
+          "legendFormat": "8-64 ms",
+          "refId": "B"
+        },
+        {
+          "expr": "100 * (sum(increase(adguard_upstream_latency_seconds_bucket{le=\"0.256\"}[1m])) - sum(increase(adguard_upstream_latency_seconds_bucket{le=\"0.064\"}[1m]))) / clamp_min(sum(increase(adguard_upstream_latency_seconds_count[1m])), 1)",
+          "legendFormat": "64-256 ms",
+          "refId": "C"
+        },
+        {
+          "expr": "100 * (sum(increase(adguard_upstream_latency_seconds_bucket{le=\"0.512\"}[1m])) - sum(increase(adguard_upstream_latency_seconds_bucket{le=\"0.256\"}[1m]))) / clamp_min(sum(increase(adguard_upstream_latency_seconds_count[1m])), 1)",
+          "legendFormat": "256-512 ms",
+          "refId": "D"
+        },
+        {
+          "expr": "100 * (sum(increase(adguard_upstream_latency_seconds_count[1m])) - sum(increase(adguard_upstream_latency_seconds_bucket{le=\"0.512\"}[1m]))) / clamp_min(sum(increase(adguard_upstream_latency_seconds_count[1m])), 1)",
+          "legendFormat": "> 512 ms",
+          "refId": "E"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "min": 0,
+          "max": 100,
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 1,
+            "lineInterpolation": "smooth",
+            "fillOpacity": 60,
+            "stacking": { "mode": "normal", "group": "latency" },
+            "showPoints": "never",
+            "spanNulls": true
+          }
+        },
+        "overrides": [
+          { "matcher": { "id": "byName", "options": "≤ 8 ms" },      "properties": [{ "id": "color", "value": { "mode": "fixed", "fixedColor": "#7eb26d" } }] },
+          { "matcher": { "id": "byName", "options": "8-64 ms" },    "properties": [{ "id": "color", "value": { "mode": "fixed", "fixedColor": "#cca300" } }] },
+          { "matcher": { "id": "byName", "options": "64-256 ms" },  "properties": [{ "id": "color", "value": { "mode": "fixed", "fixedColor": "#eab839" } }] },
+          { "matcher": { "id": "byName", "options": "256-512 ms" }, "properties": [{ "id": "color", "value": { "mode": "fixed", "fixedColor": "#ef843c" } }] },
+          { "matcher": { "id": "byName", "options": "> 512 ms" },   "properties": [{ "id": "color", "value": { "mode": "fixed", "fixedColor": "#bf1b00" } }] }
+        ]
+      },
+      "options": {
+        "tooltip": { "mode": "multi", "sort": "desc" },
+        "legend": { "displayMode": "list", "placement": "bottom", "calcs": ["mean"] }
+      }
+    },
+    {
       "id": 12,
       "type": "timeseries",
       "title": "Cache Activity",
       "datasource": "Prometheus",
-      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 28 },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 20 },
       "targets": [
         { "expr": "increase(adguard_exporter_dedup_hits_total[$__rate_interval])", "legendFormat": "dedup hits", "refId": "A" },
         { "expr": "sum(increase(adguard_query_domain_total[$__rate_interval]))", "legendFormat": "query events", "refId": "B" },
@@ -189,7 +252,7 @@
       "type": "timeseries",
       "title": "Cache Sizes",
       "datasource": "Prometheus",
-      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 28 },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 20 },
       "targets": [
         { "expr": "adguard_exporter_query_cache_size", "legendFormat": "query cache", "refId": "A" },
         { "expr": "adguard_exporter_geo_cache_size", "legendFormat": "geo cache", "refId": "B" }
@@ -207,7 +270,7 @@
       "type": "table",
       "title": "Query Type Breakdown",
       "datasource": "Prometheus",
-      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 20 },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 28 },
       "targets": [
         {
           "expr": "round(sum by (type) (increase(adguard_query_type_total[15m])))",
@@ -245,11 +308,82 @@
       }
     },
     {
+      "id": 21,
+      "type": "timeseries",
+      "title": "Per-Upstream Avg Latency",
+      "description": "Average response time per upstream server. Only shows currently-configured upstreams.",
+      "datasource": "Prometheus",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 36 },
+      "targets": [
+        {
+          "expr": "1000 * adguard_upstream_avg_response_time_seconds{upstream=~\"1.1.1.1:53|10.43.10.43:53|192.168.10.1:53\"}",
+          "legendFormat": "{{upstream}}",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "ms",
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 2,
+            "fillOpacity": 0,
+            "showPoints": "never",
+            "spanNulls": true,
+            "lineInterpolation": "smooth"
+          }
+        },
+        "overrides": [
+          { "matcher": { "id": "byName", "options": "10.43.10.43:53" }, "properties": [{ "id": "displayName", "value": "Unbound" }] },
+          { "matcher": { "id": "byName", "options": "192.168.10.1:53" }, "properties": [{ "id": "displayName", "value": "MikroTik" }] }
+        ]
+      },
+      "options": {
+        "tooltip": { "mode": "multi", "sort": "asc" },
+        "legend": { "displayMode": "table", "placement": "bottom", "calcs": ["lastNotNull", "mean"] }
+      }
+    },
+    {
+      "id": 22,
+      "type": "timeseries",
+      "title": "Per-Upstream Query Share",
+      "description": "Relative activity per upstream over time. Derived from rate-of-change of the per-upstream avg response metric. Shows which upstream wins the parallel race most often.",
+      "datasource": "Prometheus",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 36 },
+      "targets": [
+        {
+          "expr": "changes(adguard_upstream_avg_response_time_seconds{upstream=~\"1.1.1.1:53|10.43.10.43:53|192.168.10.1:53\"}[1m])",
+          "legendFormat": "{{upstream}}",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "custom": {
+            "drawStyle": "bars",
+            "lineWidth": 0,
+            "fillOpacity": 80,
+            "stacking": { "mode": "percent", "group": "upstream-share" },
+            "showPoints": "never"
+          }
+        },
+        "overrides": [
+          { "matcher": { "id": "byName", "options": "10.43.10.43:53" }, "properties": [{ "id": "displayName", "value": "Unbound" }] },
+          { "matcher": { "id": "byName", "options": "192.168.10.1:53" }, "properties": [{ "id": "displayName", "value": "MikroTik" }] }
+        ]
+      },
+      "options": {
+        "tooltip": { "mode": "multi", "sort": "desc" },
+        "legend": { "displayMode": "table", "placement": "bottom", "calcs": ["mean"] }
+      }
+    },
+    {
       "id": 15,
       "type": "timeseries",
       "title": "Exporter Internals",
       "datasource": "Prometheus",
-      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 36 },
+      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 44 },
       "targets": [
         { "expr": "adguard_exporter_scrape_duration_seconds", "legendFormat": "scrape duration", "refId": "A" },
         { "expr": "adguard_exporter_query_cache_size", "legendFormat": "query cache", "refId": "B" },

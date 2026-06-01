@@ -13,3 +13,8 @@ configMapGenerator:
     options:
       labels:
         grafana_dashboard: "1"
+      annotations:
+        # Sidecar (folderAnnotation: grafana_folder in cluster/apps/grafana/_appset.yaml)
+        # places this dashboard inside the matching Grafana folder, alongside
+        # the alert rules from grafana-alerts/rules/router/.
+        grafana_folder: Router

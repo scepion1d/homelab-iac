@@ -1,5 +1,5 @@
 {
-  "title": "Router",
+  "title": "Router Overview",
   "uid": "router-overview",
   "tags": ["mikrotik", "network"],
   "schemaVersion": 39,
@@ -15,11 +15,11 @@
       "id": 1,
       "type": "stat",
       "title": "Leases",
-      "datasource": { "default": true, "type": "prometheus", "uid": "PBFA97CFB590B2093" },
+      "datasource": { "default": true, "type": "prometheus", "uid": "prometheus" },
       "gridPos": { "h": 4, "w": 3, "x": 0, "y": 0 },
       "targets": [
         {
-          "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
           "editorMode": "code",
           "expr": "count by (routerboard_name) (mktxp_dhcp_lease_info{active_address!=\"\"})",
           "format": "table",
@@ -59,11 +59,11 @@
       "id": 2,
       "type": "stat",
       "title": "Quarantined",
-      "datasource": { "default": true, "type": "prometheus", "uid": "PBFA97CFB590B2093" },
+      "datasource": { "default": true, "type": "prometheus", "uid": "prometheus" },
       "gridPos": { "h": 4, "w": 3, "x": 3, "y": 0 },
       "targets": [
         {
-          "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
           "editorMode": "code",
           "expr": "count by (routerboard_name) (mktxp_dhcp_lease_info{comment=\"\"}) or vector(0)",
           "format": "table",

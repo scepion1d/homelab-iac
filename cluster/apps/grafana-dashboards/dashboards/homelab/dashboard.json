@@ -12,11 +12,140 @@
   "annotations": { "list": [] },
   "panels": [
     {
+      "id": 50,
+      "type": "stat",
+      "title": "Host CPU",
+      "description": "macOS host (not the Colima VM): 1 - idle averaged across cores.",
+      "datasource": "Prometheus",
+      "gridPos": { "h": 5, "w": 4, "x": 0, "y": 0 },
+      "targets": [
+        { "expr": "1 - avg(rate(node_cpu_seconds_total{host=\"mac\",mode=\"idle\"}[$__rate_interval]))", "refId": "A", "instant": true }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit", "min": 0, "max": 1,
+          "color": { "mode": "thresholds" },
+          "thresholds": { "mode": "absolute", "steps": [
+            { "color": "green", "value": null },
+            { "color": "orange", "value": 0.7 },
+            { "color": "red", "value": 0.9 }
+          ]}
+        }
+      },
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "textMode": "value", "graphMode": "area", "colorMode": "value" }
+    },
+    {
+      "id": 51,
+      "type": "stat",
+      "title": "Host RAM",
+      "description": "macOS host: used / total. Darwin node_exporter only exposes total + free.",
+      "datasource": "Prometheus",
+      "gridPos": { "h": 5, "w": 4, "x": 4, "y": 0 },
+      "targets": [
+        { "expr": "1 - node_memory_free_bytes{host=\"mac\"} / node_memory_total_bytes{host=\"mac\"}", "refId": "A", "instant": true }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit", "min": 0, "max": 1,
+          "color": { "mode": "thresholds" },
+          "thresholds": { "mode": "absolute", "steps": [
+            { "color": "green", "value": null },
+            { "color": "orange", "value": 0.7 },
+            { "color": "red", "value": 0.9 }
+          ]}
+        }
+      },
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "textMode": "value", "graphMode": "area", "colorMode": "value" }
+    },
+    {
+      "id": 52,
+      "type": "stat",
+      "title": "Host disk /",
+      "description": "Root filesystem fill on the Mac host.",
+      "datasource": "Prometheus",
+      "gridPos": { "h": 5, "w": 4, "x": 8, "y": 0 },
+      "targets": [
+        { "expr": "1 - node_filesystem_free_bytes{host=\"mac\",mountpoint=\"/\"} / node_filesystem_size_bytes{host=\"mac\",mountpoint=\"/\"}", "refId": "A", "instant": true }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit", "min": 0, "max": 1,
+          "color": { "mode": "thresholds" },
+          "thresholds": { "mode": "absolute", "steps": [
+            { "color": "green", "value": null },
+            { "color": "orange", "value": 0.8 },
+            { "color": "red", "value": 0.92 }
+          ]}
+        }
+      },
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "textMode": "value", "graphMode": "none", "colorMode": "value" }
+    },
+    {
+      "id": 53,
+      "type": "stat",
+      "title": "Host CPU temp",
+      "description": "mac-extras CPU temp; same 60/75 thresholds as the host alerts.",
+      "datasource": "Prometheus",
+      "gridPos": { "h": 5, "w": 4, "x": 12, "y": 0 },
+      "targets": [
+        { "expr": "mac_cpu_temp_celsius", "refId": "A", "instant": true }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "celsius",
+          "color": { "mode": "thresholds" },
+          "thresholds": { "mode": "absolute", "steps": [
+            { "color": "green", "value": null },
+            { "color": "orange", "value": 60 },
+            { "color": "red", "value": 75 }
+          ]}
+        }
+      },
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "textMode": "value", "graphMode": "area", "colorMode": "value" }
+    },
+    {
+      "id": 54,
+      "type": "stat",
+      "title": "Colima up",
+      "description": "0 = the VM the cluster runs in is down (so the cluster is too).",
+      "datasource": "Prometheus",
+      "gridPos": { "h": 5, "w": 4, "x": 16, "y": 0 },
+      "targets": [
+        { "expr": "max(mac_colima_running)", "refId": "A", "instant": true }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "thresholds" },
+          "mappings": [
+            { "type": "value", "options": { "0": { "text": "DOWN", "color": "red" }, "1": { "text": "UP", "color": "green" } } }
+          ],
+          "thresholds": { "mode": "absolute", "steps": [{ "color": "red", "value": null }, { "color": "green", "value": 1 }] }
+        }
+      },
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "textMode": "value", "graphMode": "none", "colorMode": "background" }
+    },
+    {
+      "id": 55,
+      "type": "stat",
+      "title": "Host uptime",
+      "description": "Seconds since the Mac booted.",
+      "datasource": "Prometheus",
+      "gridPos": { "h": 5, "w": 4, "x": 20, "y": 0 },
+      "targets": [
+        { "expr": "time() - node_boot_time_seconds{host=\"mac\"}", "refId": "A", "instant": true }
+      ],
+      "fieldConfig": {
+        "defaults": { "unit": "s", "color": { "mode": "fixed", "fixedColor": "blue" } }
+      },
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "textMode": "value", "graphMode": "none", "colorMode": "value" }
+    },
+
+    {
       "id": 1,
       "type": "stat",
       "title": "Cluster CPU usage",
       "datasource": "Prometheus",
-      "gridPos": { "h": 5, "w": 6, "x": 0, "y": 0 },
+      "gridPos": { "h": 5, "w": 6, "x": 0, "y": 5 },
       "targets": [
         { "expr": "1 - avg(rate(node_cpu_seconds_total{mode=\"idle\"}[$__rate_interval]))", "refId": "A", "instant": true }
       ],
@@ -38,7 +167,7 @@
       "type": "stat",
       "title": "Cluster memory used",
       "datasource": "Prometheus",
-      "gridPos": { "h": 5, "w": 6, "x": 6, "y": 0 },
+      "gridPos": { "h": 5, "w": 6, "x": 6, "y": 5 },
       "targets": [
         { "expr": "1 - max(node_memory_MemAvailable_bytes) / max(node_memory_MemTotal_bytes)", "refId": "A", "instant": true }
       ],
@@ -60,7 +189,7 @@
       "type": "stat",
       "title": "Cluster HDD %",
       "datasource": "Prometheus",
-      "gridPos": { "h": 5, "w": 6, "x": 12, "y": 0 },
+      "gridPos": { "h": 5, "w": 6, "x": 12, "y": 5 },
       "targets": [
         { "expr": "1 - min(node_filesystem_avail_bytes{device=\"/dev/vdb1\"}) / max(node_filesystem_size_bytes{device=\"/dev/vdb1\"})", "refId": "A", "instant": true }
       ],
@@ -82,9 +211,9 @@
       "type": "stat",
       "title": "Quarantined leases",
       "datasource": "Prometheus",
-      "gridPos": { "h": 5, "w": 6, "x": 18, "y": 0 },
+      "gridPos": { "h": 5, "w": 6, "x": 18, "y": 5 },
       "targets": [
-        { "expr": "count(mktxp_dhcp_lease_info{active_address!=\"\", comment=~\"(?i).*quarantine.*\"})", "refId": "A", "instant": true }
+        { "expr": "count(mktxp_dhcp_lease_info{active_address!=\"\", comment=~\"(?i).*quarantine.*\"}) or vector(0)", "refId": "A", "instant": true }
       ],
       "fieldConfig": { "defaults": { "unit": "short", "color": { "mode": "fixed", "fixedColor": "purple" } } },
       "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "textMode": "value", "graphMode": "none", "colorMode": "value" }
@@ -95,7 +224,7 @@
       "title": "Cluster CPU usage",
       "description": "k3d nodes share the same kernel — single host-level series.",
       "datasource": "Prometheus",
-      "gridPos": { "h": 8, "w": 8, "x": 0, "y": 5 },
+      "gridPos": { "h": 8, "w": 8, "x": 0, "y": 10 },
       "targets": [
         {
           "expr": "1 - avg(rate(node_cpu_seconds_total{mode=\"idle\"}[$__rate_interval]))",
@@ -117,7 +246,7 @@
       "title": "Cluster memory used",
       "description": "k3d nodes share the same kernel /proc — single host-level series.",
       "datasource": "Prometheus",
-      "gridPos": { "h": 8, "w": 8, "x": 8, "y": 5 },
+      "gridPos": { "h": 8, "w": 8, "x": 8, "y": 10 },
       "targets": [
         {
           "expr": "max(node_memory_MemTotal_bytes) - max(node_memory_MemAvailable_bytes)",
@@ -139,7 +268,7 @@
       "title": "Cluster disk I/O  (read up / write down)",
       "description": "k3d nodes share the same disk — single host-level series.",
       "datasource": "Prometheus",
-      "gridPos": { "h": 8, "w": 8, "x": 16, "y": 5 },
+      "gridPos": { "h": 8, "w": 8, "x": 16, "y": 10 },
       "targets": [
         {
           "expr": "max(sum by (node) (rate(node_disk_read_bytes_total[$__rate_interval])))",
@@ -165,7 +294,7 @@
       "type": "timeseries",
       "title": "Router throughput  (RX up / TX down, excl. back-to-home-vpn)",
       "datasource": "Prometheus",
-      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 13 },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 18 },
       "targets": [
         {
           "expr": "sum(rate(mktxp_interface_rx_byte_total{name!~\"back-to-home-vpn.*\"}[$__rate_interval])) * 8",
@@ -191,7 +320,7 @@
       "type": "timeseries",
       "title": "Pods by phase",
       "datasource": "Prometheus",
-      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 13 },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 18 },
       "targets": [
         {
           "expr": "sum by (phase) (kube_pod_status_phase)",
@@ -212,7 +341,7 @@
       "type": "table",
       "title": "Active DHCP leases",
       "datasource": "Prometheus",
-      "gridPos": { "h": 10, "w": 12, "x": 0, "y": 21 },
+      "gridPos": { "h": 10, "w": 12, "x": 0, "y": 26 },
       "targets": [
         {
           "expr": "label_replace(mktxp_dhcp_lease_info{active_address!=\"\",comment=~\".+\"}, \"static\", \"✓\", \"comment\", \".+\") or label_replace(mktxp_dhcp_lease_info{active_address!=\"\",comment!~\".+\"}, \"static\", \"\", \"comment\", \".*\")",
@@ -258,7 +387,7 @@
       "type": "table",
       "title": "Top container restarts  (page time range)",
       "datasource": "Prometheus",
-      "gridPos": { "h": 10, "w": 12, "x": 12, "y": 21 },
+      "gridPos": { "h": 10, "w": 12, "x": 12, "y": 26 },
       "targets": [
         {
           "expr": "topk(15, round(sum by (namespace, pod, container) (increase(kube_pod_container_status_restarts_total[$__range]))))",

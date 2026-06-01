@@ -5,14 +5,14 @@ generatorOptions:
   disableNameSuffixHash: true
 
 configMapGenerator:
-  - name: dashboard-cluster
+  - name: dashboard-host
     files:
-      - cluster.json=dashboard.json
+      - host.json=dashboard.json
     options:
       labels:
         grafana_dashboard: "1"
       annotations:
         # Sidecar (folderAnnotation: grafana_folder in cluster/apps/grafana/_appset.yaml)
         # places this dashboard inside the matching Grafana folder, alongside
-        # the alert rules from grafana-alerts/rules/cluster/.
-        grafana_folder: Cluster
+        # the alert rules from grafana-alerts/rules/host/.
+        grafana_folder: Host
