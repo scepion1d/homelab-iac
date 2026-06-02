@@ -17,8 +17,7 @@
 # anyone on the network can query metrics. Fine for a trusted home network;
 # add nginx basic-auth via ingress annotations if that ever changes.
 namespace: monitoring
-revision: 11
-
+revision: 14
 source:
   repoURL: https://prometheus-community.github.io/helm-charts
   chart: prometheus
@@ -27,6 +26,7 @@ source:
     values:
       server:
         # Trim retention; with all the kube-state + node-exporter metrics
+
         # at 15s scrape, 7 days at 50k series is plenty for a homelab.
         retention: "7d"
         persistentVolume:
@@ -36,29 +36,56 @@ source:
           type: ClusterIP
           servicePort: 80
         # Chart default is 1m, which is too coarse for a small cluster —
+
         # CPU/network graphs end up step-shaped. 15s matches what most
+
         # Grafana dashboards (and our `$__rate_interval`) assume. The
+
         # mikrotik job overrides this with its own 30s interval below.
         global:
           scrape_interval: 30s
           scrape_timeout: 20s
+      # `serverFiles` and `scrapeConfigFiles` are TOP-LEVEL chart keys, not
 
+      # nested under `server:`. Helm silently ignores them under `server:`
+
+      # which is why earlier splice attempts were silently dropped. See
+
+      # values.yaml of the prometheus-community/prometheus chart.
+
+      #
+
+      # Host-side apps (host/apps/*) declare their own scrape targets in
+
+      # `prometheus-target.yaml`. bootstrap/09-host-apps.sh concatenates
+
+      # those into `serverFiles."host-targets.yml"`. bootstrap/10-mac-exporter.sh
+
+      # owns `serverFiles."mac-host.yml"`. `scrapeConfigFiles` references
+
+      # both files by their in-pod path (`/etc/config/<key>`).
+      serverFiles:
+        host-targets.yml:
+          scrape_configs: []
+        mac-host.yml:
+          scrape_configs:
+            - job_name: mac-host
+              scrape_interval: 30s
+              scrape_timeout: 10s
+              static_configs:
+                - targets:
+                    - 192.168.64.1:9100
+                  labels:
+                    host: mac
+                    source: host-native
+      scrapeConfigFiles:
+        - /etc/config/host-targets.yml
+        - /etc/config/mac-host.yml
       alertmanager:
         # Disable persistence — we don't route alerts anywhere yet.
         persistence:
           enabled: false
-
       # Don't ship pushgateway; we don't have batch jobs to scrape.
+
       "prometheus-pushgateway":
         enabled: false
-
-      # No custom scrape configs at the moment. The MikroTik router is
-      # exported by `mikrotik-exporter` (mktxp) and is picked up by the
-      # chart's default `kubernetes-service-endpoints` job via the
-      # `prometheus.io/scrape: "true"` annotation on its Service.
-      #
-      # If you ever need to add a static-target job, the working pattern
-      # is `serverFiles.<name>.yml: { scrape_configs: [...] }` plus
-      # `scrapeConfigFiles: [/etc/config/<name>.yml]`. The chart's
-      # `extraScrapeConfigs:` (stringified YAML) and `scrapeConfigs:`
-      # (map) both proved fragile — see git history for the autopsy.
