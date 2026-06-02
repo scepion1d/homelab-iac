@@ -1,0 +1,91 @@
+# mDNS reflector (VM-internal hop).
+#
+# Why this app exists
+# -------------------
+# Home Assistant runs with `network_mode: host` in the Colima VM. Its
+# HomeKit Bridge broadcasts _hap._tcp via mDNS on the VM's network
+# namespace -- specifically on `eth0` (user-mode NAT, 192.168.5.0/24),
+# because eth0 has a lower routing metric than the vmnet bridge `col0`
+# (192.168.64.0/24). The Mac-side reflector listens on bridge100 (the
+# Mac's end of col0); since HA's broadcasts never land on col0, the
+# Mac reflector never sees them.
+#
+# Two-stage reflector chain:
+#
+#   HA  (eth0, broadcasts on 192.168.5.x)
+#         |
+#         v
+#   THIS APP  --  browses on eth0, republishes on col0 (192.168.64.3)
+#         |
+#         v   (multicast on col0 bridges to bridge100 on the Mac)
+#         v
+#   Mac-side com.homelab.mdns-reflector
+#         (browses bridge100, republishes on en0/en1 with A rewritten
+#          to the Mac's LAN IP)
+#         |
+#         v
+#   MikroTik mdns-repeat-ifaces relays int <-> iot
+#         |
+#         v
+#   Apple TV (iot VLAN)
+#
+# `network_mode: host` is mandatory so this container shares the VM's
+# network namespace and can bind UDP/5353 on both interfaces directly.
+# A bridged docker network would NAT mDNS into a different L2 domain
+# and the whole point would be lost.
+#
+# Source of truth: the reflector script lives in bootstrap/. It is
+# bind-mounted here (read-only) so there is no second copy in the
+# repository. The Mac-side LaunchDaemon (com.homelab.mdns-reflector)
+# uses the same script via a venv install -- both deployments share one
+# implementation.
+#
+# Pip install at startup
+# ----------------------
+# We use the upstream `python:3.12-alpine` image and `pip install` the
+# pinned zeroconf release at container start. This trades ~5s of warm-
+# up against not having to maintain a custom Dockerfile / build flow
+# for a single dependency. Restart policy is `unless-stopped`, so the
+# install runs once per container lifetime, not once per process
+# restart inside the container.
+services:
+  mdns-reflector:
+    image: python:3.12-alpine
+    container_name: homelab-mdns-reflector
+    restart: unless-stopped
+    network_mode: host
+    # SRC_IP must be a Mac-VM IP that HA's mDNS lands on.
+    # DST_IP must be the VM's vmnet IP (the one the Mac-side reflector
+    # can see via bridge100).
+    #
+    # Defaults match Colima's typical layout:
+    #   eth0 (user-mode NAT): 192.168.5.1
+    #   col0 (vmnet):         192.168.64.3
+    # Override in bootstrap/.env if your VM uses different addresses
+    # (`colima ssh -- ip -br addr` to check).
+    environment:
+      MDNS_SRC_IP: ${MDNS_VM_USERMODE_IP:-192.168.5.1}
+      MDNS_DST_IP: ${MDNS_VM_VMNET_IP:-192.168.64.3}
+      MDNS_SERVICE_TYPES: _hap._tcp.local.
+      MDNS_LOG_LEVEL: INFO
+      PIP_DISABLE_PIP_VERSION_CHECK: "1"
+    volumes:
+      # Canonical script lives in bootstrap/. compose.yaml is at
+      # host/apps/mdns-reflector/, so ../../../bootstrap/ resolves to
+      # the repo's bootstrap directory. Read-only.
+      - ../../../bootstrap/services/mdns-reflector.py:/app/mdns-reflector.py:ro
+    # `exec` so signals (SIGTERM from `docker stop`) reach Python and
+    # the reflector's shutdown path runs (unregisters published
+    # services so the LAN doesn't see ghost ads for the TTL window).
+    command: >
+      sh -c 'pip install --quiet --no-cache-dir --root-user-action=ignore zeroconf==0.132.2 &&
+             exec python3 /app/mdns-reflector.py'
+    healthcheck:
+      # Just confirm the python interpreter is alive and zeroconf is
+      # importable. We can't probe the mDNS pipeline from inside the
+      # container without sending real packets.
+      test: ["CMD", "python3", "-c", "import zeroconf, sys; sys.exit(0)"]
+      interval: 60s
+      timeout: 5s
+      retries: 3
+      start_period: 30s

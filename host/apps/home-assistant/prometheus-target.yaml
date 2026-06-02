@@ -1,0 +1,21 @@
+# Concatenated into cluster/apps/prometheus/_appset.yaml under
+# `server.serverFiles."host-targets.yml".scrape_configs` by
+# bootstrap/09-host-apps.sh. Bearer token lives in Secret
+# monitoring/home-assistant-prometheus-token (key `token`), mounted into
+# the Prometheus pod via server.extraSecretMounts as
+# /etc/secrets/home-assistant-token.
+targets:
+  - job_name: home-assistant
+    metrics_path: /api/prometheus
+    scheme: http
+    scrape_interval: 60s
+    scrape_timeout: 20s
+    authorization:
+      type: Bearer
+      credentials_file: /etc/secrets/home-assistant-token
+    static_configs:
+      - targets:
+          - "${HOST_IP}:8123"
+        labels:
+          entity: home-assistant
+          source: host-app

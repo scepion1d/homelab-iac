@@ -1,0 +1,8 @@
+# Files managed by homelab-iac. Bootstrap re-copies these on every
+# reconcile when invoked with --recopy-config. Anything in this folder
+# NOT listed here is left alone (so UI-edited automations.yaml etc.
+# survive reconciles).
+#
+# One filename per line. Lines starting with # are comments; blanks ignored.
+configuration.yaml
+homekit.yaml
