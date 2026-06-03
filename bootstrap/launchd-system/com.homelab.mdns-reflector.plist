@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN"
+  "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  Managed by bootstrap/11-mdns-reflector.sh. The script copies this
+  template to /Library/LaunchDaemons/com.homelab.mdns-reflector.plist
+  with __SRC_IP__ / __DST_IP__ replaced by the live Colima vmnet bridge
+  IP and Mac LAN IP respectively. Edit the script (or this template)
+  and re-run 11-mdns-reflector.sh; do not hand-edit the installed copy.
+
+  Runs as root because zeroconf binds UDP/5353. The installed venv
+  lives under /usr/local/lib/homelab/mdns-reflector/ and is owned by
+  root:wheel; the bootstrap script recreates it idempotently.
+-->
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>com.homelab.mdns-reflector</string>
+
+  <key>ProgramArguments</key>
+  <array>
+    <string>/usr/local/lib/homelab/mdns-reflector/venv/bin/python3</string>
+    <string>/usr/local/lib/homelab/mdns-reflector/mdns-reflector.py</string>
+  </array>
+
+  <key>EnvironmentVariables</key>
+  <dict>
+    <key>MDNS_SRC_IP</key>
+    <string>__SRC_IP__</string>
+    <key>MDNS_DST_IP</key>
+    <string>__DST_IP__</string>
+    <!--
+      Extend by adding more types here (comma-separated). Each entry
+      MUST end with `.local.` (trailing dot) so the Zeroconf library
+      treats it as fully qualified.
+        _hap._tcp.local.            HomeKit Accessory Protocol
+        _googlecast._tcp.local.     Chromecast / Google Home
+        _spotify-connect._tcp.local. Spotify Connect
+    -->
+    <key>MDNS_SERVICE_TYPES</key>
+    <string>_hap._tcp.local.</string>
+  </dict>
+
+  <key>UserName</key>
+  <string>root</string>
+
+  <key>RunAtLoad</key>
+  <true/>
+
+  <!-- Restart if the process crashes or zeroconf throws. -->
+  <key>KeepAlive</key>
+  <true/>
+
+  <key>ThrottleInterval</key>
+  <integer>5</integer>
+
+  <key>StandardOutPath</key>
+  <string>/var/log/homelab-mdns-reflector.log</string>
+  <key>StandardErrorPath</key>
+  <string>/var/log/homelab-mdns-reflector.log</string>
+</dict>
+</plist>
