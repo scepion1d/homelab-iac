@@ -1,0 +1,149 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: unbound
+  namespace: dns
+  labels:
+    app.kubernetes.io/name: unbound
+spec:
+  replicas: 1
+  # Recreate (not RollingUpdate): only one Unbound pod can hold the
+  # configmap-derived cert/key state at a time, and a brief outage on
+  # config push is acceptable (AdGuard's cache absorbs it).
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: unbound
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: unbound
+    spec:
+      # Init container generates the unbound-control TLS material
+      # (self-signed, used only on 127.0.0.1) and fetches the DNSSEC
+      # root trust anchor. Both files live in an emptyDir shared with
+      # the main container -- they're not secrets we need to persist;
+      # regenerating per-pod is fine.
+      initContainers:
+        - name: unbound-setup
+          image: mvance/unbound:1.22.0
+          command:
+            - sh
+            - -c
+            - |
+              set -e
+              UBDIR=/opt/unbound/etc/unbound
+              # Copy the ConfigMap-provided config into the emptyDir.
+              cp /tmp/unbound-conf/unbound.conf $UBDIR/unbound.conf
+              # Fetch / refresh the root DNSSEC trust anchor.
+              unbound-anchor -a $UBDIR/trusted-key.key || true
+              # Ensure the socket directory exists (emptyDir creates it,
+              # but defensive).
+              mkdir -p /var/run/unbound
+          volumeMounts:
+            - name: unbound-state
+              mountPath: /opt/unbound/etc/unbound
+            - name: unbound-conf
+              mountPath: /tmp/unbound-conf
+              readOnly: true
+            - name: unbound-ctl
+              mountPath: /var/run/unbound
+      containers:
+        - name: unbound
+          image: mvance/unbound:1.22.0
+          imagePullPolicy: IfNotPresent
+          # Override the image's default CMD (/unbound.sh wrapper) and
+          # call unbound directly. The wrapper does its own cert + root-
+          # hints setup that conflicts with our init container; bypassing
+          # it gives us full control over the config path.
+          command: ["unbound"]
+          args:
+            - "-d"          # don't fork to background -- keep PID 1
+            - "-v"          # verbosity level 1 (matches config)
+            - "-c"
+            - "/opt/unbound/etc/unbound/unbound.conf"
+          ports:
+            - name: dns-udp
+              containerPort: 53
+              protocol: UDP
+            - name: dns-tcp
+              containerPort: 53
+              protocol: TCP
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              memory: 512Mi
+          livenessProbe:
+            tcpSocket:
+              port: dns-tcp
+            initialDelaySeconds: 10
+            periodSeconds: 30
+            timeoutSeconds: 5
+          readinessProbe:
+            tcpSocket:
+              port: dns-tcp
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          volumeMounts:
+            - name: unbound-state
+              mountPath: /opt/unbound/etc/unbound
+            - name: unbound-ctl
+              mountPath: /var/run/unbound
+        # --- Prometheus exporter sidecar ------------------------------------
+        # Built from Dockerfile.exporter (Go binary, statically linked
+        # against musl). Image is built once and imported into k3d:
+        #   docker build -t homelab-unbound-exporter:v0.6.0 -f cluster/apps/unbound/Dockerfile.exporter .
+        #   k3d image import homelab-unbound-exporter:v0.6.0 --cluster homelab
+        # No runtime downloads, no DNS dependency at startup, no
+        # glibc/musl mismatch.
+        - name: exporter
+          image: homelab-unbound-exporter:v0.6.0
+          imagePullPolicy: Never
+          args:
+            - "-unbound.host"
+            - "unix:///var/run/unbound/unbound.ctl"
+            - "-unbound.ca"
+            - ""
+            - "-unbound.cert"
+            - ""
+          ports:
+            - name: metrics
+              containerPort: 9167
+              protocol: TCP
+          resources:
+            requests:
+              cpu: 10m
+              memory: 16Mi
+            limits:
+              memory: 64Mi
+          livenessProbe:
+            httpGet:
+              path: /metrics
+              port: metrics
+            initialDelaySeconds: 10
+            periodSeconds: 30
+          readinessProbe:
+            httpGet:
+              path: /metrics
+              port: metrics
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          volumeMounts:
+            - name: unbound-ctl
+              mountPath: /var/run/unbound
+              readOnly: true
+      volumes:
+        - name: unbound-conf
+          configMap:
+            name: unbound-config
+            items:
+              - key: unbound.conf
+                path: unbound.conf
+        - name: unbound-state
+          emptyDir: {}
+        # Shared between unbound (creates the socket) and exporter (reads it).
+        - name: unbound-ctl
+          emptyDir: {}

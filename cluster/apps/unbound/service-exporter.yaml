@@ -1,0 +1,24 @@
+# Exporter service for Prometheus scraping. Separate from unbound-dns
+# so the prometheus.io/scrape annotation doesn't bleed into the DNS
+# service (same pattern as adguard + adguard-exporter).
+apiVersion: v1
+kind: Service
+metadata:
+  name: unbound-exporter
+  namespace: dns
+  labels:
+    app.kubernetes.io/name: unbound-exporter
+  annotations:
+    prometheus.io/scrape: "true"
+    prometheus.io/port: "9167"
+    prometheus.io/path: "/metrics"
+spec:
+  type: ClusterIP
+  selector:
+    # Selects the same pod as unbound-dns (the exporter is a sidecar).
+    app.kubernetes.io/name: unbound
+  ports:
+    - name: metrics
+      port: 9167
+      targetPort: metrics
+      protocol: TCP

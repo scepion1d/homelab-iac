@@ -1,0 +1,32 @@
+# ClusterIP service -- Unbound is only consumed by AdGuard inside the
+# cluster. Not exposed to the LAN (AdGuard is the user-facing layer).
+#
+# externalTrafficPolicy not relevant for ClusterIP. The pod sees the
+# real source IP via the kube-proxy IPtables hop (single-pod
+# Deployment, so no SNAT shuffling).
+apiVersion: v1
+kind: Service
+metadata:
+  name: unbound-dns
+  namespace: dns
+  labels:
+    app.kubernetes.io/name: unbound
+spec:
+  type: ClusterIP
+  # Pinned so AdGuard's dns-config.yaml can reference it by IP (AdGuard
+  # can't resolve k8s service hostnames -- its bootstrap DNS is public).
+  # Kubernetes honours a specific clusterIP as long as it's within the
+  # service CIDR and not already taken. On a single-tenant homelab
+  # cluster this is effectively permanent.
+  clusterIP: 10.43.10.43
+  selector:
+    app.kubernetes.io/name: unbound
+  ports:
+    - name: dns-udp
+      port: 53
+      targetPort: dns-udp
+      protocol: UDP
+    - name: dns-tcp
+      port: 53
+      targetPort: dns-tcp
+      protocol: TCP
