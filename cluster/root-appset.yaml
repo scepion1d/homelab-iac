@@ -122,16 +122,30 @@ spec:
           commonAnnotations:
             homelab.iac/revision: "{{ $rev }}"
           {{- if hasKey . "ingressHost" }}
+          {{- /* Two hostnames per ingressHost:                                 */}}
+          {{- /*   $host    = <ingressHost>.<lanDomain>          (MikroTik DNS) */}}
+          {{- /*   $nipHost = <ingressHost>.<hostIp-dashed>.nip.io (DNS bypass) */}}
+          {{- /* Both go into server-alias (comma-separated; nginx splits)     */}}
+          {{- /* and both get appended to spec.tls[0].hosts so cert-manager    */}}
+          {{- /* requests a leaf cert covering both SANs. Lets a device that   */}}
+          {{- /* doesn't use AdGuard DNS (guest, cellular) still reach the     */}}
+          {{- /* homelab on-LAN via the nip.io URL with valid TLS.             */}}
           {{- $host := printf "%s.%s" .ingressHost .lanDomain }}
+          {{- $hostIpDashed := replace "." "-" .hostIp }}
+          {{- $nipHost := printf "%s.%s.nip.io" .ingressHost $hostIpDashed }}
+          {{- $aliases := printf "%s,%s" $host $nipHost }}
           patches:
             - target:
                 kind: Ingress
               patch: |-
                 - op: add
                   path: /metadata/annotations/nginx.ingress.kubernetes.io~1server-alias
-                  value: "{{ $host }}"
+                  value: "{{ $aliases }}"
                 - op: add
                   path: /spec/tls/0/hosts/-
                   value: "{{ $host }}"
+                - op: add
+                  path: /spec/tls/0/hosts/-
+                  value: "{{ $nipHost }}"
           {{- end }}
         {{- end }}

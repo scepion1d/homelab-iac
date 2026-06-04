@@ -19,10 +19,23 @@
 #                   (static A records pointing at the Mac's LAN IP). Update DNS
 #                   AND this value together if the domain changes.
 #
+#   hostIp        — cluster/root-appset.yaml (templatePatch)
+#                   Used to build a nip.io fallback hostname:
+#                     <ingressHost>.<hostIp-dashed>.nip.io
+#                   Injected alongside the .<lanDomain> variant so devices
+#                   bypassing MikroTik DNS (cellular fallback, guest devices,
+#                   public resolvers) can still reach the homelab on-LAN.
+#                   The MikroTik static records under /ip/dns/static use
+#                   CNAMEs to the same nip.io endpoint, so DNS-bypass and
+#                   DNS-aware clients converge on the same destination.
+#                   Update this AND the static records together if the
+#                   server's LAN IP changes.
+#
 #   infraSlackChannel  — cluster/apps/argocd-notifications/configmap.yaml
 #                       ConfigMap content is not templated by the ApplicationSet,
 #                       so the literal channel name is hard-coded there. Keep this
 #                       value in sync with the `subscriptions:` block.
 repoUrl: https://github.com/scepion1d/homelab-iac.git
 lanDomain: int
+hostIp: 192.168.10.3
 infraSlackChannel: infra-alerts
