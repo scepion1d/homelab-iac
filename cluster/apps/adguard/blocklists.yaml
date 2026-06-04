@@ -1,0 +1,57 @@
+# AdGuard blocklists applied by bootstrap/07-adguard-setup.sh after the
+# DNS config push. Source of truth -- a fresh cluster converges to this
+# exact set of enabled filters.
+#
+# How this gets applied
+# ---------------------
+# AdGuard's API has no bulk-set endpoint for filters. Each entry maps to:
+#   POST /control/filtering/add_url   (when not present)
+# Already-present URLs are skipped silently (the endpoint returns 409
+# Conflict in that case, treated as success by step 07).
+#
+# To remove a filter, edit this file AND delete it from the UI -- step
+# 07 does not prune (it would be too easy to clobber an experimental
+# blocklist the operator added manually).
+#
+# Format
+# ------
+#   - name:    Display name in the UI. Free-form.
+#     url:     Filter list URL. Must be reachable from the AdGuard pod.
+#              The AdGuard HostlistsRegistry mirror keeps these URLs
+#              stable across upstream changes; prefer it over upstream
+#              GitHub raw URLs.
+#
+# URL catalogue: https://github.com/AdguardTeam/HostlistsRegistry
+#   Each list has a numeric ID -- the URL pattern is:
+#     https://adguardteam.github.io/HostlistsRegistry/assets/filter_<ID>.txt
+
+filters:
+  - name: "AdGuard DNS filter"
+    url: "https://adguardteam.github.io/HostlistsRegistry/assets/filter_1.txt"
+
+  - name: "AdAway Default Blocklist"
+    url: "https://adguardteam.github.io/HostlistsRegistry/assets/filter_2.txt"
+
+  - name: "HaGeZi's Pro++ Blocklist"
+    url: "https://adguardteam.github.io/HostlistsRegistry/assets/filter_51.txt"
+
+  - name: "OISD Blocklist Big"
+    url: "https://adguardteam.github.io/HostlistsRegistry/assets/filter_27.txt"
+
+  - name: "HaGeZi's Gambling Blocklist"
+    url: "https://adguardteam.github.io/HostlistsRegistry/assets/filter_47.txt"
+
+  - name: "HaGeZi's Badware Hoster Blocklist"
+    url: "https://adguardteam.github.io/HostlistsRegistry/assets/filter_55.txt"
+
+  - name: "uBlock filters - Badware risks"
+    url: "https://adguardteam.github.io/HostlistsRegistry/assets/filter_50.txt"
+
+  - name: "Malicious URL Blocklist (URLHaus)"
+    url: "https://adguardteam.github.io/HostlistsRegistry/assets/filter_11.txt"
+
+  - name: "Stalkerware Indicators List"
+    url: "https://adguardteam.github.io/HostlistsRegistry/assets/filter_31.txt"
+
+  - name: "Phishing Army"
+    url: "https://adguardteam.github.io/HostlistsRegistry/assets/filter_18.txt"

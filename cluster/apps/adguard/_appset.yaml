@@ -1,5 +1,5 @@
 namespace: dns
-revision: 1
+revision: 10
 # This app declares its hostnames explicitly in ingress.yaml (multiple
 # hosts: adguard.int, adguard.localhost, adguard.192-168-10-3.nip.io, and
 # the first-run wizard at adguard-setup.localhost). The root ApplicationSet's

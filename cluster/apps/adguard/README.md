@@ -62,34 +62,46 @@ Open <http://localhost:3000> and click through:
 Once done, AdGuard restarts; the UI moves to :80 and is reachable
 through the ingress at <https://adguard.int> /  <https://adguard.localhost>.
 
-### 3. Configure upstream DNS (post-wizard)
+### 3. Configure upstream DNS
 
-Settings → DNS settings → **Upstream DNS servers**:
+Codified in [`dns-config.yaml`](dns-config.yaml) and pushed automatically
+by `bootstrap/07-adguard-setup.sh` after the wizard succeeds:
 
 ```text
-# Forward the LAN domain to the router (where the static .int records live).
-[/int/]192.168.10.1
-
-# Public resolvers over DoH. AdGuard load-balances between them.
-https://dns.cloudflare.com/dns-query
+[/int/]192.168.10.1                       # MikroTik holds *.int static records
+https://dns.cloudflare.com/dns-query      # public DoH
 https://dns.quad9.net/dns-query
 ```
 
-**Bootstrap DNS** (used only to resolve the DoH hostnames at startup):
+Bootstrap DNS (used only to resolve the DoH hostnames at startup):
 
 ```text
 1.1.1.1
 9.9.9.9
 ```
 
-Save → Test upstreams (should all be green).
+To change upstreams, edit `dns-config.yaml`, commit, and re-run
+`./bootstrap/07-adguard-setup.sh`. UI edits work too but won't survive
+a PVC wipe.
 
-### 4. Enable blocklists (post-wizard)
+### 4. Enable blocklists
 
-Filters → DNS blocklists → Add blocklist → **Choose from list**.
-Reasonable defaults: AdGuard DNS filter, AdAway Default Blocklist,
-1Hosts (Lite). Skip the giant aggregated ones — they grow the work
-PVC fast.
+Codified in [`blocklists.yaml`](blocklists.yaml) and pushed automatically
+by `bootstrap/07-adguard-setup.sh` via `/control/filtering/add_url`
+(idempotent — already-present URLs are skipped).
+
+Default set:
+- AdGuard DNS filter, AdAway Default Blocklist  (lightweight starters)
+- HaGeZi's Pro++, OISD Big, HaGeZi's Gambling, HaGeZi's Badware Hoster
+  (heavier multi-category protection)
+- uBlock badware risks, URLHaus, Stalkerware Indicators, Phishing Army
+  (targeted security)
+
+URLs point at the [AdGuard HostlistsRegistry](https://github.com/AdguardTeam/HostlistsRegistry)
+mirror so they stay stable across upstream re-organisations. To change
+the set, edit `blocklists.yaml`, commit, and re-run
+`./bootstrap/07-adguard-setup.sh`. UI removals are honoured because
+step 07 only adds — never prunes.
 
 ### 5. Point the LAN at AdGuard via MikroTik DHCP
 
