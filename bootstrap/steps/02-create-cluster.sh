@@ -10,7 +10,8 @@
 # land before 03 runs.
 set -euo pipefail
 cd "$(dirname "$0")"
-
+source ../lib.sh
+load_env
 CLUSTER_NAME="homelab"
 
 if k3d cluster list --no-headers | awk '{print $1}' | grep -qx "${CLUSTER_NAME}"; then

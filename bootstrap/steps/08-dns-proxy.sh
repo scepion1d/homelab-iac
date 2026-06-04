@@ -22,11 +22,13 @@
 
 set -euo pipefail
 cd "$(dirname "$0")"
+source ../lib.sh
+load_env
 
 LABEL="com.homelab.dns-proxy"
-PLIST_TEMPLATE="launchd-system/${LABEL}.plist"
+PLIST_TEMPLATE="../launchd-system/${LABEL}.plist"
 PLIST_DST="/Library/LaunchDaemons/${LABEL}.plist"
-PY_SRC="dns-proxy.py"
+PY_SRC="../services/dns-proxy.py"
 PY_DST_DIR="/usr/local/lib/homelab"
 PY_DST="${PY_DST_DIR}/dns-proxy.py"
 

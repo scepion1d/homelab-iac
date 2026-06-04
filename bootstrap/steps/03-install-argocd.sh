@@ -1,6 +1,9 @@
 #!/usr/bin/env zsh
 # Install Argo CD into the cluster using upstream stable manifests.
 set -euo pipefail
+cd "$(dirname "$0")"
+source ../lib.sh
+load_env
 
 NAMESPACE="argocd"
 

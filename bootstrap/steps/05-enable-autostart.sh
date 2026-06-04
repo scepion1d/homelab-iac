@@ -3,11 +3,13 @@
 # Re-running re-installs (unload, copy, load) — safe and idempotent.
 set -euo pipefail
 cd "$(dirname "$0")"
+source ../lib.sh
+load_env
 
 AGENTS_DIR="${HOME}/Library/LaunchAgents"
 mkdir -p "${AGENTS_DIR}"
 
-for plist in launchd/*.plist; do
+for plist in ../launchd/*.plist; do
   name="$(basename "${plist}")"
   target="${AGENTS_DIR}/${name}"
 

@@ -6,14 +6,18 @@
 #   - grafana (helm chart wires `existingSecret: grafana-admin`; without
 #     this the chart rolls a new password on every sync and you can't
 #     log in).
+#   - grafana-alerts (slack contact points read $SLACK_BOT_TOKEN from the
+#     `grafana-slack` Secret; without this Grafana pod fails to start once
+#     `envValueFrom` is wired in cluster/apps/grafana/_appset.yaml).
 #
 # Optional (created only if the corresponding env var is set in
 # bootstrap/.env):
 #   - argocd-notifications-secret patch with SLACK_TOKEN.
 #   - mikrotik-exporter-credentials with MIKROTIK_USER + MIKROTIK_PASSWORD.
+#   - grafana-slack with GRAFANA_SLACK_BOT_TOKEN (xoxb-… bot token).
 set -euo pipefail
 cd "$(dirname "$0")"
-source ./lib.sh
+source ../lib.sh
 load_env
 
 ensure_ns() {
@@ -51,6 +55,29 @@ if [[ -n "${ADGUARD_USER:-}" && -n "${ADGUARD_PASSWORD:-}" ]]; then
     --from-literal=password="${ADGUARD_PASSWORD}"
 else
   echo "    dns/adguard-credentials: skipped (ADGUARD_USER/ADGUARD_PASSWORD not set)"
+fi
+
+# Grafana Slack bot token (required for Slack alerting; without it Grafana
+# pod CrashLoops because of the missing env source mounted in
+# cluster/apps/grafana/_appset.yaml).
+if [[ -n "${GRAFANA_SLACK_BOT_TOKEN:-}" ]]; then
+  create_secret_if_missing monitoring grafana-slack \
+    --from-literal=token="${GRAFANA_SLACK_BOT_TOKEN}"
+else
+  echo "    monitoring/grafana-slack: skipped (GRAFANA_SLACK_BOT_TOKEN not set)"
+fi
+
+# Home Assistant Prometheus scrape token (optional; only meaningful once
+# host/apps/home-assistant is deployed and you've created a Long-Lived
+# Access Token in the HA UI). Mounted into Prometheus via
+# `server.extraSecretMounts` in cluster/apps/prometheus/_appset.yaml; the
+# scrape job (from host/apps/home-assistant/prometheus-target.yaml)
+# references it via credentials_file: /etc/secrets/home-assistant-token.
+if [[ -n "${HOMEASSISTANT_PROMETHEUS_TOKEN:-}" ]]; then
+  create_secret_if_missing monitoring home-assistant-prometheus-token \
+    --from-literal=token="${HOMEASSISTANT_PROMETHEUS_TOKEN}"
+else
+  echo "    monitoring/home-assistant-prometheus-token: skipped (HOMEASSISTANT_PROMETHEUS_TOKEN not set)"
 fi
 
 # MikroTik exporter (optional; only if credentials provided).
