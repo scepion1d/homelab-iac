@@ -60,9 +60,9 @@ Key knobs (see comments in `unbound.conf` for the full list):
 
 | Setting | Value | Why |
 |---|---|---|
-| `msg-cache-size` | 128m | Final-answer cache (mirrors AdGuard's tier) |
+| `msg-cache-size` | 64m | Final-answer cache |
 | `rrset-cache-size` | 128m | Per-record cache; serves AdGuard restarts hot |
-| `num-threads` | 2 | Enough for a home LAN's query rate |
+| `num-threads` | 2 | Two threads with `so-reuseport` for balanced load |
 | `qname-minimisation` | yes | Auth servers see only their own zone names |
 | `aggressive-nsec` | yes | NXDOMAIN answers cached at NS level |
 | `prefetch` / `serve-expired` | yes | No client-visible stalls on TTL boundaries |

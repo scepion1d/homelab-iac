@@ -1,7 +1,8 @@
 namespace: dns
-revision: 22
+revision: 23
 # Unbound recursive resolver sits behind AdGuard:
 #   client -> AdGuard (filter + final-answer cache) -> Unbound (recursion + intermediate cache)
+
 #                                                  -> root / TLD / authoritative servers
 
 #

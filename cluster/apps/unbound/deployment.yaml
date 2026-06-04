@@ -72,10 +72,11 @@ spec:
               protocol: TCP
           resources:
             requests:
-              cpu: 100m
-              memory: 128Mi
-            limits:
+              cpu: 250m
               memory: 512Mi
+            limits:
+              cpu: "1"
+              memory: 768Mi
           livenessProbe:
             tcpSocket:
               port: dns-tcp
