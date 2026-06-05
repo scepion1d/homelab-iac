@@ -40,6 +40,45 @@ fi
 repo_root="$(git rev-parse --show-toplevel)"
 cd "$repo_root"
 
+# --- auto +x on staged .sh files ------------------------------------------
+
+sh_files=()
+while IFS= read -r -d '' f; do
+  sh_files+=("$f")
+done < <(git diff --cached --name-only -z --diff-filter=ACMR -- '*.sh')
+
+if (( ${#sh_files[@]} > 0 )); then
+  for f in "${sh_files[@]}"; do
+    if [[ ! -x "$f" ]]; then
+      chmod +x "$f"
+      git add -- "$f"
+      printf 'pre-commit: +x %s\n' "$f"
+    fi
+  done
+fi
+
+# --- canonical-format Grafana dashboards -----------------------------------
+
+dash_files=()
+while IFS= read -r -d '' f; do
+  dash_files+=("$f")
+done < <(git diff --cached --name-only -z --diff-filter=ACMR \
+    -- 'cluster/apps/grafana-dashboards/**/dashboard.json')
+
+if (( ${#dash_files[@]} > 0 )); then
+  if ! command -v pwsh >/dev/null 2>&1; then
+    printf 'pre-commit: pwsh (PowerShell 7+) is required for dashboard formatting.\n' >&2
+    printf '  macOS:   brew install powershell\n  Windows: winget install Microsoft.PowerShell\n  Linux:   https://learn.microsoft.com/powershell/scripting/install/installing-powershell-on-linux\n' >&2
+    exit 1
+  fi
+  formatter="${repo_root}/.github/hooks/format-dashboard.ps1"
+  for f in "${dash_files[@]}"; do
+    pwsh -NoProfile -File "$formatter" -Path "$f"
+    git add -- "$f"
+    printf 'pre-commit: formatted %s\n' "$f"
+  done
+fi
+
 # --- discover affected apps ------------------------------------------------
 
 # Staged files only (--cached), all change types, NUL-delimited for safety

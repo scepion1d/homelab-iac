@@ -1,11 +1,7 @@
-# Generates one ConfigMap per Grafana provisioning file. The sidecar imports
-# each as a separate provisioning resource (contact points, policies, etc.).
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 
 generatorOptions:
-  # Sidecar treats every new CM name as a new resource and re-imports —
-  # without this, every kustomize render would churn imports.
   disableNameSuffixHash: true
 
 configMapGenerator:

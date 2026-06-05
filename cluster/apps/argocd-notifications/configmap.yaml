@@ -1,18 +1,9 @@
-# Argo CD notifications configuration.
-# Docs: https://argo-cd.readthedocs.io/en/stable/operator-manual/notifications/
-#
-# The Slack bot token is NOT stored here — it lives in the `argocd-notifications-secret`
-# Secret (see ./SLACK_SETUP.md for one-time setup).
 apiVersion: v1
 kind: ConfigMap
 metadata:
   name: argocd-notifications-cm
   namespace: argocd
 data:
-  # ---------------------------------------------------------------------------
-  # Services: where to send notifications.
-  # `$slack-token` is resolved from the argocd-notifications-secret Secret.
-  # ---------------------------------------------------------------------------
   service.slack: |
     token: $slack-token
 
@@ -23,11 +14,6 @@ data:
     message: |
       :white_check_mark: *{{.app.metadata.name}}* deployed
     slack:
-      # Slack auto-unfurls GitHub commit URLs into a rich card showing the
-      # commit message, author, and changed files — so we just embed the link
-      # rather than trying to fetch commit metadata ourselves.
-      # For Helm chart apps the "revision" is a chart version (e.g. "8.5.1"),
-      # not a git SHA — show chart info instead.
       attachments: |
         [{
           "title": "{{.app.metadata.name}}",
@@ -97,14 +83,8 @@ data:
       when: app.status.health.status == 'Degraded'
 
   # ---------------------------------------------------------------------------
-  # Default subscriptions: every Application notifies #argocd-alerts unless
-  # an annotation on the Application overrides it.
-  # Per-app overrides:
-  #   annotations:
-  #     notifications.argoproj.io/subscribe.on-deployed.slack: my-other-channel
-  #
-  # The channel name `argocd-alerts` is tracked in cluster/globals.yaml under
-  # `infraSlackChannel` — keep both in sync.
+  # Subscriptions:
+  # recipients: slack:<channel-or-user>
   # ---------------------------------------------------------------------------
   subscriptions: |
     - recipients:

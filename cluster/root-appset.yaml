@@ -1,13 +1,3 @@
-# Single ApplicationSet that scans cluster/apps/*/_appset.yaml and renders
-# one Argo CD Application per match. Each app folder is self-contained.
-#
-# Per-app metadata lives in `_appset.yaml`. Minimum: `namespace: <ns>`.
-# To pull from a remote source (e.g. Helm chart), set `source:` in the file
-# and it fully overrides the default git source.
-#
-# Cluster-wide constants (repoUrl, etc.) live in cluster/globals.yaml and are
-# merged in via a matrix generator — accessible as `{{ .repoUrl }}` in the
-# template.
 apiVersion: argoproj.io/v1alpha1
 kind: ApplicationSet
 metadata:
@@ -15,24 +5,8 @@ metadata:
   namespace: argocd
 spec:
   goTemplate: true
-  # NOTE: do NOT set goTemplateOptions: ["missingkey=error"] — the templatePatch
-  # below uses `{{ if .source }}` to optionally pick up a Helm source, and with
-  # strict missingkey checking that errors instead of evaluating to false.
 
   generators:
-    # Matrix = cartesian product of inner generators. The globals file yields
-    # one row (constants); the apps glob yields one row per app folder.
-    # Result: every Application gets `{{ .repoUrl }}` etc. merged in.
-    #
-    # IMPORTANT: both inner generators are file-based and produce a `path`
-    # parameter. Without `pathParamPrefix` on the globals generator they
-    # collide and the merged context ends up with `path.basename = "cluster"`
-    # (the parent dir of globals.yaml) for EVERY app — making the Application
-    # name the same for all, which the controller rejects with
-    # "duplicate name" and then DELETES all existing apps (with their
-    # resources, because of the finalizer). The prefix isolates globals'
-    # path metadata under `.globals` and leaves `.path` to mean the per-app
-    # path only.
     - matrix:
         generators:
           - git:
@@ -49,10 +23,7 @@ spec:
 
   template:
     metadata:
-      # Folder name becomes the Application name.
       name: '{{ .path.basename }}'
-      # Surface the per-app revision as an annotation on the Application
-      # itself so notifications can read it via .app.metadata.annotations.
       annotations:
         homelab.iac/revision: '{{ default 1 .revision }}'
       finalizers:
@@ -69,24 +40,6 @@ spec:
         syncOptions:
           - CreateNamespace=true
           - ServerSideApply=true
-
-  # The source block is set entirely by templatePatch:
-  #   - if _appset.yaml has `source:` → use it as-is (Helm, etc.)
-  #   - otherwise → point at the app's own folder in this repo (Kustomize)
-  # `hasKey` (sprig) safely tests presence without erroring on a missing key.
-  #
-  # `ingressHost` (optional) — if set in an app's _appset.yaml, the patch
-  # injects the LAN-reachable hostname `<ingressHost>.<lanDomain>`:
-  #   - Kustomize apps  → kustomize.patches add server-alias annotation
-  #                       and append to spec.tls[0].hosts on the Ingress
-  #   - Helm apps       → helm.parameters sets `<ingressHelmParam>` to the
-  #                       full URL (e.g. Grafana's grafana.ini.server.root_url)
-  #
-  # `revision` (optional, default 1) — manual cache-buster. Bump it whenever
-  # Argo CD's repo-server gets stuck on a stale render (the dreaded
-  # "Manifest generation error (cached)"). Helm apps: appended to values as
-  # a comment, so the chart ignores it but the cache key changes. Kustomize
-  # apps: added as a `homelab.iac/revision` commonAnnotation on every resource.
   templatePatch: |
     spec:
       source:

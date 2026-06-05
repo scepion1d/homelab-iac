@@ -1,17 +1,3 @@
-# Grafana managed alert rules — adguard entity.
-# Folder: AdGuard Alerts
-# Group: adguard.homelab (eval every 1m)
-# Source exporter: adguard-exporter (cluster/apps/adguard-exporter/)
-#
-# Notes on thresholds:
-#   - Upstream p95 baseline currently sits around 400–500ms steady-state on
-#     public upstream resolvers; thresholds (1s warn / 2s crit) are tuned
-#     above that floor so the rule means "something is genuinely wrong",
-#     not "the internet exists".
-#   - `adguard_avg_processing_time` is AdGuard-internal pipeline time only
-#     (excludes upstream wait); 100ms is comfortably above typical (~30ms).
-#   - Query rate anomaly uses a 1h baseline subquery — coarse on purpose;
-#     refine to 24h if false positives appear.
 apiVersion: 1
 groups:
   - orgId: 1

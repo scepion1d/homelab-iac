@@ -28,7 +28,7 @@ Write-Host "  hooks path:  $path"
 
 # 2. Tool checks (warn-only; hooks themselves fail loudly if a tool is missing).
 $missing = @()
-foreach ($tool in @('git', 'yq')) {
+foreach ($tool in @('git', 'yq', 'pwsh')) {
     if (-not (Get-Command $tool -ErrorAction SilentlyContinue)) {
         $missing += $tool
     }

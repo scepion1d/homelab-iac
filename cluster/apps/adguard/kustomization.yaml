@@ -1,12 +1,3 @@
-# AdGuard Home — LAN-wide DNS resolver with ad/tracker blocking and DoH
-# upstream. Listens on 53/udp + 53/tcp (LoadBalancer, published to the
-# Mac by k3d serverlb — see cluster/k3d-config.yaml). UI behind nginx
-# ingress + cert-manager.
-#
-# Config + query log + stats live on a PVC (local-path provisioner →
-# stored under the k3d node's filesystem, which lives inside the Colima
-# VM disk). Surviving steps: first-run wizard once, then everything is
-# in the PVC.
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 namespace: dns

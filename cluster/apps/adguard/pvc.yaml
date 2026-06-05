@@ -1,11 +1,3 @@
-# Persistent volume for AdGuard's config + working state.
-# Split into two PVs in the upstream image: /opt/adguardhome/conf (config)
-# and /opt/adguardhome/work (query log, stats, dynamic filter lists). One
-# PVC with two subPath mounts is simpler.
-#
-# Sizing: config + filter lists are <100 MB; the bulk is the query log
-# and stats DB under /work. 10Gi covers many months of retention on a
-# home LAN. PVCs can be expanded but never shrunk, so don't go nuts.
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:

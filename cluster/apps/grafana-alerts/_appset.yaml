@@ -1,27 +1,2 @@
 namespace: monitoring
 revision: 5
-# This app is a Kustomize tree of ConfigMaps. Grafana's `sidecar.alerts`
-# (enabled in cluster/apps/grafana/_appset.yaml) watches the `monitoring`
-# namespace for ConfigMaps labelled `grafana_alert=1` and imports each
-
-# `<key>.yaml` value as a Grafana provisioning file:
-
-#
-
-#   - rule groups               (rules/<entity>/rules.yaml)
-
-#   - contact points            (notifications/contact-points.yaml)
-
-#   - notification policies     (notifications/policies.yaml)
-
-#   - message templates         (notifications/templates.yaml)
-
-#   - mute timings              (notifications/mute-timings.yaml)
-
-#   - inhibit rules             (notifications/inhibit-rules.yaml)
-
-#
-
-# Slack delivery uses a bot token mounted into Grafana from Secret
-
-# `grafana-slack` (key `token`) — created out of band, see README.md.

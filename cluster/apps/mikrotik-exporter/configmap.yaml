@@ -4,12 +4,6 @@ metadata:
   name: mikrotik-exporter
   namespace: monitoring
 data:
-  # System-level config — server bind, scrape timeouts, parallel fetch.
-  # Keep in sync with mktxp's upstream defaults for the pinned image
-  # version (see deployment.yaml). Missing keys trigger
-  # "Please update _mktxp.conf to its latest version manually" on
-  # startup.
-  # https://github.com/akpw/mktxp#mktxp-system-configuration
   _mktxp.conf: |
     [MKTXP]
         listen = '0.0.0.0:49090'
@@ -42,19 +36,6 @@ data:
 
         # mktxp 1.2.17 also added this for the metrics HTTP server.
         http_server_threads = 5
-
-  # Per-router config — what to collect, plus where to find the creds.
-  # `credentials_file` points at the Secret mounted alongside this CM.
-  #
-  # [default] holds every key with its upstream-default value. mktxp 1.2.17
-  # logs "Please update mktxp.conf to its latest version manually" and
-  # tries to write the missing keys back into this file at startup; the
-  # file is a read-only configmap mount, so the write fails with EROFS.
-  # Enumerating every key here keeps the file in sync with upstream and
-  # silences the warning.
-  #
-  # [homelab] is the actual router entry. It only needs to set values that
-  # differ from [default].
   mktxp.conf: |
     [default]
         enabled = True

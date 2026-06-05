@@ -1,8 +1,3 @@
-# Inhibit rules: when source alerts fire, suppress target alerts that share
-# the listed `equal` labels. Mirrors the design's "don't double-page" goal.
-#
-# Order in this file does not matter — Grafana evaluates all rules on every
-# notification.
 apiVersion: 1
 inhibitRules:
   # Generic: a critical alert silences a warning of the same entity+component.

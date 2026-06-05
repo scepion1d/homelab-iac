@@ -26,7 +26,7 @@ chmod +x .github/hooks/* 2>/dev/null || true
 
 # 3. Tool checks (warn-only; hooks themselves fail loudly if a tool is missing).
 missing=()
-for tool in git yq; do
+for tool in git yq pwsh; do
   command -v "$tool" >/dev/null 2>&1 || missing+=("$tool")
 done
 

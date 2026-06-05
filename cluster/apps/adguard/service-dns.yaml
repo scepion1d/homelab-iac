@@ -1,10 +1,3 @@
-# LoadBalancer for DNS on 53/udp + 53/tcp. klipper-lb (k3s built-in)
-# picks this up and binds hostPort 53 on the k3d nodes; k3d's serverlb
-# container then publishes that to the Mac (per cluster/k3d-config.yaml).
-# End result: Mac:53 → pod:53.
-#
-# externalTrafficPolicy=Local preserves client source IP — AdGuard's
-# per-client rules and query log only make sense with real client IPs.
 apiVersion: v1
 kind: Service
 metadata:

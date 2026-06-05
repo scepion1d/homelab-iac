@@ -26,6 +26,7 @@ NS="dns"
 DEPLOY="adguard"
 SVC="adguard-ui"
 LOCAL_PORT=33000
+CONFIGS_PATH="/cluster/apps/adguard/configs"
 
 echo "==> Waiting for the adguard Deployment to appear (Argo CD sync)"
 for _ in $(seq 1 180); do
@@ -127,16 +128,16 @@ kill "${PF_PID}" 2>/dev/null || true
 # Codifies what the README used to ask the operator to set in the UI:
 # upstream rule for [/int/]192.168.10.1 (so *.int resolves via MikroTik
 # static records), DoH upstreams for public queries, bootstrap IPs.
-# Source of truth is cluster/apps/adguard/dns-config.yaml -- edit and
+# Source of truth is dns.yaml -- edit and
 # re-run this script to change behaviour without UI clicks.
 #
 # Why we re-port-forward: AdGuard's API moved from :3000 (install wizard)
 # to :80 once the wizard wrote a config. We open a fresh tunnel against
 # the new port. The post-wizard endpoints require basic auth (admin
 # user + password from .env), so we send that explicitly.
-DNS_CFG_YAML="$(cd .. && pwd)/cluster/apps/adguard/dns-config.yaml"
+DNS_CFG_YAML="$(cd .. && pwd)${CONFIGS_PATH}/dns.yaml"
 if [[ ! -f "${DNS_CFG_YAML}" ]]; then
-  echo "==> No cluster/apps/adguard/dns-config.yaml; skipping DNS config push."
+  echo "==> No ${CONFIGS_PATH}/dns.yaml; skipping DNS config push."
 else
   echo "==> Pushing DNS config from ${DNS_CFG_YAML##*/}"
   # Convert YAML -> JSON for the API.
@@ -176,18 +177,18 @@ else
 fi
 
 # --- POST blocklists --------------------------------------------------------
-# Push each filter in cluster/apps/adguard/blocklists.yaml via the
+# Push each filter in blocklists.yaml via the
 # /control/filtering/add_url endpoint. Already-present URLs return 409
 # Conflict (or a 4xx with "filter already exists" body, depending on
 # AdGuard version) -- treated as success so re-runs are idempotent.
 #
 # Uses the same port-forward as the DNS config push above (still live
 # at this point; trap-cleanup runs at script exit).
-BLOCKLISTS_YAML="$(cd .. && pwd)/cluster/apps/adguard/blocklists.yaml"
+BLOCKLISTS_YAML="$(cd .. && pwd)${CONFIGS_PATH}/blocklists.yaml"
 if [[ -z "${LOCAL_API:-}" ]]; then
   echo "==> Skipping blocklists push (no API port-forward open -- DNS config push was skipped earlier)."
 elif [[ ! -f "${BLOCKLISTS_YAML}" ]]; then
-  echo "==> No cluster/apps/adguard/blocklists.yaml; skipping blocklists push."
+  echo "==> No ${CONFIGS_PATH}/blocklists.yaml; skipping blocklists push."
 else
   echo "==> Pushing blocklists from ${BLOCKLISTS_YAML##*/}"
   filter_count=$(yq '.filters | length' "${BLOCKLISTS_YAML}")

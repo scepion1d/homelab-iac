@@ -1,32 +1,9 @@
-# Managed by homelab-iac (see .managed-by-homelab-iac in this folder).
-# UI edits to this file will be overwritten on the next bootstrap
-# reconcile. Move UI-editable bits to automations.yaml / scenes.yaml /
-# scripts.yaml — those are NOT managed and persist.
-
 homeassistant:
   name: Home Lab
   unit_system: metric
-  time_zone: Europe/Warsaw
-  # external_url is what HA puts in invitations, mobile-app discovery,
-  # and links it generates. Goes through the in-cluster nginx-ingress
-  # (cluster/apps/home-assistant-ingress) which terminates TLS and
-  # proxies back to this container on the host's 8123.
-  # internal_url is what HA-internal redirects and integration callbacks
-  # use; same URL on the LAN, no need to differentiate.
+  time_zone: Europe/Prague
   external_url: "https://homeassistant.int"
   internal_url: "https://homeassistant.int"
-
-# HTTP behind ingress — HA's own auth handles users; nginx-ingress in
-# front terminates TLS. trusted_proxies covers RFC1918 ranges so HA
-# accepts X-Forwarded-For from the ingress controller and logs the
-# real client IP.
-#
-# Why ::1 and 127.0.0.0/8 are in here: nginx-ingress runs inside k3d
-# but the proxy hop the HA container sees is the *host* loopback (HA
-# runs with `network_mode: host`, k3d ingress port-forwards to the host
-# 80/443, and the kernel hands the connection to localhost). Without
-# trusting the loopback HA returns 400 with
-# "Received X-Forwarded-For header from an untrusted proxy".
 http:
   use_x_forwarded_for: true
   trusted_proxies:

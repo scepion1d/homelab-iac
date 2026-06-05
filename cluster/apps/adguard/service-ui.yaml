@@ -9,10 +9,6 @@ metadata:
   namespace: dns
   labels:
     app.kubernetes.io/name: adguard
-  # Metrics are collected via the adguard-exporter sidecar app,
-  # which polls AdGuard's /control/* API and exposes Prometheus metrics.
-  # Do NOT annotate this service for direct scraping — AdGuard's HTTP
-  # endpoints require basic auth that Prometheus doesn't provide inline.
 spec:
   type: ClusterIP
   selector:

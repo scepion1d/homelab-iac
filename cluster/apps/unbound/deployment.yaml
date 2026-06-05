@@ -93,13 +93,6 @@ spec:
               mountPath: /opt/unbound/etc/unbound
             - name: unbound-ctl
               mountPath: /var/run/unbound
-        # --- Prometheus exporter sidecar ------------------------------------
-        # Built from Dockerfile.exporter (Go binary, statically linked
-        # against musl). Image is built once and imported into k3d:
-        #   docker build -t homelab-unbound-exporter:v0.6.0 -f cluster/apps/unbound/Dockerfile.exporter .
-        #   k3d image import homelab-unbound-exporter:v0.6.0 --cluster homelab
-        # No runtime downloads, no DNS dependency at startup, no
-        # glibc/musl mismatch.
         - name: exporter
           image: homelab-unbound-exporter:v0.6.0
           imagePullPolicy: Never
@@ -145,6 +138,5 @@ spec:
                 path: unbound.conf
         - name: unbound-state
           emptyDir: {}
-        # Shared between unbound (creates the socket) and exporter (reads it).
         - name: unbound-ctl
           emptyDir: {}

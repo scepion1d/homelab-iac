@@ -1,14 +1,3 @@
-# Multi-stage build: compile unbound_exporter from source, produce a
-# scratch-level image with just the static binary. No runtime
-# dependencies, no package downloads at pod start, no glibc/musl issues.
-#
-# Build:  docker build -t homelab-unbound-exporter:v0.6.0 -f Dockerfile.exporter .
-# Push:   not needed — k3d imports from the local Docker daemon.
-#
-# The image is built once by bootstrap/09-host-apps.sh (or manually)
-# and loaded into k3d via `k3d image import`. Argo CD references it
-# by the local tag; no registry needed.
-
 FROM golang:1.26-alpine AS builder
 RUN apk add --no-cache git
 ARG EXPORTER_VERSION=v0.6.0

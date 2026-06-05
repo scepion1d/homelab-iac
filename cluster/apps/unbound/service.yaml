@@ -1,9 +1,3 @@
-# ClusterIP service -- Unbound is only consumed by AdGuard inside the
-# cluster. Not exposed to the LAN (AdGuard is the user-facing layer).
-#
-# externalTrafficPolicy not relevant for ClusterIP. The pod sees the
-# real source IP via the kube-proxy IPtables hop (single-pod
-# Deployment, so no SNAT shuffling).
 apiVersion: v1
 kind: Service
 metadata:

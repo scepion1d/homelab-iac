@@ -1,5 +1,3 @@
-# k3d cluster definition for the homelab.
-# Docs: https://k3d.io/stable/usage/configfile/
 apiVersion: k3d.io/v1alpha5
 kind: Simple
 metadata:
@@ -7,16 +5,12 @@ metadata:
 servers: 1
 agents: 2
 ports:
-  # Expose HTTP/HTTPS on the host so ingress works on http://homelab
   - port: 80:80
     nodeFilters:
       - loadbalancer
   - port: 443:443
     nodeFilters:
       - loadbalancer
-  # AdGuard Home DNS resolver. Both UDP and TCP — RFC 7766 requires
-  # resolvers to support TCP (large responses, EDNS0 fallback).
-  # Bound to the Mac's LAN IP so LAN devices can use it via DHCP.
   - port: 53:53/udp
     nodeFilters:
       - loadbalancer

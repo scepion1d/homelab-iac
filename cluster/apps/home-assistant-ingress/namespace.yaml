@@ -1,5 +1,3 @@
-# Dedicated namespace so this Ingress + the ExternalName Service are
-# grouped neatly, and so the HA name doesn't squat in `default`.
 apiVersion: v1
 kind: Namespace
 metadata:

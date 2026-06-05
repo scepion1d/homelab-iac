@@ -1,8 +1,2 @@
 namespace: dns
 revision: 10
-# This app declares its hostnames explicitly in ingress.yaml (multiple
-# hosts: adguard.int, adguard.localhost, adguard.192-168-10-3.nip.io, and
-# the first-run wizard at adguard-setup.localhost). The root ApplicationSet's
-# `ingressHost` injection is therefore intentionally NOT used here — it adds
-# a single `server-alias` annotation per Ingress, which would bleed into
-# every server block (including the :3000 wizard) and produce 502s.

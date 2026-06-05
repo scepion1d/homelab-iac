@@ -1,17 +1,3 @@
-# Notification policy tree.
-#
-# Behaviour:
-#   • group_by [alertname, entity] — multiple instances of one alert
-#     collapse into one Slack card (e.g., disk-usage-warning across 3 nodes
-#     → one message, three rows).
-#   • warning  → repeat_interval 4h (re-page if still firing).
-#   • critical → repeat_interval 1h (re-page sooner; same channel split).
-#   • severity=info is silenced (no rules currently use it; route exists
-#     so future info rules drop on the floor without spamming).
-#
-# Routing model: alerts carry a `channel` label (set per rule) that maps
-# directly to the Slack channel. Critical and warning share the same
-# channel split — only repeat cadence differs.
 apiVersion: 1
 policies:
   - orgId: 1

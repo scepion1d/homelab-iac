@@ -1,10 +1,6 @@
 namespace: monitoring
 revision: 9
 
-# The root ApplicationSet injects a helm.parameter that sets `ingressHelmParam`
-# to `https://<ingressHost>.<lanDomain>`. This is what tells Grafana the
-# external URL for its share/invite links.
-# `lanDomain` lives in cluster/globals.yaml.
 ingressHost: grafana
 ingressHelmParam: 'grafana\.ini.server.root_url'
 
@@ -13,13 +9,7 @@ source:
   chart: grafana
   targetRevision: 8.5.1
   helm:
-    # `values:` accepts either a literal-block string or (as here) a normal
-    # YAML map. The root ApplicationSet converts maps to a string for Argo CD.
     values:
-      # Admin credentials come from the `grafana-admin` Secret created out of
-      # band (see README "Bootstrap" section). Without `existingSecret` the
-      # chart re-rolls a random password on every helm render → Argo CD
-      # rewrites the Secret on every sync.
       admin:
         existingSecret: grafana-admin
         userKey: admin-user
@@ -28,35 +18,28 @@ source:
       service:
         type: ClusterIP
 
-      # Sidecar watches namespace for ConfigMaps labeled `grafana_dashboard=1`
-      # and imports their JSON keys into Grafana. Dashboards live in the
-      # sibling `grafana-dashboards` app (per-folder structure).
+      persistence:
+        enabled: true
+        size: 1Gi
+
+      plugins:
+        - grafana-polystat-panel
+
       sidecar:
         dashboards:
           enabled: true
           label: grafana_dashboard
           labelValue: "1"
           searchNamespace: monitoring
-          # Read `grafana_folder` annotation on the ConfigMap and place the
-          # dashboard in that Grafana folder (auto-created).
           folderAnnotation: grafana_folder
           provider:
             foldersFromFilesStructure: true
-        # Watches namespace for ConfigMaps labeled `grafana_alert=1` and
-        # imports each `<key>.yaml` value into /etc/grafana/provisioning/
-        # alerting/. Alert rules + contact points + policies + templates +
-        # mute timings + inhibit rules live in the sibling `grafana-alerts`
-        # app.
         alerts:
           enabled: true
           label: grafana_alert
           labelValue: "1"
           searchNamespace: monitoring
 
-      # Provision the Prometheus datasource at startup (no clicking in the UI).
-      # Points at the in-cluster service from cluster/apps/prometheus/.
-      # `uid` is pinned so alert rules in `grafana-alerts` can reference
-      # it by string (alerts use datasourceUid, not name).
       datasources:
         datasources.yaml:
           apiVersion: 1
@@ -68,27 +51,14 @@ source:
               url: http://prometheus-server.monitoring.svc:80
               isDefault: true
 
-      # Mount the Slack bot token from out-of-band Secret `grafana-slack`
-      # (key `token`) as env `SLACK_BOT_TOKEN`. The Slack contact points in
-      # `grafana-alerts/notifications/contact-points.yaml` reference it as
-      # `$SLACK_BOT_TOKEN` so the token never lives in Git.
-      # Bootstrap: set GRAFANA_SLACK_BOT_TOKEN in bootstrap/.env and run
-      # `./bootstrap/06-cluster-secrets.sh`. Without the Secret this pod
-      # CrashLoops (envValueFrom requires its source to exist).
       envValueFrom:
         SLACK_BOT_TOKEN:
           secretKeyRef:
             name: grafana-slack
             key: token
 
-      # root_url is set via helm.parameters by the root ApplicationSet —
-      # see ingressHost / ingressHelmParam above.
       "grafana.ini":
         server:
           serve_from_sub_path: false
         dashboards:
-          # Each dashboard ConfigMap in cluster/apps/grafana-dashboards/
-          # uses `<name>.json=dashboard.json` so the sidecar writes them to
-          #   /tmp/dashboards/<name>.json
-          # Point home at the homelab overview file.
           default_home_dashboard_path: /tmp/dashboards/homelab.json

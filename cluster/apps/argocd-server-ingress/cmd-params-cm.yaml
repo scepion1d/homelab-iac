@@ -1,9 +1,3 @@
-# Tell argocd-server to serve plain HTTP (TLS terminates at the ingress).
-# Without this, argocd-server tries to do its own TLS and nginx ends up
-# double-wrapping → "TLS handshake error" loops.
-#
-# The argocd-cmd-params-cm ConfigMap ships empty from the upstream install,
-# so server-side apply here just takes ownership of the `data` field.
 apiVersion: v1
 kind: ConfigMap
 metadata:

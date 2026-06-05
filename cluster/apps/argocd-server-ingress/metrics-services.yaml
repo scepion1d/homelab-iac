@@ -1,6 +1,3 @@
-# Annotate the installer-owned Argo CD metrics Services so Prometheus'
-# kubernetes-service-endpoints job scrapes them. ServerSideApply lets our
-# field manager claim only annotations, leaving spec/ports to the installer.
 apiVersion: v1
 kind: Service
 metadata:

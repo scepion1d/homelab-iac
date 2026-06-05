@@ -1,4 +1,3 @@
-# Grafana ingress. LAN host injected by root ApplicationSet.
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:

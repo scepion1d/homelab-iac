@@ -1,8 +1,3 @@
-# Mute timings. Quiet hours are user-managed in Slack (channel-side mute /
-# notification schedule). Grafana-side mute timings stay empty intentionally.
-#
-# The notification policy in policies.yaml references `always` for the
-# severity=info silencing route, so that one mute time is defined here.
 apiVersion: 1
 muteTimes:
   - orgId: 1

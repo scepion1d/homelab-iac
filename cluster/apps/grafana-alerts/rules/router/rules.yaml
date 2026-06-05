@@ -1,9 +1,3 @@
-# Grafana managed alert rules — router entity.
-# Folder: Router Alerts
-# Group: router.homelab (eval every 1m)
-# Source exporter: mktxp (https://github.com/akpw/mktxp)
-#
-# Rule shape identical to cluster/rules.yaml; see header there.
 apiVersion: 1
 groups:
   - orgId: 1
@@ -71,7 +65,7 @@ groups:
               refId: A
               instant: true
               editorMode: code
-              expr: 'count(mktxp_dhcp_lease_info{active_address!="",comment=~"(?i).*quarantine.*"})'
+              expr: 'count by (routerboard_name) (mktxp_dhcp_lease_info{comment=""}) or vector(0)'
           - refId: B
             datasourceUid: __expr__
             relativeTimeRange: {from: 0, to: 0}

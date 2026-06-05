@@ -1,5 +1,3 @@
-# Prometheus ingress. LAN host injected by root ApplicationSet.
-# NOTE: Prometheus has no auth — keep on the LAN.
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:

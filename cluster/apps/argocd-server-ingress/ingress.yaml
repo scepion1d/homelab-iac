@@ -1,22 +1,12 @@
-# Argo CD ingress. The LAN host (server-alias + tls entry) is injected by
-# the root ApplicationSet from `ingressHost` + `lanDomain`.
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
   name: argocd-server
   namespace: argocd
   annotations:
-    # argocd-server insists on HTTPS: hitting port 80 returns a 308 to
-    # the same path on 443. If nginx proxies that 308 to the client we
-    # loop forever ("stopped after 10 redirects"). Talk HTTPS to the
-    # backend directly; argocd-server's self-signed cert is fine since
-    # nginx skips upstream verification by default.
     nginx.ingress.kubernetes.io/backend-protocol: "HTTPS"
     nginx.ingress.kubernetes.io/ssl-redirect: "true"
     nginx.ingress.kubernetes.io/force-ssl-redirect: "true"
-    # argocd CLI uses HTTP/2 + gRPC over the same hostname; nginx-
-    # ingress proxies gRPC automatically when backend-protocol is
-    # set to HTTPS and the client negotiates h2.
     cert-manager.io/cluster-issuer: homelab-ca
 spec:
   ingressClassName: nginx

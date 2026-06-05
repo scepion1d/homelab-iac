@@ -1,12 +1,3 @@
-# Home Assistant ingress. LAN host (`homeassistant.int`) is injected by
-# the root ApplicationSet as a server-alias + tls.hosts entry — see
-# _appset.yaml::ingressHost.
-#
-# Backend is the ExternalName Service in service.yaml, which itself
-# resolves to the host machine. WebSocket / long-poll annotations are
-# present because HA's UI relies on long-lived /api/websocket streams;
-# without them nginx kills the connection at the default 60s and the UI
-# silently freezes.
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
@@ -16,14 +7,9 @@ metadata:
     nginx.ingress.kubernetes.io/ssl-redirect: "true"
     nginx.ingress.kubernetes.io/force-ssl-redirect: "true"
     cert-manager.io/cluster-issuer: homelab-ca
-    # HA listens plain HTTP on 8123; nginx terminates TLS in front.
     nginx.ingress.kubernetes.io/backend-protocol: "HTTP"
-    # HA UI uses /api/websocket and the file-edit endpoint streams large
-    # responses. 1h covers idle WS sessions and slow YAML reloads.
     nginx.ingress.kubernetes.io/proxy-read-timeout: "3600"
     nginx.ingress.kubernetes.io/proxy-send-timeout: "3600"
-    # The pod may legitimately stream large state snapshots on first
-    # connect; raise the default 1m client-body window.
     nginx.ingress.kubernetes.io/proxy-body-size: "16m"
 spec:
   ingressClassName: nginx

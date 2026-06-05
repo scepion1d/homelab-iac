@@ -1,6 +1,3 @@
-# AdGuard DNS config. Applied by bootstrap/steps/07-adguard-setup.sh.
-# Edit + re-run step 07 to apply. Blocklists are in blocklists.yaml.
-
 upstream_dns:
   - "[/int/]192.168.10.1"      # MikroTik — LAN static records
   - "10.43.10.43"              # Unbound recursive (pinned ClusterIP)

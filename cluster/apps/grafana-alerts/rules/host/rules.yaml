@@ -1,15 +1,3 @@
-# Grafana managed alert rules — host entity (the macOS machine running Colima + k3d).
-# Folder: Host
-# Group: host.homelab (eval every 1m)
-# Source exporters:
-#   - node_exporter darwin build         (host LAN port 9100 via Colima vmnet)
-#   - bootstrap/mac-extras.sh textfile   (collected into /usr/local/var/mac-exporter)
-#
-# Channel routing (per notifications/policies.yaml):
-#   - infra   — hardware-class signals (temperature, fan, AC, SMART, disk).
-#   - cluster — in-cluster meta-failure (mac-exporter blind from k3d's side).
-#
-# Rule shape mirrors cluster/rules.yaml — see header there.
 apiVersion: 1
 groups:
   - orgId: 1

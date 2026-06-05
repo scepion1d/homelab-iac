@@ -1,22 +1,3 @@
-# ExternalName Service: a pure DNS alias from inside the cluster to a
-# name outside the cluster. nginx-ingress treats it as any other upstream
-# Service but the DNS lookup at request time resolves to the host LAN
-# address, so traffic actually flows out of k3d back to the Mac running
-# the Home Assistant container (which uses `network_mode: host`).
-#
-# Why a hostname, not an IP:
-#   `host.docker.internal` is provided by Colima/Docker Desktop and
-#   resolves to the host machine's bridge address from inside containers
-#   running on the Docker network — including k3d's nodes. That insulates
-#   us from the Mac's LAN DHCP address ever changing; if it does, only
-#   `host/globals.yaml` needs touching.
-#
-# Caveat: kube-dns / CoreDNS in k3d may NOT recognize
-# `host.docker.internal` — it's a Docker-network construct, not a real
-# DNS name. If pods can't resolve it, the fallback is to hardcode the
-# host LAN IP (e.g. 192.168.10.5) here. Verify after first deploy with:
-#   kubectl -n home-assistant run -it --rm dnstest --image=busybox \
-#     --restart=Never -- nslookup home-assistant-host
 apiVersion: v1
 kind: Service
 metadata:

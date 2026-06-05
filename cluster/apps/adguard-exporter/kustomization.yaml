@@ -1,11 +1,3 @@
-# adguard-exporter — Prometheus exporter for AdGuard Home.
-#
-# Polls AdGuard's /control/stats, /control/status, and /control/querylog
-# endpoints using basic auth and exposes them as Prometheus metrics on :9617.
-#
-# Credentials live in a Secret named `adguard-credentials` that must be
-# created out-of-band (see bootstrap/06-cluster-secrets.sh). The pod will
-# CrashLoopBackOff until the Secret exists.
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 namespace: dns

@@ -1,6 +1,3 @@
-# Top-level Kustomization for the grafana-alerts app. Pulls in the two
-# sub-trees that generate the actual ConfigMaps consumed by the Grafana
-# sidecar.
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 namespace: monitoring

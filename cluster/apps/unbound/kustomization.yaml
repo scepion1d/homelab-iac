@@ -1,5 +1,3 @@
-# Kustomize entrypoint for the Unbound recursive resolver.
-# See _appset.yaml for design rationale and overall data flow.
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 namespace: dns
@@ -8,20 +6,9 @@ resources:
   - deployment.yaml
   - service.yaml
   - service-exporter.yaml
-
-# Generate the unbound-config ConfigMap with a content-hash suffix on
-# its name. Editing unbound.conf changes the generated name, which
-# changes the Deployment's volume reference, which makes Argo CD roll
-# the pod. Edit + git push = restart, with no manual `kubectl rollout
-# restart` step.
 configMapGenerator:
   - name: unbound-config
     files:
       - unbound.conf
-
-# The Deployment's volume references the generator output by base name
-# (`unbound-config`); kustomize fixes up the reference to include the
-# hash suffix automatically. Disabling the suffix would defeat the
-# whole roll-on-config-change story.
 generatorOptions:
   disableNameSuffixHash: false
