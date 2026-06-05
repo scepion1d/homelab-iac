@@ -34,11 +34,17 @@ source:
           folderAnnotation: grafana_folder
           provider:
             foldersFromFilesStructure: true
+            allowUiUpdates: false
+            updateIntervalSeconds: 30
         alerts:
           enabled: true
           label: grafana_alert
           labelValue: "1"
           searchNamespace: monitoring
+          provider:
+            foldersFromFilesStructure: true
+            allowUiUpdates: false
+            updateIntervalSeconds: 30
 
       datasources:
         datasources.yaml:
