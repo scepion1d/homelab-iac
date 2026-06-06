@@ -1,30 +1,24 @@
 namespace: monitoring
-revision: 9
-
+revision: 10
 ingressHost: grafana
 ingressHelmParam: 'grafana\.ini.server.root_url'
-
 source:
-  repoURL: https://grafana.github.io/helm-charts
+  repoURL: https://grafana-community.github.io/helm-charts
   chart: grafana
-  targetRevision: 8.5.1
+  targetRevision: 12.4.2
   helm:
     values:
       admin:
         existingSecret: grafana-admin
         userKey: admin-user
         passwordKey: admin-password
-
       service:
         type: ClusterIP
-
       persistence:
         enabled: true
-        size: 1Gi
-
+        size: 128Mi
       plugins:
         - grafana-polystat-panel
-
       sidecar:
         dashboards:
           enabled: true
@@ -32,20 +26,22 @@ source:
           labelValue: "1"
           searchNamespace: monitoring
           folderAnnotation: grafana_folder
+          watchMethod: WATCH
+          resource: both
+          reloadURL: "http://localhost:3000/api/admin/provisioning/dashboards/reload"
           provider:
             foldersFromFilesStructure: true
             allowUiUpdates: false
-            updateIntervalSeconds: 30
         alerts:
           enabled: true
           label: grafana_alert
           labelValue: "1"
           searchNamespace: monitoring
-          provider:
-            foldersFromFilesStructure: true
-            allowUiUpdates: false
-            updateIntervalSeconds: 30
-
+          watchMethod: WATCH
+          resource: both
+          reloadURL: "http://localhost:3000/api/admin/provisioning/alerting/reload"
+      imageRenderer:
+        enabled: true
       datasources:
         datasources.yaml:
           apiVersion: 1
@@ -56,15 +52,15 @@ source:
               access: proxy
               url: http://prometheus-server.monitoring.svc:80
               isDefault: true
-
       envValueFrom:
         SLACK_BOT_TOKEN:
           secretKeyRef:
             name: grafana-slack
             key: token
-
       "grafana.ini":
         server:
           serve_from_sub_path: false
         dashboards:
           default_home_dashboard_path: /tmp/dashboards/homelab.json
+        unified_alerting.screenshots:
+          capture: true
