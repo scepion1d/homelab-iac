@@ -15,4 +15,4 @@ configMapGenerator:
         # Sidecar (folderAnnotation: grafana_folder in cluster/apps/grafana/_appset.yaml)
         # places this dashboard inside the matching Grafana folder, alongside
         # the alert rules from grafana-alerts/rules/host/.
-        grafana_folder: Host
+        grafana_folder: Infra

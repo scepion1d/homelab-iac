@@ -6,7 +6,7 @@ resources:
   # Keep this list sorted alphabetically.
   - dashboards/adguard
   - dashboards/cluster
-  - dashboards/dns
   - dashboards/homelab
   - dashboards/host
   - dashboards/router
+  - dashboards/unbound

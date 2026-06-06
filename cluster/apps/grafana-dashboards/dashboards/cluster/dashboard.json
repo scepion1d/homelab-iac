@@ -1,5 +1,5 @@
 {
-  "title": "Cluster Overview",
+  "title": "Cluster",
   "uid": "cluster-overview",
   "tags": ["k8s", "cluster", "host"],
   "schemaVersion": 39,

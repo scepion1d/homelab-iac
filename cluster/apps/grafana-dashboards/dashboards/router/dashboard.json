@@ -1,7 +1,7 @@
 {
-  "title": "Router Overview",
+  "title": "Router",
   "uid": "router-overview",
-  "tags": ["mikrotik", "network"],
+  "tags": ["infra", "network"],
   "schemaVersion": 39,
   "timezone": "",
   "editable": true,

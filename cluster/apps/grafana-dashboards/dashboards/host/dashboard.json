@@ -1,7 +1,7 @@
 {
-  "title": "Host Overview",
+  "title": "Host",
   "uid": "host-overview",
-  "tags": ["mac", "host", "node-exporter", "mac-extras"],
+  "tags": ["infra", "host"],
   "schemaVersion": 39,
   "timezone": "",
   "editable": true,

@@ -1,11 +1,11 @@
 namespace: monitoring
-revision: 10
+revision: 11
 ingressHost: grafana
 ingressHelmParam: 'grafana\.ini.server.root_url'
 source:
   repoURL: https://grafana-community.github.io/helm-charts
   chart: grafana
-  targetRevision: 12.4.2
+  targetRevision: 11.6.1
   helm:
     values:
       admin:
