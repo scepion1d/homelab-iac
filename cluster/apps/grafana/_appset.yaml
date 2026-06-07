@@ -1,5 +1,5 @@
 namespace: monitoring
-revision: 11
+revision: 12
 ingressHost: grafana
 ingressHelmParam: 'grafana\.ini.server.root_url'
 source:
@@ -17,6 +17,15 @@ source:
       persistence:
         enabled: true
         size: 128Mi
+        accessModes:
+          - ReadWriteOnce
+      initChownData:
+        enabled: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 472
+        runAsGroup: 472
+        fsGroup: 472
       plugins:
         - grafana-polystat-panel
       sidecar:
