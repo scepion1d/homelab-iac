@@ -187,8 +187,7 @@
                 },
                 "tooltip": {
                     "hideZeros": false,
-                    "hoverProximity": 5,
-                    "mode": "multi",
+                    "mode": "all",
                     "sort": "none"
                 }
             },
@@ -332,8 +331,7 @@
                 },
                 "tooltip": {
                     "hideZeros": false,
-                    "hoverProximity": 5,
-                    "mode": "single",
+                    "mode": "all",
                     "sort": "none"
                 }
             },
@@ -555,8 +553,7 @@
                 },
                 "tooltip": {
                     "hideZeros": false,
-                    "hoverProximity": 5,
-                    "mode": "multi",
+                    "mode": "all",
                     "sort": "none"
                 }
             },
@@ -790,7 +787,7 @@
                 },
                 "tooltip": {
                     "hideZeros": false,
-                    "mode": "single",
+                    "mode": "all",
                     "sort": "none"
                 }
             },
@@ -1381,21 +1378,31 @@
                             "multiLane": false
                         },
                         "calculate": false,
-                        "cellGap": 1,
+                        "calculation": {
+                            "yBuckets": {
+                                "scale": {
+                                    "type": "linear"
+                                }
+                            }
+                        },
+                        "cellGap": 0,
+                        "cellValues": {
+                            "decimals": 0
+                        },
                         "color": {
                             "exponent": 0.5,
                             "fill": "dark-orange",
                             "mode": "scheme",
                             "reverse": false,
                             "scale": "exponential",
-                            "scheme": "Warm",
+                            "scheme": "YlOrRd",
                             "steps": 128
                         },
                         "exemplars": {
                             "color": "rgba(255,0,255,0.7)"
                         },
                         "filterValues": {
-                            "le": 1E-09
+                            "le": 0
                         },
                         "legend": {
                             "show": true
@@ -1404,7 +1411,7 @@
                             "layout": "auto"
                         },
                         "tooltip": {
-                            "mode": "single",
+                            "mode": "multi",
                             "showColorScale": false,
                             "yHistogram": false
                         },
@@ -1422,7 +1429,7 @@
                             },
                             "editorMode": "code",
                             "exemplar": false,
-                            "expr": "sum(increase(adguard_query_type_total[$__rate_interval])) by (type)",
+                            "expr": "sum(\n  increase(adguard_query_type_total[$__rate_interval])\n  or (\n    label_replace(vector(0.01), \"type\", \"A\", \"\", \"\")\n    or label_replace(vector(0.01), \"type\", \"AAAA\", \"\", \"\")\n    or label_replace(vector(0.01), \"type\", \"CAA\", \"\", \"\")\n    or label_replace(vector(0.01), \"type\", \"CNAME\", \"\", \"\")\n    or label_replace(vector(0.01), \"type\", \"HTTPS\", \"\", \"\")\n    or label_replace(vector(0.01), \"type\", \"MX\", \"\", \"\")\n    or label_replace(vector(0.01), \"type\", \"NS\", \"\", \"\")\n    or label_replace(vector(0.01), \"type\", \"PTR\", \"\", \"\")\n    or label_replace(vector(0.01), \"type\", \"SOA\", \"\", \"\")\n    or label_replace(vector(0.01), \"type\", \"SRV\", \"\", \"\")\n    or label_replace(vector(0.01), \"type\", \"TXT\", \"\", \"\")\n  )\n) by (type)",
                             "format": "time_series",
                             "instant": false,
                             "interval": "",
@@ -1528,8 +1535,8 @@
                         },
                         "tooltip": {
                             "hideZeros": false,
-                            "mode": "multi",
-                            "sort": "desc"
+                            "mode": "all",
+                            "sort": "none"
                         }
                     },
                     "pluginVersion": "12.4.3",
@@ -1823,7 +1830,7 @@
                 },
                 "tooltip": {
                     "hideZeros": false,
-                    "mode": "single",
+                    "mode": "all",
                     "sort": "none"
                 }
             },
@@ -1940,7 +1947,7 @@
                 },
                 "tooltip": {
                     "hideZeros": false,
-                    "mode": "single",
+                    "mode": "all",
                     "sort": "none"
                 }
             },
@@ -2099,9 +2106,9 @@
                     "showLegend": false
                 },
                 "tooltip": {
-                    "hideZeros": true,
-                    "mode": "multi",
-                    "sort": "desc"
+                    "hideZeros": false,
+                    "mode": "all",
+                    "sort": "none"
                 }
             },
             "pluginVersion": "12.4.3"
@@ -2275,8 +2282,8 @@
                 },
                 "tooltip": {
                     "hideZeros": false,
-                    "mode": "multi",
-                    "sort": "asc"
+                    "mode": "all",
+                    "sort": "none"
                 }
             },
             "pluginVersion": "12.4.3"
@@ -2417,7 +2424,7 @@
                 },
                 "tooltip": {
                     "hideZeros": false,
-                    "mode": "multi",
+                    "mode": "all",
                     "sort": "none"
                 }
             },
@@ -2537,7 +2544,7 @@
                 },
                 "tooltip": {
                     "hideZeros": false,
-                    "mode": "single",
+                    "mode": "all",
                     "sort": "none"
                 }
             },
@@ -2677,7 +2684,7 @@
                 },
                 "tooltip": {
                     "hideZeros": false,
-                    "mode": "multi",
+                    "mode": "all",
                     "sort": "none"
                 }
             },
@@ -2917,8 +2924,8 @@
                 },
                 "tooltip": {
                     "hideZeros": false,
-                    "mode": "multi",
-                    "sort": "desc"
+                    "mode": "all",
+                    "sort": "none"
                 }
             },
             "pluginVersion": "12.4.3"
