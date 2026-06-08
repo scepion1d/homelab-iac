@@ -64,6 +64,14 @@ groups:
               instant: true
               editorMode: code
               expr: 'count(mktxp_capsman_clients_devices_info{dhcp_address="No DHCP Record"}) or vector(0)'
+          - refId: C
+            datasourceUid: prometheus
+            relativeTimeRange: {from: 600, to: 0}
+            model:
+              refId: C
+              instant: true
+              editorMode: code
+              expr: 'mktxp_capsman_clients_devices_info{dhcp_address="No DHCP Record"}'
           - refId: B
             datasourceUid: __expr__
             relativeTimeRange: {from: 0, to: 0}
@@ -78,10 +86,10 @@ groups:
           component: dhcp
           channel: network
         annotations:
-          summary: '{{ printf "%.0f" $values.A.Value }} quarantined DHCP lease(s) active'
-          description: 'RouterOS has active lease(s) tagged as quarantined. Verify intentional.'
-          dashboard_url: 'https://grafana.int/d/homelab-overview/home-lab?viewPanel=4'
-          value_label: 'leases'
+          summary: '{{ printf "%.0f" $values.A.Value }} quarantined device(s) on WiFi'
+          description: "Unknown device(s) connected to CAPsMAN without a static DHCP lease.\n{{ range $k, $v := $values }}{{ if and (ne $k \"A\") (ne $k \"B\") }}\n`{{ $v.Labels.mac_address }}`  SSID={{ $v.Labels.ssid }}  IF={{ $v.Labels.interface }}{{ end }}{{ end }}\n\nCheck: https://grafana.int/d/router-overview"
+          dashboard_url: 'https://grafana.int/d/router-overview'
+          value_label: 'devices'
         isPaused: false
 
       # ─────────────────────────────────────────────────────────────────────
