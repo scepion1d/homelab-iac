@@ -532,7 +532,7 @@
             },
             "targets": [
                 {
-                    "expr": "count(mktxp_dhcp_lease_info{active_address=~\"192\\\\.168\\\\.(10|20)\\\\.25[0-4]\"}) or vector(0)",
+                    "expr": "count(mktxp_capsman_clients_devices_info{dhcp_address=\"No DHCP Record\"}) or vector(0)",
                     "refId": "A",
                     "instant": true
                 }
@@ -540,8 +540,20 @@
             "fieldConfig": {
                 "defaults": {
                     "color": {
-                        "fixedColor": "purple",
-                        "mode": "fixed"
+                        "mode": "thresholds"
+                    },
+                    "thresholds": {
+                        "mode": "absolute",
+                        "steps": [
+                            {
+                                "color": "light-green",
+                                "value": null
+                            },
+                            {
+                                "color": "light-red",
+                                "value": 1
+                            }
+                        ]
                     },
                     "unit": "short"
                 }

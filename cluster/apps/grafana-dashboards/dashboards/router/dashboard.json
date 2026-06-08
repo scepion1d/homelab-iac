@@ -115,29 +115,14 @@
             },
             "targets": [
                 {
-                    "expr": "count(mktxp_dhcp_lease_info{active_address=~\"192\\\\.168\\\\.(10|20)\\\\.25[0-4]\"}) or vector(0)",
+                    "expr": "count(mktxp_capsman_clients_devices_info{dhcp_address=\"No DHCP Record\"}) or vector(0)",
                     "refId": "A",
                     "instant": true,
-                    "format": "table",
                     "datasource": {
                         "type": "prometheus",
                         "uid": "prometheus"
                     },
                     "editorMode": "code"
-                }
-            ],
-            "transformations": [
-                {
-                    "id": "labelsToFields",
-                    "options": {}
-                },
-                {
-                    "id": "filterFieldsByName",
-                    "options": {
-                        "include": {
-                            "names": "current_firmware,upgrade_firmware,firmware_type"
-                        }
-                    }
                 }
             ],
             "fieldConfig": {
@@ -147,15 +132,11 @@
                         "mode": "absolute",
                         "steps": [
                             {
-                                "color": "green",
+                                "color": "light-green",
                                 "value": null
                             },
                             {
-                                "color": "green",
-                                "value": 0
-                            },
-                            {
-                                "color": "red",
+                                "color": "light-red",
                                 "value": 1
                             }
                         ]

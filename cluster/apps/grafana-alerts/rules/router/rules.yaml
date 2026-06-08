@@ -48,8 +48,7 @@ groups:
         isPaused: false
 
       # ─────────────────────────────────────────────────────────────────────
-      # Quarantine = dynamic lease in .250-.254 range (pool iac.pool.*.quarantine)
-      # See mikrotik-iac/src/vars.yaml: intQuarantineRange, iotQuarantineRange
+      # Quarantine = CAPsMAN client without a static DHCP lease
       - uid: router-dhcp-quarantined-lease
         title: router-dhcp-quarantined-lease
         condition: B
@@ -64,7 +63,7 @@ groups:
               refId: A
               instant: true
               editorMode: code
-              expr: 'count(mktxp_dhcp_lease_info{active_address=~"192\\.168\\.(10|20)\\.25[0-4]"}) or vector(0)'
+              expr: 'count(mktxp_capsman_clients_devices_info{dhcp_address="No DHCP Record"}) or vector(0)'
           - refId: B
             datasourceUid: __expr__
             relativeTimeRange: {from: 0, to: 0}
