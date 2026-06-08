@@ -115,7 +115,7 @@
             },
             "targets": [
                 {
-                    "expr": "count by (routerboard_name) (mktxp_dhcp_lease_info{comment=\"\"}) or vector(0)",
+                    "expr": "count(mktxp_dhcp_lease_info{active_address=~\"192\\\\.168\\\\.(10|20)\\\\.25[0-4]\"}) or vector(0)",
                     "refId": "A",
                     "instant": true,
                     "format": "table",

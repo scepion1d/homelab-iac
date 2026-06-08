@@ -532,7 +532,7 @@
             },
             "targets": [
                 {
-                    "expr": "count(mktxp_dhcp_lease_info{active_address!=\"\", comment=~\"(?i).*quarantine.*\"}) or vector(0)",
+                    "expr": "count(mktxp_dhcp_lease_info{active_address=~\"192\\\\.168\\\\.(10|20)\\\\.25[0-4]\"}) or vector(0)",
                     "refId": "A",
                     "instant": true
                 }
@@ -788,16 +788,19 @@
             },
             "targets": [
                 {
-                    "expr": "label_replace(mktxp_dhcp_lease_info{active_address!=\"\",comment=~\".+\"}, \"static\", \"✓\", \"comment\", \".+\") or label_replace(mktxp_dhcp_lease_info{active_address!=\"\",comment!~\".+\"}, \"static\", \"\", \"comment\", \".*\")",
+                    "expr": "label_replace(\n  mktxp_capsman_clients_devices_info{dhcp_address!=\"No DHCP Record\"},\n  \"static\", \"✓\", \"dhcp_address\", \".+\"\n)\nor\nlabel_replace(\n  mktxp_capsman_clients_devices_info{dhcp_address=\"No DHCP Record\"},\n  \"static\", \"✗\", \"dhcp_address\", \".*\"\n)",
                     "refId": "A",
                     "instant": true,
-                    "format": "table"
+                    "format": "table",
+                    "editorMode": "code"
                 }
             ],
             "transformations": [
                 {
                     "id": "labelsToFields",
-                    "options": {}
+                    "options": {
+                        "mode": "columns"
+                    }
                 },
                 {
                     "id": "organize",
@@ -812,6 +815,7 @@
                             "container": true,
                             "endpoint": true,
                             "instance": true,
+                            "interface": true,
                             "job": true,
                             "kubernetes_name": true,
                             "kubernetes_namespace": true,
@@ -821,40 +825,89 @@
                             "pod": true,
                             "routerboard_address": true,
                             "routerboard_name": true,
+                            "rx_rate": true,
+                            "rx_signal": true,
                             "service": true,
                             "Time": true,
+                            "tx_rate": true,
                             "Value": true
                         },
                         "indexByName": {
-                            "active_address": 2,
-                            "host_name": 1,
-                            "mac_address": 3,
-                            "server": 4,
-                            "static": 0
+                            "dhcp_address": 3,
+                            "dhcp_name": 9,
+                            "mac_address": 2,
+                            "ssid": 1,
+                            "static": 0,
+                            "uptime": 4
                         },
                         "renameByName": {
-                            "active_address": "Active IP",
-                            "host_name": "Hostname",
+                            "dhcp_address": "IP",
                             "mac_address": "MAC",
-                            "server": "DHCP server / iface",
-                            "static": "Static"
+                            "ssid": "SSID",
+                            "static": "Static",
+                            "uptime": "Uptime"
                         }
+                    }
+                },
+                {
+                    "id": "sortBy",
+                    "options": {
+                        "fields": {},
+                        "sort": [
+                            {
+                                "desc": true,
+                                "field": "Static"
+                            }
+                        ]
                     }
                 }
             ],
             "fieldConfig": {
                 "defaults": {
                     "custom": {
-                        "align": "left"
+                        "align": "left",
+                        "cellOptions": {
+                            "type": "auto"
+                        },
+                        "footer": {
+                            "reducers": []
+                        }
                     }
-                }
+                },
+                "overrides": [
+                    {
+                        "matcher": {
+                            "id": "byName",
+                            "options": "dhcp_name"
+                        },
+                        "properties": [
+                            {
+                                "id": "custom.width",
+                                "value": 170
+                            }
+                        ]
+                    },
+                    {
+                        "matcher": {
+                            "id": "byName",
+                            "options": "Static"
+                        },
+                        "properties": [
+                            {
+                                "id": "custom.width",
+                                "value": 55
+                            }
+                        ]
+                    }
+                ]
             },
             "options": {
+                "cellHeight": "sm",
                 "showHeader": true,
                 "sortBy": [
                     {
-                        "desc": false,
-                        "displayName": "Static"
+                        "desc": true,
+                        "displayName": "dhcp_address"
                     }
                 ]
             }

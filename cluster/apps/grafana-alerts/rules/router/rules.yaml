@@ -48,9 +48,8 @@ groups:
         isPaused: false
 
       # ─────────────────────────────────────────────────────────────────────
-      # No first-class "quarantined" metric — convention is to mark leases
-      # via the DHCP comment field on the RouterOS side. This matches the
-      # Homelab dashboard's "Quarantined leases" tile.
+      # Quarantine = dynamic lease in .250-.254 range (pool iac.pool.*.quarantine)
+      # See mikrotik-iac/src/vars.yaml: intQuarantineRange, iotQuarantineRange
       - uid: router-dhcp-quarantined-lease
         title: router-dhcp-quarantined-lease
         condition: B
@@ -65,7 +64,7 @@ groups:
               refId: A
               instant: true
               editorMode: code
-              expr: 'count by (routerboard_name) (mktxp_dhcp_lease_info{comment=""}) or vector(0)'
+              expr: 'count(mktxp_dhcp_lease_info{active_address=~"192\\.168\\.(10|20)\\.25[0-4]"}) or vector(0)'
           - refId: B
             datasourceUid: __expr__
             relativeTimeRange: {from: 0, to: 0}
