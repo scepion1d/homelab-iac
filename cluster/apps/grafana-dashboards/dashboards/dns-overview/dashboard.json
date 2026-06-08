@@ -10,11 +10,12 @@
     "schemaVersion": 42,
     "timezone": "browser",
     "editable": true,
-    "graphTooltip": 0,
+    "graphTooltip": 1,
     "time": {
         "from": "now-1h",
         "to": "now"
     },
+    "refresh": "30s",
     "templating": {
         "list": []
     },
@@ -1758,9 +1759,9 @@
                         "axisLabel": "",
                         "axisPlacement": "auto",
                         "barAlignment": 0,
-                        "barWidthFactor": 0.6,
-                        "drawStyle": "line",
-                        "fillOpacity": 0,
+                        "barWidthFactor": 0.5,
+                        "drawStyle": "bars",
+                        "fillOpacity": 30,
                         "gradientMode": "none",
                         "hideFrom": {
                             "legend": false,
@@ -1769,7 +1770,7 @@
                         },
                         "insertNulls": false,
                         "lineInterpolation": "linear",
-                        "lineWidth": 2,
+                        "lineWidth": 1,
                         "pointSize": 5,
                         "scaleDistribution": {
                             "log": 2,
@@ -1875,9 +1876,9 @@
                         "axisLabel": "",
                         "axisPlacement": "auto",
                         "barAlignment": 0,
-                        "barWidthFactor": 0.6,
-                        "drawStyle": "line",
-                        "fillOpacity": 0,
+                        "barWidthFactor": 0.5,
+                        "drawStyle": "bars",
+                        "fillOpacity": 30,
                         "gradientMode": "none",
                         "hideFrom": {
                             "legend": false,
@@ -1886,7 +1887,7 @@
                         },
                         "insertNulls": false,
                         "lineInterpolation": "linear",
-                        "lineWidth": 2,
+                        "lineWidth": 1,
                         "pointSize": 5,
                         "scaleDistribution": {
                             "log": 2,
@@ -1993,9 +1994,9 @@
                         "axisLabel": "",
                         "axisPlacement": "auto",
                         "barAlignment": 0,
-                        "barWidthFactor": 0.6,
-                        "drawStyle": "line",
-                        "fillOpacity": 0,
+                        "barWidthFactor": 0.5,
+                        "drawStyle": "bars",
+                        "fillOpacity": 30,
                         "gradientMode": "none",
                         "hideFrom": {
                             "legend": false,
@@ -2007,7 +2008,7 @@
                         "lineStyle": {
                             "fill": "solid"
                         },
-                        "lineWidth": 2,
+                        "lineWidth": 1,
                         "pointSize": 5,
                         "scaleDistribution": {
                             "type": "linear"
@@ -2154,9 +2155,9 @@
                         "axisLabel": "",
                         "axisPlacement": "auto",
                         "barAlignment": 1,
-                        "barWidthFactor": 0.3,
-                        "drawStyle": "line",
-                        "fillOpacity": 0,
+                        "barWidthFactor": 0.5,
+                        "drawStyle": "bars",
+                        "fillOpacity": 30,
                         "gradientMode": "none",
                         "hideFrom": {
                             "legend": false,
@@ -2165,7 +2166,7 @@
                         },
                         "insertNulls": false,
                         "lineInterpolation": "linear",
-                        "lineWidth": 2,
+                        "lineWidth": 1,
                         "pointSize": 5,
                         "scaleDistribution": {
                             "log": 2,
@@ -2600,9 +2601,9 @@
                         "axisLabel": "",
                         "axisPlacement": "auto",
                         "barAlignment": 0,
-                        "barWidthFactor": 0.6,
-                        "drawStyle": "line",
-                        "fillOpacity": 0,
+                        "barWidthFactor": 0.5,
+                        "drawStyle": "bars",
+                        "fillOpacity": 30,
                         "gradientMode": "none",
                         "hideFrom": {
                             "legend": false,
@@ -2611,7 +2612,7 @@
                         },
                         "insertNulls": false,
                         "lineInterpolation": "linear",
-                        "lineWidth": 2,
+                        "lineWidth": 1,
                         "pointSize": 5,
                         "scaleDistribution": {
                             "type": "linear"
@@ -2773,9 +2774,9 @@
                         "axisLabel": "",
                         "axisPlacement": "auto",
                         "barAlignment": 0,
-                        "barWidthFactor": 0.6,
-                        "drawStyle": "line",
-                        "fillOpacity": 40,
+                        "barWidthFactor": 0.5,
+                        "drawStyle": "bars",
+                        "fillOpacity": 30,
                         "gradientMode": "none",
                         "hideFrom": {
                             "legend": false,
@@ -2784,7 +2785,7 @@
                         },
                         "insertNulls": false,
                         "lineInterpolation": "smooth",
-                        "lineWidth": 2,
+                        "lineWidth": 1,
                         "pointSize": 5,
                         "scaleDistribution": {
                             "type": "linear"
@@ -2836,7 +2837,7 @@
                             {
                                 "id": "color",
                                 "value": {
-                                    "fixedColor": "light-blue",
+                                    "fixedColor": "light-green",
                                     "mode": "fixed"
                                 }
                             }
@@ -2852,7 +2853,7 @@
                             {
                                 "id": "color",
                                 "value": {
-                                    "fixedColor": "light-green",
+                                    "fixedColor": "light-yellow",
                                     "mode": "fixed"
                                 }
                             }
@@ -2868,7 +2869,7 @@
                             {
                                 "id": "color",
                                 "value": {
-                                    "fixedColor": "super-light-yellow",
+                                    "fixedColor": "light-orange",
                                     "mode": "fixed"
                                 }
                             }
@@ -2884,7 +2885,7 @@
                             {
                                 "id": "color",
                                 "value": {
-                                    "fixedColor": "super-light-orange",
+                                    "fixedColor": "light-red",
                                     "mode": "fixed"
                                 }
                             }
@@ -2899,7 +2900,7 @@
                             {
                                 "id": "color",
                                 "value": {
-                                    "fixedColor": "light-red",
+                                    "fixedColor": "dark-red",
                                     "mode": "fixed"
                                 }
                             }
