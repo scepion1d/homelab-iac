@@ -666,7 +666,7 @@
             },
             "targets": [
                 {
-                    "expr": "unbound_time_up_seconds_total",
+                    "expr": "max(unbound_time_up_seconds_total)",
                     "legendFormat": "UP",
                     "refId": "A",
                     "instant": false,
@@ -956,7 +956,7 @@
             },
             "targets": [
                 {
-                    "expr": "unbound_msg_cache_count",
+                    "expr": "max(unbound_msg_cache_count)",
                     "legendFormat": "__auto",
                     "refId": "A",
                     "datasource": {
@@ -1113,7 +1113,7 @@
             },
             "targets": [
                 {
-                    "expr": "unbound_rrset_cache_count",
+                    "expr": "max(unbound_rrset_cache_count)",
                     "legendFormat": "__auto",
                     "refId": "A",
                     "datasource": {
@@ -1769,7 +1769,7 @@
                         },
                         "insertNulls": false,
                         "lineInterpolation": "linear",
-                        "lineWidth": 1,
+                        "lineWidth": 2,
                         "pointSize": 5,
                         "scaleDistribution": {
                             "log": 2,
@@ -1886,7 +1886,7 @@
                         },
                         "insertNulls": false,
                         "lineInterpolation": "linear",
-                        "lineWidth": 1,
+                        "lineWidth": 2,
                         "pointSize": 5,
                         "scaleDistribution": {
                             "log": 2,
@@ -1993,9 +1993,8 @@
                         "axisLabel": "",
                         "axisPlacement": "auto",
                         "barAlignment": 0,
-                        "barWidthFactor": 0.5,
-                        "drawStyle": "bars",
-                        "fillOpacity": 30,
+                        "drawStyle": "line",
+                        "fillOpacity": 10,
                         "gradientMode": "none",
                         "hideFrom": {
                             "legend": false,
@@ -2007,7 +2006,7 @@
                         "lineStyle": {
                             "fill": "solid"
                         },
-                        "lineWidth": 1,
+                        "lineWidth": 2,
                         "pointSize": 5,
                         "scaleDistribution": {
                             "type": "linear"
@@ -2154,9 +2153,8 @@
                         "axisLabel": "",
                         "axisPlacement": "auto",
                         "barAlignment": 1,
-                        "barWidthFactor": 0.5,
-                        "drawStyle": "bars",
-                        "fillOpacity": 30,
+                        "drawStyle": "line",
+                        "fillOpacity": 10,
                         "gradientMode": "none",
                         "hideFrom": {
                             "legend": false,
@@ -2165,7 +2163,7 @@
                         },
                         "insertNulls": false,
                         "lineInterpolation": "linear",
-                        "lineWidth": 1,
+                        "lineWidth": 2,
                         "pointSize": 5,
                         "scaleDistribution": {
                             "log": 2,
@@ -2338,9 +2336,9 @@
                         "axisLabel": "",
                         "axisPlacement": "auto",
                         "barAlignment": 0,
-                        "barWidthFactor": 0.6,
+                        "barWidthFactor": 0.5,
                         "drawStyle": "bars",
-                        "fillOpacity": 0,
+                        "fillOpacity": 30,
                         "gradientMode": "none",
                         "hideFrom": {
                             "legend": false,
@@ -2472,7 +2470,7 @@
                         "barAlignment": 0,
                         "barWidthFactor": 0.5,
                         "drawStyle": "bars",
-                        "fillOpacity": 1,
+                        "fillOpacity": 30,
                         "gradientMode": "none",
                         "hideFrom": {
                             "legend": false,
@@ -2784,7 +2782,7 @@
                         },
                         "insertNulls": false,
                         "lineInterpolation": "smooth",
-                        "lineWidth": 1,
+                        "lineWidth": 2,
                         "pointSize": 5,
                         "scaleDistribution": {
                             "type": "linear"

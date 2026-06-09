@@ -1,7 +1,7 @@
 upstream_dns:
-  - "[/int/]192.168.10.1"      # MikroTik — LAN static records
   - "10.43.10.43"              # Unbound recursive (pinned ClusterIP)
-  - "1.1.1.1"                  # Fallback while Unbound beds in
+  - "192.168.10.1"             # MikroTik fallback
+  - "1.1.1.1"                  # Cloudflare fallback
 
 # Race all upstreams, use first response.
 upstream_mode: parallel
