@@ -12,7 +12,7 @@
     "editable": true,
     "graphTooltip": 1,
     "time": {
-        "from": "now-1h",
+        "from": "now-30m",
         "to": "now"
     },
     "refresh": "30s",
@@ -59,7 +59,7 @@
             },
             "gridPos": {
                 "h": 4,
-                "w": 6,
+                "w": 3,
                 "x": 0,
                 "y": 1
             },
@@ -195,6 +195,230 @@
             "pluginVersion": "12.4.3"
         },
         {
+            "id": 31,
+            "type": "stat",
+            "title": "Svc CPU",
+            "datasource": {
+                "type": "prometheus",
+                "uid": "prometheus"
+            },
+            "gridPos": {
+                "h": 4,
+                "w": 3,
+                "x": 3,
+                "y": 1
+            },
+            "targets": [
+                {
+                    "expr": "max(\r\n    rate(\r\n        container_cpu_usage_seconds_total{\r\n            container=\"adguardhome\", namespace=\"dns\"\r\n        }[$__rate_interval]\r\n    )\r\n)",
+                    "legendFormat": "{{cache}}",
+                    "refId": "A",
+                    "datasource": {
+                        "type": "prometheus",
+                        "uid": "prometheus"
+                    },
+                    "editorMode": "code",
+                    "range": true
+                }
+            ],
+            "fieldConfig": {
+                "defaults": {
+                    "color": {
+                        "mode": "thresholds"
+                    },
+                    "mappings": [],
+                    "max": 100,
+                    "min": 0,
+                    "thresholds": {
+                        "mode": "absolute",
+                        "steps": [
+                            {
+                                "color": "light-green",
+                                "value": 0
+                            },
+                            {
+                                "color": "light-yellow",
+                                "value": 33554432
+                            },
+                            {
+                                "color": "light-orange",
+                                "value": 53687091
+                            },
+                            {
+                                "color": "light-red",
+                                "value": 63730688
+                            }
+                        ]
+                    },
+                    "unit": "percentunit"
+                },
+                "overrides": []
+            },
+            "options": {
+                "colorMode": "value",
+                "graphMode": "area",
+                "justifyMode": "auto",
+                "orientation": "vertical",
+                "percentChangeColorMode": "same_as_value",
+                "reduceOptions": {
+                    "calcs": [
+                        "lastNotNull"
+                    ],
+                    "fields": "",
+                    "values": false
+                },
+                "showPercentChange": true,
+                "textMode": "value",
+                "wideLayout": true
+            },
+            "pluginVersion": "12.4.3"
+        },
+        {
+            "id": 35,
+            "type": "timeseries",
+            "title": "DHCP",
+            "datasource": {
+                "type": "prometheus",
+                "uid": "prometheus"
+            },
+            "gridPos": {
+                "h": 4,
+                "w": 3,
+                "x": 6,
+                "y": 1
+            },
+            "targets": [
+                {
+                    "expr": "(max(adguard_dhcp_available) == 1) or on() (max(adguard_dhcp_available) * NaN)",
+                    "legendFormat": "UP",
+                    "refId": "A",
+                    "instant": false,
+                    "datasource": {
+                        "type": "prometheus",
+                        "uid": "prometheus"
+                    },
+                    "editorMode": "code",
+                    "range": true
+                },
+                {
+                    "expr": "(1 - min(adguard_dhcp_available) == 1) or on() (min(adguard_dhcp_available) * NaN)",
+                    "legendFormat": "DOWN",
+                    "refId": "B",
+                    "instant": false,
+                    "datasource": {
+                        "type": "prometheus",
+                        "uid": "prometheus"
+                    },
+                    "editorMode": "code",
+                    "range": true
+                }
+            ],
+            "fieldConfig": {
+                "defaults": {
+                    "color": {
+                        "mode": "palette-classic"
+                    },
+                    "custom": {
+                        "axisBorderShow": false,
+                        "axisCenteredZero": false,
+                        "axisColorMode": "text",
+                        "axisGridShow": false,
+                        "axisLabel": "",
+                        "axisPlacement": "hidden",
+                        "barAlignment": 0,
+                        "barWidthFactor": 0.6,
+                        "drawStyle": "points",
+                        "fillOpacity": 30,
+                        "gradientMode": "none",
+                        "hideFrom": {
+                            "legend": false,
+                            "tooltip": false,
+                            "viz": false
+                        },
+                        "insertNulls": false,
+                        "lineInterpolation": "linear",
+                        "lineWidth": 2,
+                        "pointSize": 5,
+                        "scaleDistribution": {
+                            "type": "linear"
+                        },
+                        "showPoints": "auto",
+                        "showValues": false,
+                        "spanNulls": false,
+                        "stacking": {
+                            "group": "A",
+                            "mode": "none"
+                        },
+                        "thresholdsStyle": {
+                            "mode": "off"
+                        }
+                    },
+                    "mappings": [],
+                    "thresholds": {
+                        "mode": "absolute",
+                        "steps": [
+                            {
+                                "color": "light-red",
+                                "value": 0
+                            }
+                        ]
+                    }
+                },
+                "overrides": [
+                    {
+                        "matcher": {
+                            "id": "byName",
+                            "options": "UP",
+                            "scope": "series"
+                        },
+                        "properties": [
+                            {
+                                "id": "color",
+                                "value": {
+                                    "fixedColor": "light-green",
+                                    "mode": "fixed"
+                                }
+                            }
+                        ]
+                    },
+                    {
+                        "matcher": {
+                            "id": "byName",
+                            "options": "DOWN",
+                            "scope": "series"
+                        },
+                        "properties": [
+                            {
+                                "id": "color",
+                                "value": {
+                                    "fixedColor": "light-red",
+                                    "mode": "fixed"
+                                }
+                            }
+                        ]
+                    }
+                ]
+            },
+            "options": {
+                "annotations": {
+                    "clustering": -1,
+                    "multiLane": false
+                },
+                "legend": {
+                    "calcs": [],
+                    "displayMode": "list",
+                    "placement": "bottom",
+                    "showLegend": false
+                },
+                "tooltip": {
+                    "hideZeros": false,
+                    "mode": "all",
+                    "sort": "none"
+                }
+            },
+            "pluginVersion": "12.4.3"
+        },
+        {
             "id": 3,
             "type": "timeseries",
             "title": "Protection",
@@ -204,8 +428,8 @@
             },
             "gridPos": {
                 "h": 4,
-                "w": 6,
-                "x": 6,
+                "w": 3,
+                "x": 9,
                 "y": 1
             },
             "targets": [
@@ -425,7 +649,7 @@
             },
             "gridPos": {
                 "h": 4,
-                "w": 6,
+                "w": 3,
                 "x": 15,
                 "y": 1
             },
@@ -557,6 +781,85 @@
                     "mode": "all",
                     "sort": "none"
                 }
+            },
+            "pluginVersion": "12.4.3"
+        },
+        {
+            "id": 32,
+            "type": "stat",
+            "title": "Exp CPU",
+            "datasource": {
+                "type": "prometheus",
+                "uid": "prometheus"
+            },
+            "gridPos": {
+                "h": 4,
+                "w": 3,
+                "x": 18,
+                "y": 1
+            },
+            "targets": [
+                {
+                    "expr": "rate(\r\n    container_cpu_usage_seconds_total{\r\n        container=\"adguard-exporter\", namespace=\"dns\"\r\n    }[$__rate_interval]\r\n)",
+                    "legendFormat": "{{cache}}",
+                    "refId": "A",
+                    "datasource": {
+                        "type": "prometheus",
+                        "uid": "prometheus"
+                    },
+                    "editorMode": "code",
+                    "range": true
+                }
+            ],
+            "fieldConfig": {
+                "defaults": {
+                    "color": {
+                        "mode": "thresholds"
+                    },
+                    "mappings": [],
+                    "max": 100,
+                    "min": 0,
+                    "thresholds": {
+                        "mode": "absolute",
+                        "steps": [
+                            {
+                                "color": "light-green",
+                                "value": 0
+                            },
+                            {
+                                "color": "light-yellow",
+                                "value": 33554432
+                            },
+                            {
+                                "color": "light-orange",
+                                "value": 53687091
+                            },
+                            {
+                                "color": "light-red",
+                                "value": 63730688
+                            }
+                        ]
+                    },
+                    "unit": "percentunit"
+                },
+                "overrides": []
+            },
+            "options": {
+                "colorMode": "value",
+                "graphMode": "area",
+                "justifyMode": "auto",
+                "orientation": "vertical",
+                "percentChangeColorMode": "same_as_value",
+                "reduceOptions": {
+                    "calcs": [
+                        "lastNotNull"
+                    ],
+                    "fields": "",
+                    "values": false
+                },
+                "showPercentChange": true,
+                "textMode": "value",
+                "wideLayout": true
             },
             "pluginVersion": "12.4.3"
         },
@@ -727,7 +1030,7 @@
             },
             "gridPos": {
                 "h": 4,
-                "w": 5,
+                "w": 3,
                 "x": 3,
                 "y": 6
             },
@@ -862,6 +1165,164 @@
             "pluginVersion": "12.4.3"
         },
         {
+            "id": 30,
+            "type": "stat",
+            "title": "Svc CPU",
+            "datasource": {
+                "type": "prometheus",
+                "uid": "prometheus"
+            },
+            "gridPos": {
+                "h": 4,
+                "w": 3,
+                "x": 6,
+                "y": 6
+            },
+            "targets": [
+                {
+                    "expr": "max(\r\n    rate(\r\n        container_cpu_usage_seconds_total{\r\n            container=\"unbound\", namespace=\"dns\"\r\n        }[$__rate_interval]\r\n    )\r\n)",
+                    "legendFormat": "{{cache}}",
+                    "refId": "A",
+                    "datasource": {
+                        "type": "prometheus",
+                        "uid": "prometheus"
+                    },
+                    "editorMode": "code",
+                    "range": true
+                }
+            ],
+            "fieldConfig": {
+                "defaults": {
+                    "color": {
+                        "mode": "thresholds"
+                    },
+                    "mappings": [],
+                    "max": 100,
+                    "min": 0,
+                    "thresholds": {
+                        "mode": "absolute",
+                        "steps": [
+                            {
+                                "color": "light-green",
+                                "value": 0
+                            },
+                            {
+                                "color": "light-yellow",
+                                "value": 33554432
+                            },
+                            {
+                                "color": "light-orange",
+                                "value": 53687091
+                            },
+                            {
+                                "color": "light-red",
+                                "value": 63730688
+                            }
+                        ]
+                    },
+                    "unit": "percentunit"
+                },
+                "overrides": []
+            },
+            "options": {
+                "colorMode": "value",
+                "graphMode": "area",
+                "justifyMode": "auto",
+                "orientation": "vertical",
+                "percentChangeColorMode": "same_as_value",
+                "reduceOptions": {
+                    "calcs": [
+                        "lastNotNull"
+                    ],
+                    "fields": "",
+                    "values": false
+                },
+                "showPercentChange": true,
+                "textMode": "value",
+                "wideLayout": true
+            },
+            "pluginVersion": "12.4.3"
+        },
+        {
+            "id": 29,
+            "type": "stat",
+            "title": "Svc Throttled",
+            "datasource": {
+                "type": "prometheus",
+                "uid": "prometheus"
+            },
+            "gridPos": {
+                "h": 4,
+                "w": 3,
+                "x": 9,
+                "y": 6
+            },
+            "targets": [
+                {
+                    "expr": " max(\r\n    rate(\r\n        container_cpu_cfs_throttled_seconds_total{\r\n            container=\"unbound\", namespace=\"dns\"\r\n        }[$__rate_interval]\r\n    )\r\n)",
+                    "legendFormat": "{{cache}}",
+                    "refId": "A",
+                    "datasource": {
+                        "type": "prometheus",
+                        "uid": "prometheus"
+                    },
+                    "editorMode": "code",
+                    "range": true
+                }
+            ],
+            "fieldConfig": {
+                "defaults": {
+                    "color": {
+                        "mode": "thresholds"
+                    },
+                    "mappings": [],
+                    "max": 100,
+                    "min": 0,
+                    "thresholds": {
+                        "mode": "absolute",
+                        "steps": [
+                            {
+                                "color": "light-green",
+                                "value": 0
+                            },
+                            {
+                                "color": "light-yellow",
+                                "value": 33554432
+                            },
+                            {
+                                "color": "light-orange",
+                                "value": 53687091
+                            },
+                            {
+                                "color": "light-red",
+                                "value": 63730688
+                            }
+                        ]
+                    },
+                    "unit": "s"
+                },
+                "overrides": []
+            },
+            "options": {
+                "colorMode": "value",
+                "graphMode": "none",
+                "justifyMode": "auto",
+                "orientation": "vertical",
+                "percentChangeColorMode": "same_as_value",
+                "reduceOptions": {
+                    "calcs": [
+                        "lastNotNull"
+                    ],
+                    "fields": "",
+                    "values": false
+                },
+                "showPercentChange": true,
+                "textMode": "value",
+                "wideLayout": true
+            },
+            "pluginVersion": "12.4.3"
+        },
+        {
             "id": 10,
             "type": "stat",
             "title": "Msg Cache / 64M",
@@ -871,8 +1332,8 @@
             },
             "gridPos": {
                 "h": 4,
-                "w": 4,
-                "x": 8,
+                "w": 3,
+                "x": 12,
                 "y": 6
             },
             "targets": [
@@ -941,84 +1402,6 @@
             "pluginVersion": "12.4.3"
         },
         {
-            "id": 11,
-            "type": "stat",
-            "title": "Msg Cache",
-            "datasource": {
-                "type": "prometheus",
-                "uid": "prometheus"
-            },
-            "gridPos": {
-                "h": 4,
-                "w": 4,
-                "x": 12,
-                "y": 6
-            },
-            "targets": [
-                {
-                    "expr": "max(unbound_msg_cache_count)",
-                    "legendFormat": "__auto",
-                    "refId": "A",
-                    "datasource": {
-                        "type": "prometheus",
-                        "uid": "prometheus"
-                    },
-                    "editorMode": "code",
-                    "range": true
-                }
-            ],
-            "fieldConfig": {
-                "defaults": {
-                    "color": {
-                        "mode": "thresholds"
-                    },
-                    "mappings": [],
-                    "max": 100,
-                    "min": 0,
-                    "thresholds": {
-                        "mode": "absolute",
-                        "steps": [
-                            {
-                                "color": "light-green",
-                                "value": 0
-                            },
-                            {
-                                "color": "light-yellow",
-                                "value": 67108864
-                            },
-                            {
-                                "color": "light-orange",
-                                "value": 107374182
-                            },
-                            {
-                                "color": "light-red",
-                                "value": 127401984
-                            }
-                        ]
-                    }
-                },
-                "overrides": []
-            },
-            "options": {
-                "colorMode": "value",
-                "graphMode": "none",
-                "justifyMode": "auto",
-                "orientation": "auto",
-                "percentChangeColorMode": "same_as_value",
-                "reduceOptions": {
-                    "calcs": [
-                        "lastNotNull"
-                    ],
-                    "fields": "",
-                    "values": false
-                },
-                "showPercentChange": true,
-                "textMode": "value",
-                "wideLayout": true
-            },
-            "pluginVersion": "12.4.3"
-        },
-        {
             "id": 12,
             "type": "stat",
             "title": "RRSet Cache / 128M",
@@ -1028,8 +1411,8 @@
             },
             "gridPos": {
                 "h": 4,
-                "w": 4,
-                "x": 16,
+                "w": 3,
+                "x": 15,
                 "y": 6
             },
             "targets": [
@@ -1098,22 +1481,89 @@
             "pluginVersion": "12.4.3"
         },
         {
-            "id": 13,
+            "id": 11,
             "type": "stat",
-            "title": "RRSet Cache",
+            "title": "Dumper Uptimr",
             "datasource": {
                 "type": "prometheus",
                 "uid": "prometheus"
             },
             "gridPos": {
                 "h": 4,
-                "w": 4,
-                "x": 20,
+                "w": 3,
+                "x": 18,
                 "y": 6
             },
             "targets": [
                 {
-                    "expr": "max(unbound_rrset_cache_count)",
+                    "expr": "time() - max(\r\n    container_start_time_seconds{container=\"unbound-cache-manager\", namespace=\"dns\"}\r\n)",
+                    "legendFormat": "__auto",
+                    "refId": "A",
+                    "datasource": {
+                        "type": "prometheus",
+                        "uid": "prometheus"
+                    },
+                    "editorMode": "code",
+                    "range": true
+                }
+            ],
+            "fieldConfig": {
+                "defaults": {
+                    "color": {
+                        "mode": "thresholds"
+                    },
+                    "mappings": [],
+                    "max": 100,
+                    "min": 0,
+                    "thresholds": {
+                        "mode": "absolute",
+                        "steps": [
+                            {
+                                "color": "light-blue",
+                                "value": 0
+                            }
+                        ]
+                    },
+                    "unit": "s"
+                },
+                "overrides": []
+            },
+            "options": {
+                "colorMode": "value",
+                "graphMode": "none",
+                "justifyMode": "auto",
+                "orientation": "auto",
+                "percentChangeColorMode": "same_as_value",
+                "reduceOptions": {
+                    "calcs": [
+                        "lastNotNull"
+                    ],
+                    "fields": "",
+                    "values": false
+                },
+                "showPercentChange": false,
+                "textMode": "value",
+                "wideLayout": true
+            },
+            "pluginVersion": "12.4.3"
+        },
+        {
+            "id": 13,
+            "type": "stat",
+            "title": "Cch PVC",
+            "datasource": {
+                "type": "prometheus",
+                "uid": "prometheus"
+            },
+            "gridPos": {
+                "h": 4,
+                "w": 3,
+                "x": 21,
+                "y": 6
+            },
+            "targets": [
+                {
+                    "expr": "kubelet_volume_stats_used_bytes{namespace=\"dns\", persistentvolumeclaim=\"unbound-cache\"}\r\n/\r\nkubelet_volume_stats_capacity_bytes{namespace=\"dns\", persistentvolumeclaim=\"unbound-cache\"}\r\n* 100",
                     "legendFormat": "__auto",
                     "refId": "A",
                     "datasource": {
@@ -1152,7 +1602,8 @@
                                 "value": 127401984
                             }
                         ]
-                    }
+                    },
+                    "unit": "percent"
                 },
                 "overrides": []
             },
@@ -1333,6 +1784,85 @@
             "pluginVersion": "12.4.3"
         },
         {
+            "id": 33,
+            "type": "stat",
+            "title": "Avg Time",
+            "datasource": {
+                "type": "prometheus",
+                "uid": "prometheus"
+            },
+            "gridPos": {
+                "h": 4,
+                "w": 3,
+                "x": 6,
+                "y": 11
+            },
+            "targets": [
+                {
+                    "expr": "adguard_avg_processing_time\r\n",
+                    "legendFormat": "{{cache}}",
+                    "refId": "A",
+                    "datasource": {
+                        "type": "prometheus",
+                        "uid": "prometheus"
+                    },
+                    "editorMode": "code",
+                    "range": true
+                }
+            ],
+            "fieldConfig": {
+                "defaults": {
+                    "color": {
+                        "mode": "thresholds"
+                    },
+                    "mappings": [],
+                    "max": 100,
+                    "min": 0,
+                    "thresholds": {
+                        "mode": "absolute",
+                        "steps": [
+                            {
+                                "color": "light-green",
+                                "value": 0
+                            },
+                            {
+                                "color": "light-yellow",
+                                "value": 33554432
+                            },
+                            {
+                                "color": "light-orange",
+                                "value": 53687091
+                            },
+                            {
+                                "color": "light-red",
+                                "value": 63730688
+                            }
+                        ]
+                    },
+                    "unit": "s"
+                },
+                "overrides": []
+            },
+            "options": {
+                "colorMode": "value",
+                "graphMode": "area",
+                "justifyMode": "auto",
+                "orientation": "vertical",
+                "percentChangeColorMode": "same_as_value",
+                "reduceOptions": {
+                    "calcs": [
+                        "lastNotNull"
+                    ],
+                    "fields": "",
+                    "values": false
+                },
+                "showPercentChange": true,
+                "textMode": "value",
+                "wideLayout": true
+            },
+            "pluginVersion": "12.4.3"
+        },
+        {
             "id": 17,
             "type": "heatmap",
             "title": "Query Types",
@@ -1342,8 +1872,8 @@
             },
             "gridPos": {
                 "h": 8,
-                "w": 9,
-                "x": 6,
+                "w": 7,
+                "x": 9,
                 "y": 11
             },
             "targets": [
@@ -1453,8 +1983,8 @@
             },
             "gridPos": {
                 "h": 8,
-                "w": 9,
-                "x": 15,
+                "w": 8,
+                "x": 16,
                 "y": 11
             },
             "targets": [
@@ -1720,6 +2250,101 @@
             "pluginVersion": "12.4.3"
         },
         {
+            "id": 34,
+            "type": "stat",
+            "title": "DNSSEC, %",
+            "datasource": {
+                "type": "prometheus",
+                "uid": "prometheus"
+            },
+            "gridPos": {
+                "h": 4,
+                "w": 3,
+                "x": 6,
+                "y": 15
+            },
+            "targets": [
+                {
+                    "expr": "(rate(unbound_answers_secure_total[$__rate_interval]) or vector(0))\r\n/\r\nsum(rate(unbound_queries_total[$__rate_interval]))",
+                    "legendFormat": "Ops",
+                    "refId": "A",
+                    "instant": false,
+                    "datasource": {
+                        "type": "prometheus",
+                        "uid": "prometheus"
+                    },
+                    "editorMode": "code",
+                    "range": true
+                }
+            ],
+            "fieldConfig": {
+                "defaults": {
+                    "color": {
+                        "mode": "thresholds"
+                    },
+                    "mappings": [],
+                    "thresholds": {
+                        "mode": "absolute",
+                        "steps": [
+                            {
+                                "color": "light-blue",
+                                "value": 0
+                            }
+                        ]
+                    }
+                },
+                "overrides": [
+                    {
+                        "matcher": {
+                            "id": "byName",
+                            "options": "Ops",
+                            "scope": "series"
+                        },
+                        "properties": [
+                            {
+                                "id": "color",
+                                "value": {
+                                    "fixedColor": "light-green",
+                                    "mode": "fixed"
+                                }
+                            }
+                        ]
+                    }
+                ]
+            },
+            "options": {
+                "colorMode": "value",
+                "graphMode": "area",
+                "justifyMode": "auto",
+                "orientation": "auto",
+                "percentChangeColorMode": "standard",
+                "reduceOptions": {
+                    "calcs": [
+                        "lastNotNull"
+                    ],
+                    "fields": "",
+                    "values": false
+                },
+                "showPercentChange": false,
+                "textMode": "auto",
+                "wideLayout": true
+            },
+            "pluginVersion": "12.4.3"
+        },
+        {
+            "id": 36,
+            "type": "row",
+            "title": "Queries Processing",
+            "gridPos": {
+                "h": 1,
+                "w": 24,
+                "x": 0,
+                "y": 19
+            },
+            "collapsed": false,
+            "panels": []
+        },
+        {
             "id": 21,
             "type": "timeseries",
             "title": "Total Queries Rate",
@@ -1731,7 +2356,7 @@
                 "h": 10,
                 "w": 12,
                 "x": 0,
-                "y": 19
+                "y": 20
             },
             "targets": [
                 {
@@ -1848,7 +2473,7 @@
                 "h": 10,
                 "w": 12,
                 "x": 12,
-                "y": 19
+                "y": 20
             },
             "targets": [
                 {
@@ -1965,7 +2590,7 @@
                 "h": 9,
                 "w": 12,
                 "x": 0,
-                "y": 29
+                "y": 30
             },
             "targets": [
                 {
@@ -1993,6 +2618,7 @@
                         "axisLabel": "",
                         "axisPlacement": "auto",
                         "barAlignment": 0,
+                        "barWidthFactor": 0.6,
                         "drawStyle": "line",
                         "fillOpacity": 10,
                         "gradientMode": "none",
@@ -2124,7 +2750,7 @@
                 "h": 9,
                 "w": 12,
                 "x": 12,
-                "y": 29
+                "y": 30
             },
             "targets": [
                 {
@@ -2153,6 +2779,7 @@
                         "axisLabel": "",
                         "axisPlacement": "auto",
                         "barAlignment": 1,
+                        "barWidthFactor": 0.6,
                         "drawStyle": "line",
                         "fillOpacity": 10,
                         "gradientMode": "none",
@@ -2298,7 +2925,7 @@
                 "h": 10,
                 "w": 12,
                 "x": 0,
-                "y": 38
+                "y": 39
             },
             "targets": [
                 {
@@ -2440,7 +3067,7 @@
                 "h": 10,
                 "w": 12,
                 "x": 12,
-                "y": 38
+                "y": 39
             },
             "targets": [
                 {
@@ -2560,7 +3187,7 @@
                 "h": 6,
                 "w": 24,
                 "x": 0,
-                "y": 48
+                "y": 49
             },
             "targets": [
                 {
@@ -2700,7 +3327,7 @@
                 "h": 6,
                 "w": 24,
                 "x": 0,
-                "y": 54
+                "y": 55
             },
             "targets": [
                 {
@@ -2931,8 +3558,9 @@
     ],
     "fiscalYearStartMonth": 0,
     "links": [],
-    "preload": false,
+    "liveNow": true,
+    "preload": true,
     "timepicker": {},
-    "version": 4,
+    "version": 8,
     "weekStart": ""
 }
