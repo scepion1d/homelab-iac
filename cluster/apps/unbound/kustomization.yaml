@@ -6,6 +6,7 @@ resources:
   - deployment.yaml
   - service.yaml
   - service-exporter.yaml
+  - pvc-cache.yaml
 configMapGenerator:
   - name: unbound-config
     files:
