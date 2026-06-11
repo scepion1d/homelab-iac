@@ -10,6 +10,7 @@ kind: Certificate
 metadata:
   name: homelab-ca
   namespace: cert-manager
+spec:
   isCA: true
   commonName: homelab-ca
   secretName: homelab-ca-key-pair

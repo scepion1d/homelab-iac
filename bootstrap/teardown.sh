@@ -163,13 +163,25 @@ else
   echo "    not present, skipping"
 fi
 
-echo "==> Removing LaunchAgents"
-for plist in launchd/*.plist; do
-  name="$(basename "${plist}")"
-  target="${AGENTS_DIR}/${name}"
+echo "==> Removing LaunchAgents (legacy)"
+for old in com.homelab.colima.plist com.homelab.k3d.plist; do
+  target="${AGENTS_DIR}/${old}"
   if [[ -f "${target}" ]]; then
     launchctl unload "${target}" 2>/dev/null || true
     rm -f "${target}"
+    echo "    removed ${old}"
+  fi
+done
+
+echo "==> Removing LaunchDaemons"
+DAEMONS_DIR="/Library/LaunchDaemons"
+for plist in launchd-system/*.plist; do
+  [[ -f "${plist}" ]] || continue
+  name="$(basename "${plist}")"
+  target="${DAEMONS_DIR}/${name}"
+  if [[ -f "${target}" ]]; then
+    sudo launchctl bootout system "${target}" 2>/dev/null || true
+    sudo rm -f "${target}"
     echo "    removed ${name}"
   fi
 done

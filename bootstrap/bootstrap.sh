@@ -43,6 +43,12 @@ require_var ADGUARD_PASSWORD
 ./steps/01-start-runtime.sh
 ./steps/02-create-cluster.sh
 ./steps/03-install-argocd.sh
+
+# Wait for ArgoCD server to be ready before registering repo creds.
+echo "==> Waiting for ArgoCD server..."
+kubectl -n argocd wait --for=condition=available deploy/argocd-server \
+  --timeout=300s
+
 ./steps/04-bootstrap-apps.sh
 ./steps/05-enable-autostart.sh
 ./steps/06-cluster-secrets.sh

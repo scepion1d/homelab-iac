@@ -51,8 +51,10 @@
   <key>UserName</key>
   <string>root</string>
 
+  <!-- Don't start at boot — Colima must be up first for the vmnet bind
+       address to exist. start.sh kicks this daemon after Colima is ready. -->
   <key>RunAtLoad</key>
-  <true/>
+  <false/>
 
   <!-- Restart on crash, but with backoff so a broken update doesn't
        hammer the system. -->

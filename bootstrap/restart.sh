@@ -3,40 +3,28 @@
 #
 # Use this after a host reboot, sleep/wake weirdness, or when DNS/ingress
 # become flaky and you want a deterministic restart path.
+#
+#   ~/src/homelab-iac/bootstrap/restart.sh            # everything
+#   ~/src/homelab-iac/bootstrap/restart.sh cluster     # cluster only
+#   ~/src/homelab-iac/bootstrap/restart.sh host-apps   # host apps only
 set -euo pipefail
 cd "$(dirname "$0")"
 source ./lib.sh
 load_env
 
-PROFILE="${COLIMA_PROFILE:-default}"
-CLUSTER="homelab"
+TARGET="${1:-all}"
 
-echo "==> Restarting Colima profile '${PROFILE}'"
-if colima status --profile "${PROFILE}" >/dev/null 2>&1; then
-  colima restart --profile "${PROFILE}"
-else
-  ./01-start-runtime.sh
-fi
+echo "==> Stopping (${TARGET})..."
+./stop.sh "${TARGET}"
 
-# 01 is idempotent and keeps dnsmasq masked (required for :53 publishing).
-echo "==> Re-applying runtime prerequisites"
-./01-start-runtime.sh
-
-echo "==> Ensuring k3d cluster '${CLUSTER}' is running"
-if k3d cluster list | awk 'NR>1 {print $1}' | grep -qx "${CLUSTER}"; then
-  k3d cluster start "${CLUSTER}"
-else
-  echo "ERROR: k3d cluster '${CLUSTER}' does not exist yet." >&2
-  echo "       Run ./bootstrap.sh once to create it." >&2
-  exit 1
-fi
-
-echo "==> Running heal workflow"
-./heal.sh
+echo "==> Starting (${TARGET})..."
+./start.sh "${TARGET}"
 
 # Refresh host DNS proxy so upstream VM IP changes are picked up.
-echo "==> Refreshing host DNS proxy"
-./08-dns-proxy.sh || echo "WARNING: dns-proxy refresh failed; run ./08-dns-proxy.sh manually" >&2
+if [[ "${TARGET}" == "all" || "${TARGET}" == "cluster" ]]; then
+  echo "==> Refreshing host DNS proxy"
+  ./steps/08-dns-proxy.sh || echo "WARNING: dns-proxy refresh failed" >&2
+fi
 
 echo
 cat <<'EOF'

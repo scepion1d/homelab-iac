@@ -3,6 +3,10 @@
 GitOps-managed k3d homelab on an Intel Mac. Argo CD owns the cluster;
 `git push` deploys.
 
+## Architecture
+
+![Homelab Architecture](architecture.svg)
+
 ## Spin up
 
 See [bootstrap/README.md](bootstrap/README.md) for the fresh-install walkthrough

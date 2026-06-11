@@ -94,8 +94,8 @@ spec:
             - name: unbound-ctl
               mountPath: /var/run/unbound
         - name: exporter
-          image: homelab-registry:5111/unbound-exporter:v0.6.0
-          imagePullPolicy: IfNotPresent
+          image: homelab-unbound-exporter:v0.6.0
+          imagePullPolicy: Never
           args:
             - "-unbound.host"
             - "unix:///var/run/unbound/unbound.ctl"

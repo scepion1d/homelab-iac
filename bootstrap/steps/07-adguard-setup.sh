@@ -135,7 +135,7 @@ kill "${PF_PID}" 2>/dev/null || true
 # to :80 once the wizard wrote a config. We open a fresh tunnel against
 # the new port. The post-wizard endpoints require basic auth (admin
 # user + password from .env), so we send that explicitly.
-DNS_CFG_YAML="$(cd .. && pwd)${CONFIGS_PATH}/dns.yaml"
+DNS_CFG_YAML="$(cd ../.. && pwd)${CONFIGS_PATH}/dns.yaml"
 if [[ ! -f "${DNS_CFG_YAML}" ]]; then
   echo "==> No ${CONFIGS_PATH}/dns.yaml; skipping DNS config push."
 else
@@ -184,7 +184,7 @@ fi
 #
 # Uses the same port-forward as the DNS config push above (still live
 # at this point; trap-cleanup runs at script exit).
-BLOCKLISTS_YAML="$(cd .. && pwd)${CONFIGS_PATH}/blocklists.yaml"
+BLOCKLISTS_YAML="$(cd ../.. && pwd)${CONFIGS_PATH}/blocklists.yaml"
 if [[ -z "${LOCAL_API:-}" ]]; then
   echo "==> Skipping blocklists push (no API port-forward open -- DNS config push was skipped earlier)."
 elif [[ ! -f "${BLOCKLISTS_YAML}" ]]; then

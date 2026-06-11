@@ -46,22 +46,34 @@ API_HOST_PORT="${HOMELAB_API_HOST_PORT:-6445}"
 echo "==> Checking Colima VM health"
 if ! colima status --profile "${PROFILE}" >/dev/null 2>&1; then
   echo "    Colima profile '${PROFILE}' is not running; starting it"
-  ./01-start-runtime.sh
+  ./steps/01-start-runtime.sh
 fi
-if ! docker pull --quiet alpine:3.20 >/dev/null 2>&1; then
-  echo "    docker pull failed -- VM DNS is wedged; restarting Colima"
-  colima stop --profile "${PROFILE}"
-  colima start --profile "${PROFILE}"
-  # let the docker daemon settle
+
+# Test if Docker daemon is reachable (not DNS — DNS requires the cluster).
+if ! docker info >/dev/null 2>&1; then
+  echo "    Docker not reachable — restarting Colima"
+  colima stop --profile "${PROFILE}" 2>/dev/null || true
+  ./steps/01-start-runtime.sh
   for _ in $(seq 1 30); do
     docker info >/dev/null 2>&1 && break
     sleep 1
   done
-  docker pull --quiet alpine:3.20 >/dev/null
+  if ! docker info >/dev/null 2>&1; then
+    echo "    ERROR: Docker still not reachable after restart" >&2
+    exit 1
+  fi
 fi
-echo "    VM DNS OK"
 
-# --- 2. Re-mask dnsmasq (defense; 01 already does this on new bootstraps) ---
+# --- 2. Fix VM DNS (dnsmasq is masked, Docker needs a working resolver) ------
+# With dnsmasq masked, Docker inside the VM can't resolve registry hostnames.
+# Point /etc/resolv.conf at public DNS so image pulls work.
+if ! colima ssh --profile "${PROFILE}" -- nslookup registry-1.docker.io >/dev/null 2>&1; then
+  echo "==> Fixing VM DNS (pointing at public resolvers)"
+  colima ssh --profile "${PROFILE}" -- sudo sh -c \
+    'printf "nameserver 1.1.1.1\nnameserver 9.9.9.9\noptions ndots:0\n" > /etc/resolv.conf'
+fi
+
+# --- 3. Re-mask dnsmasq (defense; 01 already does this on new bootstraps) ---
 if colima ssh --profile "${PROFILE}" -- systemctl is-active dnsmasq >/dev/null 2>&1 \
    || colima ssh --profile "${PROFILE}" -- systemctl is-enabled dnsmasq 2>&1 | grep -qvE '^masked|disabled'; then
   echo "==> Masking dnsmasq inside the VM"

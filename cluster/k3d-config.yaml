@@ -24,3 +24,11 @@ options:
       - arg: --disable=traefik
         nodeFilters:
           - server:*
+volumes:
+  # Persist PVC data across k3d cluster delete/recreate.
+  # local-path provisioner stores PVC data here; mounting a host directory
+  # means the data lives on the Colima VM disk, not inside the ephemeral
+  # k3d container filesystem.
+  - volume: /var/lib/homelab-pvcs:/var/lib/rancher/k3s/storage
+    nodeFilters:
+      - all

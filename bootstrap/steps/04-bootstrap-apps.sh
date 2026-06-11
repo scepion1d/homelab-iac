@@ -23,9 +23,11 @@ cd "$(dirname "$0")"
 source ../lib.sh
 load_env
 
-REPO_URL="$(yq -r '.repoUrl' ../cluster/globals.yaml 2>/dev/null || true)"
+REPO_ROOT="$(cd ../.. && pwd)"
+
+REPO_URL="$(yq -r '.repoUrl' "${REPO_ROOT}/cluster/globals.yaml" 2>/dev/null || true)"
 if [[ -z "${REPO_URL}" || "${REPO_URL}" == "null" ]]; then
-  echo "ERROR: could not read .repoUrl from ../cluster/globals.yaml (is yq installed?)." >&2
+  echo "ERROR: could not read .repoUrl from ${REPO_ROOT}/cluster/globals.yaml (is yq installed?)." >&2
   exit 1
 fi
 
@@ -108,7 +110,7 @@ EOF
 fi
 
 echo "==> Applying root ApplicationSet"
-kubectl apply -f ../cluster/root-appset.yaml
+kubectl apply -f "${REPO_ROOT}/cluster/root-appset.yaml"
 
 # Kick the AppSet to re-resolve immediately rather than waiting for the
 # next poll cycle. Harmless on a fresh apply (next reconcile is imminent

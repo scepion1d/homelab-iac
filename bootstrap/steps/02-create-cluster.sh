@@ -13,11 +13,24 @@ cd "$(dirname "$0")"
 source ../lib.sh
 load_env
 CLUSTER_NAME="homelab"
+REPO_ROOT="$(cd ../.. && pwd)"
+K3D_CONFIG="${REPO_ROOT}/cluster/k3d-config.yaml"
 
 if k3d cluster list --no-headers | awk '{print $1}' | grep -qx "${CLUSTER_NAME}"; then
-  echo "Cluster '${CLUSTER_NAME}' already exists, skipping create."
+  # Cluster exists — check if nodes are actually running.
+  RUNNING_NODES=$(docker ps --format '{{.Names}}' | grep -cE "^k3d-${CLUSTER_NAME}-(server|agent)" || true)
+  if [[ "${RUNNING_NODES}" -gt 0 ]]; then
+    echo "Cluster '${CLUSTER_NAME}' already exists with ${RUNNING_NODES} running nodes, skipping create."
+  else
+    echo "Cluster '${CLUSTER_NAME}' exists but has no running nodes — deleting and recreating."
+    k3d cluster delete "${CLUSTER_NAME}" 2>&1 || true
+    colima ssh --profile "${COLIMA_PROFILE:-default}" -- sudo mkdir -p /var/lib/homelab-pvcs 2>/dev/null || true
+    k3d cluster create --config "${K3D_CONFIG}"
+  fi
 else
-  k3d cluster create --config ../cluster/k3d-config.yaml
+  # Pre-create PVC storage directory on the VM to suppress k3d warnings.
+  colima ssh --profile "${COLIMA_PROFILE:-default}" -- sudo mkdir -p /var/lib/homelab-pvcs 2>/dev/null || true
+  k3d cluster create --config "${K3D_CONFIG}"
 fi
 
 echo "==> Patching /etc/resolv.conf on k3d nodes (public upstream DNS)"

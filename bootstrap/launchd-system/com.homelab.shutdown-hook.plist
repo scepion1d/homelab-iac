@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN"
+  "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  LaunchDaemon: graceful shutdown hook for the homelab.
+  Runs as a long-lived process that sleeps until macOS sends SIGTERM on
+  shutdown/reboot, then calls stop.sh for a clean Colima/k3d teardown.
+
+  Without this, the VM gets force-killed and Docker metadata may corrupt,
+  requiring a full cluster rebuild on next boot.
+
+  Logs: /tmp/homelab-shutdown.{log,err}
+-->
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>com.homelab.shutdown-hook</string>
+
+  <key>ProgramArguments</key>
+  <array>
+    <string>/bin/zsh</string>
+    <string>-lc</string>
+    <string>/Users/homelab-admin/src/homelab-iac/bootstrap/shutdown-hook.sh</string>
+  </array>
+
+  <key>EnvironmentVariables</key>
+  <dict>
+    <key>PATH</key>
+    <string>/usr/local/bin:/usr/bin:/bin</string>
+    <key>HOME</key>
+    <string>/Users/homelab-admin</string>
+  </dict>
+
+  <key>UserName</key>
+  <string>homelab-admin</string>
+
+  <key>RunAtLoad</key>
+  <true/>
+
+  <key>KeepAlive</key>
+  <true/>
+
+  <!-- Give stop.sh time to finish before macOS force-kills us.
+       Budget: docker stop ~20s + k3d stop ~30s + colima stop ~30s + margin. -->
+  <key>ExitTimeOut</key>
+  <integer>180</integer>
+
+  <key>StandardOutPath</key>
+  <string>/tmp/homelab-shutdown.log</string>
+  <key>StandardErrorPath</key>
+  <string>/tmp/homelab-shutdown.err</string>
+</dict>
+</plist>
