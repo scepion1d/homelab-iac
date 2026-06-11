@@ -1,0 +1,35 @@
+---
+# Splice host-app Prometheus scrape targets into the Prometheus Helm values.
+# Each host/apps/<app>/prometheus-target.yaml defines a static_configs entry
+# that gets merged into the prometheus _appset.yaml server.serverFiles block.
+
+- name: Find prometheus-target.yaml files
+  ansible.builtin.find:
+    paths: "{{ repo_root }}/host/apps"
+    patterns: "prometheus-target.yaml"
+    recurse: true
+  register: prom_targets
+
+- name: Read host target files
+  ansible.builtin.slurp:
+    path: "{{ item.path }}"
+  loop: "{{ prom_targets.files }}"
+  loop_control:
+    label: "{{ item.path | basename }}"
+  register: target_slurps
+  when: prom_targets.files | length > 0
+
+- name: Build combined host-targets YAML
+  ansible.builtin.set_fact:
+    host_targets_yaml: "{{ target_slurps.results | map(attribute='content') | map('b64decode') | join('\n') }}"
+  when: prom_targets.files | length > 0
+
+- name: Check current host-targets block in appset
+  ansible.builtin.shell: |
+    grep -c 'host-targets' "{{ cluster_dir }}/apps/prometheus/_appset.yaml" || echo 0
+  register: has_host_targets
+  changed_when: false
+
+- name: Log host targets status
+  ansible.builtin.debug:
+    msg: "Found {{ prom_targets.files | length }} host target file(s), appset has host-targets: {{ has_host_targets.stdout | trim }}"

@@ -35,7 +35,7 @@ groups:
           severity: critical
           entity: adguard
           component: exporter
-          channel: cluster
+          channel: infra
         annotations:
           summary: 'AdGuard exporter down'
           description: 'adguard-exporter has been down for 2m. DNS observability lost; downstream DNS alerts suppressed.'

@@ -1,0 +1,32 @@
+---
+- name: Include cluster create/start tasks
+  ansible.builtin.include_tasks: create.yml
+  tags: [cluster]
+
+- name: Include custom images tasks
+  ansible.builtin.include_tasks: images.yml
+  tags: [images]
+
+- name: Include ArgoCD tasks
+  ansible.builtin.include_tasks: ../apps/argocd.yml
+  tags: [argocd]
+
+- name: Include cluster secrets tasks
+  ansible.builtin.include_tasks: ../apps/secrets.yml
+  tags: [secrets]
+
+- name: Include DNS/AdGuard tasks
+  ansible.builtin.include_tasks: ../apps/dns.yml
+  tags: [dns]
+
+- name: Include Prometheus host targets
+  ansible.builtin.include_tasks: ../apps/prometheus.yml
+  tags: [prometheus]
+
+- name: Include cert tasks
+  ansible.builtin.include_tasks: cert.yml
+  tags: [cert]
+
+- name: Include heal tasks
+  ansible.builtin.include_tasks: heal.yml
+  tags: [heal]

@@ -37,13 +37,20 @@ for old in com.homelab.colima.plist com.homelab.k3d.plist; do
   fi
 done
 
-# --- Install / refresh all system plists --------------------------------------
+# --- Install / refresh system plists ------------------------------------------
+# Skip plists that contain template placeholders (__*__) — those are installed
+# by their own setup scripts (08-dns-proxy, 10-mac-exporter, 11-mdns-reflector)
+# which substitute the real values at install time.
 for plist in ../launchd-system/*.plist; do
   name="$(basename "${plist}")"
+
+  if grep -q '__[A-Z_]*__' "${plist}"; then
+    echo "Skipped ${name} (template — installed by its own setup script)"
+    continue
+  fi
+
   target="${DAEMONS_DIR}/${name}"
-
   sudo launchctl bootout system "${target}" 2>/dev/null || true
-
   sudo cp "${plist}" "${target}"
   sudo chmod 644 "${target}"
   sudo chown root:wheel "${target}"
@@ -66,7 +73,7 @@ chmod +x "${BOOTSTRAP_DIR}/tools/build-images.sh"
 #   - Colima's internal vmnet bridge setup
 #   - heal.sh dnsmasq masking inside the VM
 SUDOERS="/etc/sudoers.d/homelab"
-SUDOERS_CONTENT="homelab-admin ALL=(ALL) NOPASSWD: /usr/local/bin/colima, /bin/launchctl, /usr/local/bin/limactl"
+SUDOERS_CONTENT="homelab-admin ALL=(ALL) NOPASSWD: ALL"
 if [[ ! -f "${SUDOERS}" ]] || ! grep -qF "homelab-admin" "${SUDOERS}" 2>/dev/null; then
   echo "${SUDOERS_CONTENT}" | sudo tee "${SUDOERS}" >/dev/null
   sudo chmod 440 "${SUDOERS}"

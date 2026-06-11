@@ -1,0 +1,31 @@
+---
+# Build and import custom container images into k3d.
+
+- name: Find custom Dockerfiles
+  ansible.builtin.find:
+    paths: "{{ cluster_dir }}/apps"
+    patterns: "Dockerfile.*"
+    recurse: true
+  register: dockerfiles
+
+- name: Build and import each custom image
+  when: dockerfiles.files | length > 0
+  block:
+    - name: Build and import images
+      ansible.builtin.shell: |
+        app_dir="{{ item.path | dirname }}"
+        suffix="{{ item.path | basename | regex_replace('^Dockerfile\\.', '') }}"
+        app="{{ item.path | dirname | basename }}"
+        image_name="homelab-${app}-${suffix}"
+        tag=$(grep -oE "${image_name}:[^ \"']+" "${app_dir}/deployment.yaml" 2>/dev/null | head -1 | cut -d: -f2 || echo "latest")
+        full="${image_name}:${tag}"
+        docker build -t "$full" -f "{{ item.path }}" "$app_dir"
+        k3d image import "$full" -c {{ k3d_cluster_name }}
+        echo "$full"
+      environment:
+        DOCKER_HOST: "{{ docker_host }}"
+      loop: "{{ dockerfiles.files }}"
+      loop_control:
+        label: "{{ item.path | basename }}"
+      register: image_builds
+      changed_when: "'Successfully' in image_builds.stdout"

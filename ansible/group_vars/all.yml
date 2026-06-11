@@ -1,0 +1,52 @@
+---
+# Paths
+homelab_user: homelab-admin
+homelab_home: "/Users/{{ homelab_user }}"
+repo_root: "{{ playbook_dir }}/.."
+cluster_dir: "{{ repo_root }}/cluster"
+bootstrap_dir: "{{ repo_root }}/bootstrap"
+env_file: "{{ bootstrap_dir }}/.env"
+
+# Colima
+colima_profile: "{{ lookup('env', 'COLIMA_PROFILE') | default('homelab', true) }}"
+colima_cpu: "{{ lookup('env', 'COLIMA_CPU') | default(10, true) }}"
+colima_memory: "{{ lookup('env', 'COLIMA_MEMORY') | default(32, true) }}"
+colima_disk: "{{ lookup('env', 'COLIMA_DISK') | default(250, true) }}"
+colima_network_address: "{{ lookup('env', 'COLIMA_NETWORK_ADDRESS') | default('true', true) }}"
+
+# k3d
+k3d_cluster_name: homelab
+k3d_config: "{{ cluster_dir }}/k3d-config.yaml"
+
+# ArgoCD
+argocd_git_user: "{{ lookup('env', 'ARGOCD_GIT_USER') }}"
+argocd_git_pat: "{{ lookup('env', 'ARGOCD_GIT_PAT') }}"
+argocd_password: "{{ lookup('env', 'ARGOCD_PASSWORD') }}"
+argocd_repo_url: "{{ lookup('pipe', 'yq -r .repoUrl ' ~ cluster_dir ~ '/globals.yaml') }}"
+
+# AdGuard
+adguard_user: "{{ lookup('env', 'ADGUARD_USER') | default('admin', true) }}"
+adguard_password: "{{ lookup('env', 'ADGUARD_PASSWORD') }}"
+
+# Secrets
+grafana_admin_password: "{{ lookup('env', 'GRAFANA_ADMIN_PASSWORD') }}"
+mikrotik_user: "{{ lookup('env', 'MIKROTIK_USER') }}"
+mikrotik_password: "{{ lookup('env', 'MIKROTIK_PASSWORD') }}"
+
+# Cert
+cert_yaml: "{{ lookup('env', 'CERT_YAML') | default(bootstrap_dir ~ '/.ca-secret.yaml', true) }}"
+cert_crt: "{{ lookup('env', 'CERT') | default('', true) }}"
+
+# Slack — 3 separate bot tokens for different purposes
+slack_ansible_token: "{{ lookup('env', 'ANSIBLE_SLACK_TOKEN') }}"
+slack_grafana_token: "{{ lookup('env', 'GRAFANA_SLACK_BOT_TOKEN') }}"
+slack_argocd_token: "{{ lookup('env', 'ARGOCD_SLACK_TOKEN') }}"
+slack_channels:
+  infra: "#infra"
+  deploy: "#deploy"
+  dns: "#dns"
+  network: "#network"
+
+# Host
+lan_ip: "192.168.10.3"
+mdns_vm_vmnet_ip: "{{ lookup('env', 'MDNS_VM_VMNET_IP') | default('192.168.64.2', true) }}"

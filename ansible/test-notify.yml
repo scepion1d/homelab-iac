@@ -1,0 +1,45 @@
+---
+# Test Slack notifications to all channels.
+- name: Test Slack notifications
+  hosts: localhost
+
+  pre_tasks:
+    - name: Load .env file
+      ansible.builtin.shell: |
+        set -a
+        source {{ env_file }}
+        set +a
+        env
+      register: env_vars
+      changed_when: false
+      args:
+        executable: /bin/zsh
+
+  tasks:
+    - name: Test — infra channel
+      ansible.builtin.include_tasks: roles/common/tasks/slack.yml
+      vars:
+        slack_notify_channel: "{{ slack_channels.infra }}"
+        slack_notify_msg: ":test_tube: Ansible test — infra channel"
+        slack_notify_color: "#439FE0"
+
+    - name: Test — deploy channel
+      ansible.builtin.include_tasks: roles/common/tasks/slack.yml
+      vars:
+        slack_notify_channel: "{{ slack_channels.deploy }}"
+        slack_notify_msg: ":test_tube: Ansible test — deploy channel"
+        slack_notify_color: "#439FE0"
+
+    - name: Test — dns channel
+      ansible.builtin.include_tasks: roles/common/tasks/slack.yml
+      vars:
+        slack_notify_channel: "{{ slack_channels.dns }}"
+        slack_notify_msg: ":test_tube: Ansible test — dns channel"
+        slack_notify_color: "#439FE0"
+
+    - name: Test — network channel
+      ansible.builtin.include_tasks: roles/common/tasks/slack.yml
+      vars:
+        slack_notify_channel: "{{ slack_channels.network }}"
+        slack_notify_msg: ":test_tube: Ansible test — network channel"
+        slack_notify_color: "#439FE0"

@@ -1,0 +1,21 @@
+---
+# Slack notification helper. Uses Slack Web API (chat.postMessage) with bot token.
+# Usage: include this with vars: slack_notify_channel, slack_notify_msg, slack_notify_color
+
+- name: "Slack notify: {{ slack_notify_channel }}"
+  ansible.builtin.uri:
+    url: https://slack.com/api/chat.postMessage
+    method: POST
+    headers:
+      Authorization: "Bearer {{ slack_ansible_token }}"
+      Content-Type: "application/json"
+    body_format: json
+    body:
+      channel: "{{ slack_notify_channel }}"
+      attachments:
+        - color: "{{ slack_notify_color | default('good') }}"
+          text: "{{ slack_notify_msg }}"
+    status_code: [200]
+  when: slack_ansible_token | default('') | length > 0
+  ignore_errors: true
+  no_log: true

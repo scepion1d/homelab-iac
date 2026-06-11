@@ -1,0 +1,58 @@
+---
+- name: restart-dns-proxy
+  become: true
+  ansible.builtin.command: launchctl kickstart -k system/com.homelab.dns-proxy
+  listen: restart-dns-proxy
+
+- name: notify-dns-proxy
+  ansible.builtin.uri:
+    url: https://slack.com/api/chat.postMessage
+    method: POST
+    headers:
+      Authorization: "Bearer {{ slack_ansible_token }}"
+      Content-Type: "application/json"
+    body_format: json
+    body:
+      channel: "{{ slack_channels.network }}"
+      attachments:
+        - color: good
+          text: "dns-proxy restarted ({{ lan_ip }}:53 → {{ colima_vm_ip }}:53)"
+    status_code: [200]
+  listen: restart-dns-proxy
+  when: slack_ansible_token | default('') | length > 0
+  ignore_errors: true
+  no_log: true
+
+- name: restart-node-exporter
+  become: true
+  ansible.builtin.command: launchctl kickstart -k system/com.homelab.node-exporter
+  listen: restart-node-exporter
+
+- name: restart-mac-extras
+  become: true
+  ansible.builtin.command: launchctl kickstart -k system/com.homelab.mac-extras
+  listen: restart-mac-extras
+
+- name: restart-mdns-reflector
+  become: true
+  ansible.builtin.command: launchctl kickstart -k system/com.homelab.mdns-reflector
+  listen: restart-mdns-reflector
+
+- name: notify-mdns-reflector
+  ansible.builtin.uri:
+    url: https://slack.com/api/chat.postMessage
+    method: POST
+    headers:
+      Authorization: "Bearer {{ slack_ansible_token }}"
+      Content-Type: "application/json"
+    body_format: json
+    body:
+      channel: "{{ slack_channels.network }}"
+      attachments:
+        - color: good
+          text: "mDNS reflector restarted ({{ mdns_vm_vmnet_ip }} → {{ lan_ip }})"
+    status_code: [200]
+  listen: restart-mdns-reflector
+  when: slack_ansible_token | default('') | length > 0
+  ignore_errors: true
+  no_log: true

@@ -21,7 +21,7 @@ contactPoints:
         disableResolveMessage: false
         settings:
           token: '$SLACK_BOT_TOKEN'
-          recipient: '#cluster'
+          recipient: '#infra'
           title: '{{ template "slack.homelab.title" . }}'
           text: '{{ template "slack.homelab.text" . }}'
           color: '{{ template "slack.homelab.color" . }}'

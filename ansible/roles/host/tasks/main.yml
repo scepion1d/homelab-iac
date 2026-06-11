@@ -1,0 +1,16 @@
+---
+- name: Include dependency tasks
+  ansible.builtin.include_tasks: deps.yml
+  tags: [deps]
+
+- name: Include runtime tasks
+  ansible.builtin.include_tasks: runtime.yml
+  tags: [runtime]
+
+- name: Include services tasks
+  ansible.builtin.include_tasks: services.yml
+  tags: [services]
+
+- name: Include host apps tasks
+  ansible.builtin.include_tasks: ../apps/main.yml
+  tags: [apps]

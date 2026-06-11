@@ -1,0 +1,101 @@
+---
+# Install ArgoCD, register repo credentials, apply root ApplicationSet.
+
+- name: Check if ArgoCD is installed
+  ansible.builtin.command: kubectl get deploy argocd-server -n argocd
+  register: argocd_check
+  changed_when: false
+  failed_when: false
+
+- name: Install ArgoCD
+  when: argocd_check.rc != 0
+  block:
+    - name: Apply ArgoCD manifests
+      ansible.builtin.command: >
+        kubectl apply -n argocd -f
+        https://raw.githubusercontent.com/argoproj/argo-cd/stable/manifests/install.yaml
+      register: argocd_install
+
+    - name: Create argocd namespace (if not exists)
+      ansible.builtin.command: kubectl create namespace argocd
+      failed_when: false
+
+- name: Wait for ArgoCD server ready
+  ansible.builtin.command: >
+    kubectl -n argocd wait --for=condition=available deploy/argocd-server --timeout=300s
+  changed_when: false
+
+- name: Get ArgoCD admin password
+  ansible.builtin.shell: |
+    kubectl -n argocd get secret argocd-initial-admin-secret \
+      -o jsonpath='{.data.password}' | base64 -d
+  register: argocd_admin_pwd
+  changed_when: false
+  no_log: true
+
+- name: Register git repo with ArgoCD
+  when: argocd_git_user | length > 0 and argocd_git_pat | length > 0
+  block:
+    - name: Port-forward ArgoCD
+      ansible.builtin.command: >
+        kubectl -n argocd port-forward svc/argocd-server 18083:443
+      async: 60
+      poll: 0
+      register: argocd_pf
+
+    - name: Wait for port-forward
+      ansible.builtin.wait_for:
+        port: 18083
+        timeout: 15
+
+    - name: Login to ArgoCD
+      ansible.builtin.command: >
+        argocd login 127.0.0.1:18083
+        --username admin --password {{ argocd_admin_pwd.stdout }}
+        --grpc-web --insecure
+      no_log: true
+
+    - name: Add repo credentials
+      ansible.builtin.command: >
+        argocd repo add {{ argocd_repo_url }}
+        --username {{ argocd_git_user }}
+        --password {{ argocd_git_pat }}
+        --upsert
+      no_log: true
+
+    - name: Set admin password
+      ansible.builtin.command: >
+        argocd account update-password
+        --account admin
+        --current-password {{ argocd_admin_pwd.stdout }}
+        --new-password {{ argocd_password }}
+        --grpc-web --insecure
+        --server 127.0.0.1:18083
+      when: argocd_password | default('') | length > 0
+      no_log: true
+      failed_when: false
+
+    - name: Kill port-forward
+      ansible.builtin.command: kill {{ argocd_pf.ansible_job_id }}
+      failed_when: false
+      changed_when: false
+
+- name: Apply root ApplicationSet
+  ansible.builtin.command: kubectl apply -f {{ cluster_dir }}/root-appset.yaml
+  register: appset_apply
+  changed_when: "'created' in appset_apply.stdout or 'configured' in appset_apply.stdout"
+
+- name: Kick ApplicationSet refresh
+  ansible.builtin.command: >
+    kubectl -n argocd annotate appset root --overwrite
+    argocd.argoproj.io/refresh={{ ansible_date_time.epoch }}
+  changed_when: false
+  failed_when: false
+
+- name: Notify Slack — ArgoCD bootstrapped
+  ansible.builtin.include_tasks: ../../common/tasks/slack.yml
+  vars:
+    slack_notify_channel: "{{ slack_channels.deploy }}"
+    slack_notify_msg: "ArgoCD bootstrapped, root ApplicationSet applied"
+    slack_notify_color: good
+  when: appset_apply is changed

@@ -36,7 +36,7 @@ groups:
           severity: critical
           entity: host
           component: exporter
-          channel: cluster
+          channel: infra
         annotations:
           summary: 'Mac host exporter unreachable from cluster'
           description: 'Prometheus has not scraped the macOS host exporter (node_exporter + mac-extras) for 2m. Host visibility lost; downstream host alerts suppressed.'

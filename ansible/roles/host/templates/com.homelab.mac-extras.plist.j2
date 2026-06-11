@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN"
+  "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!-- Managed by Ansible. Do not hand-edit. -->
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>com.homelab.mac-extras</string>
+
+  <key>ProgramArguments</key>
+  <array>
+    <string>/bin/zsh</string>
+    <string>/usr/local/lib/homelab/mac-extras.sh</string>
+  </array>
+
+  <key>EnvironmentVariables</key>
+  <dict>
+    <key>PATH</key>
+    <string>/opt/homebrew/bin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin</string>
+    <key>OUT_DIR</key>
+    <string>/usr/local/var/mac-exporter</string>
+    <key>COLIMA_USER</key>
+    <string>{{ homelab_user }}</string>
+    <key>COLIMA_PROFILE</key>
+    <string>{{ colima_profile }}</string>
+  </dict>
+
+  <key>UserName</key>
+  <string>root</string>
+
+  <key>RunAtLoad</key>
+  <true/>
+
+  <key>StartInterval</key>
+  <integer>60</integer>
+
+  <key>KeepAlive</key>
+  <false/>
+
+  <key>StandardOutPath</key>
+  <string>/var/log/homelab-mac-extras.log</string>
+  <key>StandardErrorPath</key>
+  <string>/var/log/homelab-mac-extras.log</string>
+</dict>
+</plist>

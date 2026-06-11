@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN"
+  "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  LaunchDaemon: graceful shutdown hook.
+  Sleeps until macOS sends SIGTERM on shutdown/reboot, then runs stop.yml.
+-->
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>com.homelab.shutdown-hook</string>
+
+  <key>ProgramArguments</key>
+  <array>
+    <string>/bin/zsh</string>
+    <string>-c</string>
+    <string>trap '/usr/local/bin/ansible-playbook /Users/homelab-admin/src/homelab-iac/ansible/stop.yml; exit 0' TERM INT; while true; do sleep 86400 &amp; wait $! || true; done</string>
+  </array>
+
+  <key>WorkingDirectory</key>
+  <string>/Users/homelab-admin/src/homelab-iac/ansible</string>
+
+  <key>EnvironmentVariables</key>
+  <dict>
+    <key>PATH</key>
+    <string>/usr/local/bin:/opt/homebrew/bin:/usr/bin:/bin</string>
+    <key>HOME</key>
+    <string>/Users/homelab-admin</string>
+    <key>ANSIBLE_CONFIG</key>
+    <string>/Users/homelab-admin/src/homelab-iac/ansible/ansible.cfg</string>
+  </dict>
+
+  <key>UserName</key>
+  <string>homelab-admin</string>
+
+  <key>RunAtLoad</key>
+  <true/>
+
+  <key>KeepAlive</key>
+  <true/>
+
+  <key>ExitTimeOut</key>
+  <integer>180</integer>
+
+  <key>StandardOutPath</key>
+  <string>/var/log/homelab-shutdown.log</string>
+  <key>StandardErrorPath</key>
+  <string>/var/log/homelab-shutdown.err</string>
+</dict>
+</plist>

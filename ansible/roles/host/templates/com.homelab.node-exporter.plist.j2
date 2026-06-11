@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN"
+  "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!-- Managed by Ansible. Do not hand-edit. -->
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>com.homelab.node-exporter</string>
+
+  <key>ProgramArguments</key>
+  <array>
+    <string>{{ node_exporter_bin | default('/usr/local/bin/node_exporter') }}</string>
+    <string>--web.listen-address={{ colima_vm_ip | default('127.0.0.1') }}:9100</string>
+    <string>--collector.textfile.directory=/usr/local/var/mac-exporter</string>
+  </array>
+
+  <key>EnvironmentVariables</key>
+  <dict>
+    <key>PATH</key>
+    <string>/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin</string>
+  </dict>
+
+  <key>UserName</key>
+  <string>root</string>
+
+  <key>RunAtLoad</key>
+  <false/>
+
+  <key>KeepAlive</key>
+  <true/>
+
+  <key>ThrottleInterval</key>
+  <integer>10</integer>
+
+  <key>StandardOutPath</key>
+  <string>/var/log/homelab-node-exporter.log</string>
+  <key>StandardErrorPath</key>
+  <string>/var/log/homelab-node-exporter.log</string>
+</dict>
+</plist>

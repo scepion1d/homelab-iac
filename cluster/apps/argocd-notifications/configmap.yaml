@@ -88,7 +88,7 @@ data:
   # ---------------------------------------------------------------------------
   subscriptions: |
     - recipients:
-        - slack:cluster
+        - slack:deploy
       triggers:
         - on-deployed
         - on-sync-failed

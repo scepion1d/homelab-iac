@@ -1,4 +1,4 @@
 # Per-app metadata read by the root ApplicationSet.
 namespace: argocd
-revision: 2
+revision: 3
 ingressHost: argocd

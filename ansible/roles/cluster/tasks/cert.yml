@@ -1,0 +1,41 @@
+---
+# CA cert dump/restore for cluster recreates.
+
+- name: Check if CA secret exists
+  ansible.builtin.command: kubectl -n cert-manager get secret homelab-ca-key-pair
+  register: ca_exists
+  changed_when: false
+  failed_when: false
+
+- name: Restore CA from backup (if backup exists and CA doesn't)
+  when:
+    - ca_exists.rc != 0
+    - cert_yaml | length > 0
+  block:
+    - name: Check backup file exists
+      ansible.builtin.stat:
+        path: "{{ cert_yaml }}"
+      register: ca_backup_file
+
+    - name: Run CA restore script
+      ansible.builtin.command: /bin/zsh {{ bootstrap_dir }}/tools/restore-ca-secret.sh
+      environment:
+        CA_SECRET_BACKUP_PATH: "{{ cert_yaml }}"
+      when: ca_backup_file.stat.exists
+
+- name: Dump CA secret (if it exists and backup path is set)
+  when:
+    - ca_exists.rc == 0
+    - cert_yaml | length > 0
+  block:
+    - name: Ensure cert backup directory exists
+      ansible.builtin.file:
+        path: "{{ cert_yaml | dirname }}"
+        state: directory
+        mode: "0700"
+
+    - name: Run CA dump script
+      ansible.builtin.command: /bin/zsh {{ bootstrap_dir }}/tools/dump-ca-secret.sh
+      environment:
+        CA_SECRET_BACKUP_PATH: "{{ cert_yaml }}"
+      changed_when: false

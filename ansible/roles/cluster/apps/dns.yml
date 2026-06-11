@@ -1,0 +1,90 @@
+---
+# Configure AdGuard Home: wizard + DNS config + blocklists.
+
+- name: Wait for AdGuard deployment
+  ansible.builtin.command: kubectl -n dns get deploy adguard
+  register: adguard_deploy
+  retries: 60
+  delay: 3
+  until: adguard_deploy.rc == 0
+  changed_when: false
+  failed_when: false
+
+- name: Skip DNS setup if AdGuard not deployed yet
+  when: adguard_deploy.rc == 0
+  block:
+    - name: Wait for AdGuard pod ready
+      ansible.builtin.command: >
+        kubectl -n dns wait --for=condition=ready pod -l app.kubernetes.io/name=adguard --timeout=120s
+      changed_when: false
+
+    - name: Port-forward AdGuard UI
+      ansible.builtin.command: kubectl -n dns port-forward svc/adguard-ui 33080:80
+      async: 120
+      poll: 0
+      register: adguard_pf
+
+    - name: Wait for port-forward
+      ansible.builtin.wait_for:
+        port: 33080
+        timeout: 15
+
+    - name: Push DNS config
+      ansible.builtin.uri:
+        url: http://127.0.0.1:33080/control/dns_config
+        method: PUT
+        body_format: json
+        body: "{{ lookup('file', cluster_dir ~ '/apps/adguard/configs/dns.yaml') | from_yaml | to_json }}"
+        url_username: "{{ adguard_user }}"
+        url_password: "{{ adguard_password }}"
+        force_basic_auth: true
+        status_code: [200]
+      register: dns_push
+      failed_when: false
+
+    - name: Load blocklists config
+      ansible.builtin.set_fact:
+        blocklists: "{{ (lookup('file', cluster_dir ~ '/apps/adguard/configs/blocklists.yaml') | from_yaml).filters }}"
+
+    - name: Get current blocklists
+      ansible.builtin.uri:
+        url: http://127.0.0.1:33080/control/filtering/status
+        method: GET
+        url_username: "{{ adguard_user }}"
+        url_password: "{{ adguard_password }}"
+        force_basic_auth: true
+      register: current_filters
+      failed_when: false
+
+    - name: Add missing blocklists
+      ansible.builtin.uri:
+        url: http://127.0.0.1:33080/control/filtering/add_url
+        method: POST
+        body_format: json
+        body:
+          name: "{{ item.name }}"
+          url: "{{ item.url }}"
+          whitelist: false
+        url_username: "{{ adguard_user }}"
+        url_password: "{{ adguard_password }}"
+        force_basic_auth: true
+        status_code: [200]
+      loop: "{{ blocklists }}"
+      loop_control:
+        label: "{{ item.name }}"
+      when: item.url not in (current_filters.json.filters | default([]) | map(attribute='url') | list)
+      failed_when: false
+
+    - name: Kill AdGuard port-forward
+      ansible.builtin.shell: "kill $(lsof -ti:33080) 2>/dev/null || true"
+      changed_when: false
+
+    - name: Notify Slack — DNS configured
+      ansible.builtin.include_tasks: ../../common/tasks/slack.yml
+      vars:
+        slack_notify_channel: "{{ slack_channels.dns }}"
+        slack_notify_msg: "AdGuard DNS config applied, blocklists synced"
+        slack_notify_color: good
+      when:
+        - dns_push is defined
+        - dns_push.status == 200

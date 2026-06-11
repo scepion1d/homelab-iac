@@ -1,0 +1,33 @@
+---
+# Reconcile host apps (Docker Compose on Colima).
+
+- name: Find host app directories
+  ansible.builtin.find:
+    paths: "{{ repo_root }}/host/apps"
+    file_type: directory
+    recurse: false
+  register: host_app_dirs
+
+- name: Remove stale stopped containers
+  ansible.builtin.shell: |
+    for c in $(docker ps -a --filter "name=^homelab-" --filter "status=exited" --filter "status=created" --format '{{ '{{' }}.Names{{ '}}' }}'); do
+      docker rm -f "$c" 2>/dev/null || true
+    done
+  environment:
+    DOCKER_HOST: "{{ docker_host }}"
+  changed_when: false
+
+- name: Reconcile each host app
+  ansible.builtin.shell: |
+    cd {{ item.path }}
+    if [ -f compose.yaml ]; then
+      docker compose up -d --remove-orphans
+    fi
+  environment:
+    DOCKER_HOST: "{{ docker_host }}"
+    APP_DATA: "{{ homelab_home }}/homelab-data/{{ item.path | basename }}"
+    TZ: "Europe/Warsaw"
+  loop: "{{ host_app_dirs.files }}"
+  loop_control:
+    label: "{{ item.path | basename }}"
+  changed_when: false

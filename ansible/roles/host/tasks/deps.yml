@@ -1,0 +1,35 @@
+---
+# Ensure CLI dependencies are installed via Homebrew.
+
+- name: Check Homebrew is installed
+  ansible.builtin.command: brew --version
+  register: brew_check
+  changed_when: false
+  failed_when: false
+
+- name: Install Homebrew
+  when: brew_check.rc != 0
+  ansible.builtin.shell: |
+    /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+  args:
+    executable: /bin/bash
+
+- name: Install required packages
+  community.general.homebrew:
+    name:
+      - colima
+      - docker
+      - docker-compose
+      - k3d
+      - kubectl
+      - helm
+      - kustomize
+      - argocd
+      - yq
+      - jq
+    state: present
+
+- name: Install node_exporter
+  community.general.homebrew:
+    name: node_exporter
+    state: present

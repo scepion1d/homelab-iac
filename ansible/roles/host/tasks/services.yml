@@ -1,0 +1,105 @@
+---
+# Host services: dns-proxy, node-exporter, mac-extras, mdns-reflector.
+# Each is a LaunchDaemon with templated config.
+# After templating, bootstrap with launchd if not already loaded.
+
+- name: Ensure homelab lib directory exists
+  become: true
+  ansible.builtin.file:
+    path: /usr/local/lib/homelab
+    state: directory
+    owner: root
+    group: wheel
+    mode: "0755"
+
+- name: Copy dns-proxy script
+  become: true
+  ansible.builtin.copy:
+    src: "{{ repo_root }}/bootstrap/services/dns-proxy.py"
+    dest: /usr/local/lib/homelab/dns-proxy.py
+    owner: root
+    group: wheel
+    mode: "0644"
+  notify: restart-dns-proxy
+
+- name: Copy mac-extras script
+  become: true
+  ansible.builtin.copy:
+    src: "{{ repo_root }}/bootstrap/services/mac-extras.sh"
+    dest: /usr/local/lib/homelab/mac-extras.sh
+    owner: root
+    group: wheel
+    mode: "0755"
+  notify: restart-mac-extras
+
+- name: Ensure mac-extras output directory exists
+  become: true
+  ansible.builtin.file:
+    path: /usr/local/var/mac-exporter
+    state: directory
+    owner: root
+    group: wheel
+    mode: "0755"
+
+- name: Ensure dns-proxy is installed
+  become: true
+  ansible.builtin.template:
+    src: com.homelab.dns-proxy.plist.j2
+    dest: /Library/LaunchDaemons/com.homelab.dns-proxy.plist
+    owner: root
+    group: wheel
+    mode: "0644"
+  notify: restart-dns-proxy
+
+- name: Ensure node-exporter is installed
+  become: true
+  ansible.builtin.template:
+    src: com.homelab.node-exporter.plist.j2
+    dest: /Library/LaunchDaemons/com.homelab.node-exporter.plist
+    owner: root
+    group: wheel
+    mode: "0644"
+  notify: restart-node-exporter
+
+- name: Ensure mac-extras is installed
+  become: true
+  ansible.builtin.template:
+    src: com.homelab.mac-extras.plist.j2
+    dest: /Library/LaunchDaemons/com.homelab.mac-extras.plist
+    owner: root
+    group: wheel
+    mode: "0644"
+  notify: restart-mac-extras
+
+- name: Ensure mdns-reflector is installed
+  become: true
+  ansible.builtin.template:
+    src: com.homelab.mdns-reflector.plist.j2
+    dest: /Library/LaunchDaemons/com.homelab.mdns-reflector.plist
+    owner: root
+    group: wheel
+    mode: "0644"
+  notify: restart-mdns-reflector
+
+# Ensure all services are loaded with launchd (idempotent — bootstrap
+# is a no-op if already loaded).
+- name: Check which services are loaded
+  become: true
+  ansible.builtin.shell: launchctl list | grep -c '{{ item }}' || echo 0
+  loop:
+    - com.homelab.dns-proxy
+    - com.homelab.node-exporter
+    - com.homelab.mac-extras
+    - com.homelab.mdns-reflector
+  register: svc_loaded
+  changed_when: false
+
+- name: Bootstrap unloaded services
+  become: true
+  ansible.builtin.command: launchctl bootstrap system /Library/LaunchDaemons/{{ item.item }}.plist
+  loop: "{{ svc_loaded.results }}"
+  loop_control:
+    label: "{{ item.item }}"
+  when: "(item.stdout | trim) == '0'"
+  failed_when: false
+  notify: restart-mdns-reflector

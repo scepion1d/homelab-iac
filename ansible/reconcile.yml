@@ -1,0 +1,56 @@
+---
+# Idempotent reconcile — run on boot and every 5 minutes.
+# Ensures the full homelab stack is healthy.
+- name: Reconcile homelab
+  hosts: localhost
+  environment:
+    DOCKER_HOST: "{{ docker_host | default('') }}"
+    PATH: "/usr/local/bin:/opt/homebrew/bin:/usr/bin:/bin"
+    HOME: "{{ homelab_home }}"
+
+  pre_tasks:
+    - name: Load .env file
+      ansible.builtin.shell: |
+        set -a
+        source {{ env_file }}
+        set +a
+        env
+      register: env_vars
+      changed_when: false
+      args:
+        executable: /bin/zsh
+
+  roles:
+    - role: host
+    - role: cluster
+
+  post_tasks:
+    - name: Reconcile summary
+      ansible.builtin.uri:
+        url: https://slack.com/api/chat.postMessage
+        method: POST
+        headers:
+          Authorization: "Bearer {{ slack_ansible_token }}"
+          Content-Type: "application/json"
+        body_format: json
+        body:
+          channel: "{{ slack_channels.deploy }}"
+          attachments:
+            - title: "Homelab Reconcile"
+              color: "{{ 'good' if (dns_healthy | default(false)) else 'danger' }}"
+              fields:
+                - title: Colima
+                  value: "{{ colima_vm_ip | default('unknown') }}"
+                  short: true
+                - title: DNS
+                  value: "{{ 'healthy' if (dns_healthy | default(false)) else 'down' }}"
+                  short: true
+                - title: Ingress
+                  value: "{{ 'healthy' if (ingress_healthy | default(false)) else 'down' }}"
+                  short: true
+        status_code: [200]
+      when:
+        - slack_ansible_token | default('') | length > 0
+        - cluster_created is defined and cluster_created is changed
+      ignore_errors: true
+      no_log: true

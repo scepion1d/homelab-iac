@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN"
+  "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  LaunchDaemon: runs ansible-playbook reconcile.yml at boot and every 5 min.
+-->
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>com.homelab.ansible-reconcile</string>
+
+  <key>ProgramArguments</key>
+  <array>
+    <string>/usr/local/bin/ansible-playbook</string>
+    <string>/Users/homelab-admin/src/homelab-iac/ansible/reconcile.yml</string>
+  </array>
+
+  <key>WorkingDirectory</key>
+  <string>/Users/homelab-admin/src/homelab-iac/ansible</string>
+
+  <key>EnvironmentVariables</key>
+  <dict>
+    <key>PATH</key>
+    <string>/usr/local/bin:/opt/homebrew/bin:/usr/bin:/bin</string>
+    <key>HOME</key>
+    <string>/Users/homelab-admin</string>
+    <key>ANSIBLE_CONFIG</key>
+    <string>/Users/homelab-admin/src/homelab-iac/ansible/ansible.cfg</string>
+  </dict>
+
+  <key>UserName</key>
+  <string>homelab-admin</string>
+
+  <key>RunAtLoad</key>
+  <true/>
+
+  <key>StartInterval</key>
+  <integer>300</integer>
+
+  <key>StandardOutPath</key>
+  <string>/var/log/homelab-ansible.log</string>
+  <key>StandardErrorPath</key>
+  <string>/var/log/homelab-ansible.err</string>
+</dict>
+</plist>
