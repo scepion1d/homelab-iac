@@ -10,7 +10,7 @@
   <key>ProgramArguments</key>
   <array>
     <string>{{ node_exporter_bin | default('/usr/local/bin/node_exporter') }}</string>
-    <string>--web.listen-address={{ colima_vm_ip | default('127.0.0.1') }}:9100</string>
+    <string>--web.listen-address={{ node_exporter_listen_address | default('0.0.0.0:9100') }}</string>
     <string>--collector.textfile.directory=/usr/local/var/mac-exporter</string>
   </array>
 

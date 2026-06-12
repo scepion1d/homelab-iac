@@ -42,10 +42,10 @@ slack_ansible_token: "{{ lookup('env', 'ANSIBLE_SLACK_TOKEN') }}"
 slack_grafana_token: "{{ lookup('env', 'GRAFANA_SLACK_BOT_TOKEN') }}"
 slack_argocd_token: "{{ lookup('env', 'ARGOCD_SLACK_TOKEN') }}"
 slack_channels:
-  infra: "#infra"
-  deploy: "#deploy"
-  dns: "#dns"
-  network: "#network"
+  infra: "infra"
+  deploy: "deploy"
+  dns: "dns"
+  network: "network"
 
 # Host
 lan_ip: "192.168.10.3"

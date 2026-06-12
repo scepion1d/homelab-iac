@@ -41,6 +41,26 @@
     group: wheel
     mode: "0755"
 
+# Resolve the actual node_exporter binary path. On Apple Silicon Homebrew
+# installs to /opt/homebrew/bin (not /usr/local/bin), and launchd refuses
+# to bootstrap a plist whose ProgramArguments[0] doesn't exist
+# ("Bootstrap failed: 5: Input/output error").
+- name: Resolve node_exporter binary path
+  ansible.builtin.shell: |
+    set -e
+    for p in /opt/homebrew/bin/node_exporter /usr/local/bin/node_exporter; do
+      if [ -x "$p" ]; then echo "$p"; exit 0; fi
+    done
+    command -v node_exporter
+  args:
+    executable: /bin/bash
+  register: node_exporter_which
+  changed_when: false
+
+- name: Set node_exporter_bin fact
+  ansible.builtin.set_fact:
+    node_exporter_bin: "{{ node_exporter_which.stdout | trim }}"
+
 - name: Ensure dns-proxy is installed
   become: true
   ansible.builtin.template:
@@ -93,6 +113,19 @@
     - com.homelab.mdns-reflector
   register: svc_loaded
   changed_when: false
+
+# `enable` clears the persistent disabled-list flag that a previous
+# `bootout` may have set ("Bootstrap failed: 5: Input/output error" is
+# the launchd message when a daemon is disabled). Idempotent.
+- name: Enable services in launchd (clear disabled flag)
+  become: true
+  ansible.builtin.command: launchctl enable system/{{ item.item }}
+  loop: "{{ svc_loaded.results }}"
+  loop_control:
+    label: "{{ item.item }}"
+  when: "(item.stdout | trim) == '0'"
+  changed_when: false
+  failed_when: false
 
 - name: Bootstrap unloaded services
   become: true

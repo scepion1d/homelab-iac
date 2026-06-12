@@ -1,7 +1,19 @@
 ---
+# launchd reload pattern: `kickstart -k` only restarts the running process
+# with the cmd-line launchd cached at bootstrap time, so plist changes are
+# ignored. `bootout` (if loaded) + `enable` (clear disabled flag) +
+# `bootstrap` re-reads the plist, and is idempotent against a fully
+# unloaded service. `enable` is mandatory because bootout sometimes leaves
+# the service in the persistent disabled list, causing the next bootstrap
+# to fail with "Bootstrap failed: 5: Input/output error".
 - name: restart-dns-proxy
   become: true
-  ansible.builtin.command: launchctl kickstart -k system/com.homelab.dns-proxy
+  ansible.builtin.shell: |
+    plist=/Library/LaunchDaemons/com.homelab.dns-proxy.plist
+    svc=system/com.homelab.dns-proxy
+    launchctl bootout "$svc" 2>/dev/null || true
+    launchctl enable "$svc"
+    launchctl bootstrap system "$plist"
   listen: restart-dns-proxy
 
 - name: notify-dns-proxy
@@ -25,17 +37,32 @@
 
 - name: restart-node-exporter
   become: true
-  ansible.builtin.command: launchctl kickstart -k system/com.homelab.node-exporter
+  ansible.builtin.shell: |
+    plist=/Library/LaunchDaemons/com.homelab.node-exporter.plist
+    svc=system/com.homelab.node-exporter
+    launchctl bootout "$svc" 2>/dev/null || true
+    launchctl enable "$svc"
+    launchctl bootstrap system "$plist"
   listen: restart-node-exporter
 
 - name: restart-mac-extras
   become: true
-  ansible.builtin.command: launchctl kickstart -k system/com.homelab.mac-extras
+  ansible.builtin.shell: |
+    plist=/Library/LaunchDaemons/com.homelab.mac-extras.plist
+    svc=system/com.homelab.mac-extras
+    launchctl bootout "$svc" 2>/dev/null || true
+    launchctl enable "$svc"
+    launchctl bootstrap system "$plist"
   listen: restart-mac-extras
 
 - name: restart-mdns-reflector
   become: true
-  ansible.builtin.command: launchctl kickstart -k system/com.homelab.mdns-reflector
+  ansible.builtin.shell: |
+    plist=/Library/LaunchDaemons/com.homelab.mdns-reflector.plist
+    svc=system/com.homelab.mdns-reflector
+    launchctl bootout "$svc" 2>/dev/null || true
+    launchctl enable "$svc"
+    launchctl bootstrap system "$plist"
   listen: restart-mdns-reflector
 
 - name: notify-mdns-reflector

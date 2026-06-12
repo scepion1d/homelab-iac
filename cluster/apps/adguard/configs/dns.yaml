@@ -1,10 +1,13 @@
 upstream_dns:
   - "10.43.10.43"              # Unbound recursive (pinned ClusterIP)
+
+# Used only when primary upstream(s) fail.
+fallback_dns:
   - "192.168.10.1"             # MikroTik fallback
   - "1.1.1.1"                  # Cloudflare fallback
 
-# Race all upstreams, use first response.
-upstream_mode: parallel
+# Single recursive path (AdGuard -> Unbound) keeps cache warm and metrics sane.
+upstream_mode: load_balance
 
 # Used only to resolve upstream hostnames at startup.
 bootstrap_dns:

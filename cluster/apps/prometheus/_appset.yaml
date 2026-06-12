@@ -1,5 +1,5 @@
 namespace: monitoring
-revision: 14
+revision: 15
 source:
   repoURL: https://prometheus-community.github.io/helm-charts
   chart: prometheus
@@ -27,7 +27,7 @@ source:
               scrape_timeout: 10s
               static_configs:
                 - targets:
-                    - 192.168.64.1:9100
+                    - 192.168.10.3:9100
                   labels:
                     host: mac
                     source: host-native
@@ -37,6 +37,5 @@ source:
       alertmanager:
         persistence:
           enabled: false
-
       prometheus-pushgateway:
         enabled: false
