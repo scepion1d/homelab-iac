@@ -23,8 +23,15 @@ ratelimit_subnet_len_ipv6: 56
 # Forward coarse client subnet for CDN locality.
 edns_cs_enabled: true
 
-# 64 MiB cache (in bytes). TTL clamped to 60s–24h.
-cache_size: 67108864
+# AdGuard cache DISABLED on purpose. Two caches in series with identical TTL
+# clamps make the second one (Unbound) useless — by the time AdGuard re-asks
+# Unbound, Unbound's entry has also expired, so Unbound never hits its cache
+# and prefetch/serve-expired never trigger. Letting Unbound own the cache
+# turns it into the real working set + DNSSEC-validated recursive resolver,
+# while AdGuard stays a pure filter/blocker (still O(1), filtering happens
+# before any upstream call). cache_ttl_min/max are kept as documentation but
+# are no-ops while cache_size=0.
+cache_size: 0
 cache_ttl_min: 60
 cache_ttl_max: 86400
 
