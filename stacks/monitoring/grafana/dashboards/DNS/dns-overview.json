@@ -210,8 +210,8 @@
             },
             "targets": [
                 {
-                    "expr": "max(\r\n    rate(\r\n        container_cpu_usage_seconds_total{\r\n            container=\"adguardhome\", namespace=\"dns\"\r\n        }[$__rate_interval]\r\n    )\r\n)",
-                    "legendFormat": "{{cache}}",
+                    "expr": "sum(rate(container_cpu_usage_seconds_total{name=\"homelab-dns-adguard\"}[$__rate_interval])) or on() vector(0)",
+                    "legendFormat": "cpu",
                     "refId": "A",
                     "datasource": {
                         "type": "prometheus",
@@ -800,8 +800,8 @@
             },
             "targets": [
                 {
-                    "expr": "rate(\r\n    container_cpu_usage_seconds_total{\r\n        container=\"adguard-exporter\", namespace=\"dns\"\r\n    }[$__rate_interval]\r\n)",
-                    "legendFormat": "{{cache}}",
+                    "expr": "sum(rate(container_cpu_usage_seconds_total{name=\"homelab-dns-adguard-exporter\"}[$__rate_interval])) or on() vector(0)",
+                    "legendFormat": "cpu",
                     "refId": "A",
                     "datasource": {
                         "type": "prometheus",
@@ -1180,8 +1180,8 @@
             },
             "targets": [
                 {
-                    "expr": "max(\r\n    rate(\r\n        container_cpu_usage_seconds_total{\r\n            container=\"unbound\", namespace=\"dns\"\r\n        }[$__rate_interval]\r\n    )\r\n)",
-                    "legendFormat": "{{cache}}",
+                    "expr": "sum(rate(container_cpu_usage_seconds_total{name=\"homelab-dns-unbound\"}[$__rate_interval])) or on() vector(0)",
+                    "legendFormat": "cpu",
                     "refId": "A",
                     "datasource": {
                         "type": "prometheus",
@@ -1259,8 +1259,8 @@
             },
             "targets": [
                 {
-                    "expr": " max(\r\n    rate(\r\n        container_cpu_cfs_throttled_seconds_total{\r\n            container=\"unbound\", namespace=\"dns\"\r\n        }[$__rate_interval]\r\n    )\r\n)",
-                    "legendFormat": "{{cache}}",
+                    "expr": "sum(rate(container_cpu_cfs_throttled_seconds_total{name=\"homelab-dns-unbound\"}[$__rate_interval])) or on() vector(0)",
+                    "legendFormat": "throttled",
                     "refId": "A",
                     "datasource": {
                         "type": "prometheus",
@@ -1483,7 +1483,7 @@
         {
             "id": 11,
             "type": "stat",
-            "title": "Dumper Uptimr",
+            "title": "Dumper Uptime",
             "datasource": {
                 "type": "prometheus",
                 "uid": "prometheus"
@@ -1496,7 +1496,7 @@
             },
             "targets": [
                 {
-                    "expr": "time() - max(\r\n    container_start_time_seconds{container=\"unbound-cache-manager\", namespace=\"dns\"}\r\n)",
+                    "expr": "time() - max(container_start_time_seconds{name=\"homelab-dns-unbound-cache-dumper\"})",
                     "legendFormat": "__auto",
                     "refId": "A",
                     "datasource": {
@@ -1542,85 +1542,6 @@
                     "values": false
                 },
                 "showPercentChange": false,
-                "textMode": "value",
-                "wideLayout": true
-            },
-            "pluginVersion": "12.4.3"
-        },
-        {
-            "id": 13,
-            "type": "stat",
-            "title": "Cch PVC",
-            "datasource": {
-                "type": "prometheus",
-                "uid": "prometheus"
-            },
-            "gridPos": {
-                "h": 4,
-                "w": 3,
-                "x": 21,
-                "y": 6
-            },
-            "targets": [
-                {
-                    "expr": "kubelet_volume_stats_used_bytes{namespace=\"dns\", persistentvolumeclaim=\"unbound-cache\"}\r\n/\r\nkubelet_volume_stats_capacity_bytes{namespace=\"dns\", persistentvolumeclaim=\"unbound-cache\"}\r\n* 100",
-                    "legendFormat": "__auto",
-                    "refId": "A",
-                    "datasource": {
-                        "type": "prometheus",
-                        "uid": "prometheus"
-                    },
-                    "editorMode": "code",
-                    "range": true
-                }
-            ],
-            "fieldConfig": {
-                "defaults": {
-                    "color": {
-                        "mode": "thresholds"
-                    },
-                    "mappings": [],
-                    "max": 100,
-                    "min": 0,
-                    "thresholds": {
-                        "mode": "absolute",
-                        "steps": [
-                            {
-                                "color": "light-green",
-                                "value": 0
-                            },
-                            {
-                                "color": "light-yellow",
-                                "value": 67108864
-                            },
-                            {
-                                "color": "light-orange",
-                                "value": 107374182
-                            },
-                            {
-                                "color": "light-red",
-                                "value": 127401984
-                            }
-                        ]
-                    },
-                    "unit": "percent"
-                },
-                "overrides": []
-            },
-            "options": {
-                "colorMode": "value",
-                "graphMode": "none",
-                "justifyMode": "auto",
-                "orientation": "auto",
-                "percentChangeColorMode": "same_as_value",
-                "reduceOptions": {
-                    "calcs": [
-                        "lastNotNull"
-                    ],
-                    "fields": "",
-                    "values": false
-                },
-                "showPercentChange": true,
                 "textMode": "value",
                 "wideLayout": true
             },

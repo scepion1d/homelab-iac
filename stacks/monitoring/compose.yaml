@@ -65,6 +65,10 @@ services:
       GF_USERS_ALLOW_SIGN_UP: "false"
       GF_AUTH_ANONYMOUS_ENABLED: "false"
       GF_INSTALL_PLUGINS: "grafana-polystat-panel"
+      # Pin the "Home" page to the homelab overview dashboard.
+      # `dashboards/homelab.json` is provisioned at the root (no folder),
+      # so this path is stable across UI folder reorgs.
+      GF_DASHBOARDS_DEFAULT_HOME_DASHBOARD_PATH: "/var/lib/grafana/dashboards/homelab.json"
     volumes:
       - ./grafana/provisioning:/etc/grafana/provisioning:ro
       # contact-points.yaml is rendered by ansible (with Slack token spliced
@@ -108,3 +112,58 @@ services:
       timeout: 5s
       retries: 3
       start_period: 20s
+
+  # Per-container metrics (CPU, throttling, memory, network) for everything
+  # running under the Colima Docker daemon. Reachable as `cadvisor:8080` by
+  # prometheus (sibling on the internal bridge).
+  #
+  # On the internal-only bridge (NOT the shared `homelab` network) because
+  # the container is privileged and binds docker.sock + the VM's rootfs.
+  #
+  # cgroup: host is required on cgroup v2 (Colima/Lima default). Without it
+  # docker puts the container in its own cgroup namespace and cadvisor can
+  # only see its own metrics. Verify with: docker inspect cadvisor --format
+  # '{{.HostConfig.CgroupnsMode}}' (should print 'host').
+  #
+  # NO /var/lib/docker mount. Docker 29's new containerd-backed `overlayfs`
+  # snapshotter (Colima default since ~mid-2025) replaces the legacy
+  # `overlay2` graphdriver. cAdvisor v0.49 and earlier hard-code a
+  # `/var/lib/docker/image/overlay2/layerdb/mounts/<id>/mount-id` lookup
+  # that no longer exists, fails for every container, and silently emits
+  # ZERO container metrics. v0.55.1+ no longer requires this mount when
+  # using docker.sock — drop it entirely.
+  #
+  # Metric set is whitelisted to cpu/memory/network/oom_event to keep TSDB
+  # cardinality low; that covers the panels we have today (Svc CPU, Exp CPU,
+  # Svc Throttled, container_start_time_seconds for Dumper Uptime — base
+  # metric, always emitted). Add to --enable_metrics when a new panel needs
+  # disk/diskIO/sched/etc.
+  #
+  # `name=` label on cAdvisor v0.36+ is the docker container name without the
+  # leading slash, so PromQL like {name="homelab-dns-adguard"} matches directly.
+  cadvisor:
+    image: gcr.io/cadvisor/cadvisor:v0.55.1
+    container_name: homelab-monitoring-cadvisor
+    restart: unless-stopped
+    networks: [internal]
+    privileged: true
+    cgroup: host
+    devices:
+      - /dev/kmsg
+    volumes:
+      - /:/rootfs:ro
+      - /var/run:/var/run:ro
+      - /sys:/sys:ro
+    command:
+      - "--housekeeping_interval=30s"
+      - "--docker_only=true"
+      - "--store_container_labels=false"
+      - "--whitelisted_container_labels=com.docker.compose.project,com.docker.compose.service"
+      - "--enable_metrics=cpu,memory,network,oom_event"
+      - "--disable_root_cgroup_stats=true"
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:8080/healthz"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 30s

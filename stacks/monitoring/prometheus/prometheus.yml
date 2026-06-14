@@ -44,6 +44,13 @@ scrape_configs:
     static_configs:
       - targets: ["mikrotik-exporter:49090"]
 
+  # Per-container CPU/memory/network/throttle from cAdvisor (sibling on the
+  # `internal` bridge). Powers the Svc CPU / Exp CPU / Svc Throttled /
+  # container_start_time_seconds panels in the DNS and infra dashboards.
+  - job_name: cadvisor
+    static_configs:
+      - targets: ["cadvisor:8080"]
+
   # Home Assistant /api/prometheus — HA runs network_mode: host in the
   # Colima VM, so we scrape via the VM's vmnet IP. Requires
   # HOMEASSISTANT_PROMETHEUS_TOKEN in .env (Profile → Long-Lived Access
