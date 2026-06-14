@@ -1,0 +1,162 @@
+name: homelab-dns
+
+# DNS stack: AdGuard (filter) -> Unbound (recursive resolver, DNSSEC).
+# Exporters scrape AdGuard's HTTP API and Unbound's control socket.
+# cache-dumper persists Unbound cache across restarts.
+#
+# Networking:
+#   - adguard publishes 53 on the Colima VM IP. Host's dns-proxy.py
+#     forwards 192.168.10.3:53 -> Colima VM:53. Override via DNS_PORT env
+#     (compose-stack passes it through) for parallel-with-v1 testing.
+#   - unbound is back-end only, reached as `unbound:53` by adguard.
+#   - both join the shared `${NETWORK_NAME}` (default: homelab) network
+#     so monitoring stack's prometheus can scrape the exporters.
+
+networks:
+  homelab:
+    name: ${NETWORK_NAME:-homelab}
+    external: true
+  internal:
+    driver: bridge
+    ipam:
+      config:
+        # Dedicated subnet for the dns stack. 172.30.53/24 chosen so the
+        # unbound static IP can be the memorable 172.30.53.53. Safe RFC
+        # 1918 range, no conflict with Colima vmnet (192.168.64/24),
+        # docker default bridge (172.17/16), or k3d (10.42-43/16).
+        - subnet: 172.30.53.0/24
+          gateway: 172.30.53.1
+
+volumes:
+  adguard-conf:
+    name: homelab-dns-adguard-conf
+  adguard-work:
+    name: homelab-dns-adguard-work
+  unbound-ctl:
+    name: homelab-dns-unbound-ctl
+  unbound-cache:
+    name: homelab-dns-unbound-cache
+
+services:
+  unbound:
+    image: mvance/unbound:1.22.0
+    container_name: homelab-dns-unbound
+    restart: unless-stopped
+    networks:
+      internal:
+        # Static IP — AdGuard upstream points at 172.30.53.53 directly,
+        # so it skips docker DNS entirely. Alias kept for sibling
+        # containers (cache-dumper, exporter) that prefer the name.
+        ipv4_address: 172.30.53.53
+        aliases: [unbound.dns]
+    command: ["unbound", "-d", "-v", "-c", "/opt/unbound/etc/unbound/unbound.conf"]
+    volumes:
+      - ./unbound/unbound.conf:/opt/unbound/etc/unbound/unbound.conf:ro
+      - unbound-ctl:/var/run/unbound
+    healthcheck:
+      test: ["CMD", "unbound-control", "-c", "/opt/unbound/etc/unbound/unbound.conf", "status"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
+
+  unbound-cache-dumper:
+    image: mvance/unbound:1.22.0
+    container_name: homelab-dns-unbound-cache-dumper
+    restart: unless-stopped
+    networks: [internal]
+    depends_on:
+      unbound:
+        condition: service_healthy
+    entrypoint: ["/bin/sh", "/opt/cache-dumper/entrypoint.sh"]
+    volumes:
+      - ./unbound/unbound.conf:/opt/unbound/etc/unbound/unbound.conf:ro
+      - ./unbound/cache-dumper:/opt/cache-dumper:ro
+      - unbound-ctl:/var/run/unbound
+      - unbound-cache:/var/cache/unbound
+
+  unbound-exporter:
+    # Built locally from source — no public registry has a current image
+    # of letsencrypt/unbound_exporter as of mid-2025 (kumina's was
+    # removed). Dockerfile is ~10 lines; build is cached after first run.
+    build:
+      context: ./unbound/exporter
+      dockerfile: Dockerfile
+    image: homelab/unbound-exporter:v0.6.0
+    container_name: homelab-dns-unbound-exporter
+    restart: unless-stopped
+    networks: [internal, homelab]
+    depends_on:
+      unbound:
+        condition: service_healthy
+    command:
+      - "-unbound.host"
+      - "unix:///var/run/unbound/unbound.ctl"
+      - "-unbound.ca"
+      - ""
+      - "-unbound.cert"
+      - ""
+    volumes:
+      - unbound-ctl:/var/run/unbound:ro
+    labels:
+      homelab.metrics.port: "9167"
+      homelab.metrics.path: "/metrics"
+
+  adguard:
+    image: adguard/adguardhome:latest
+    container_name: homelab-dns-adguard
+    restart: unless-stopped
+    networks: [internal, homelab]
+    depends_on:
+      unbound:
+        condition: service_healthy
+    ports:
+      # Bind to all interfaces inside the Colima VM (0.0.0.0). The VM's
+      # vmnet bridge then exposes :53 on the LAN as 192.168.10.3:53.
+      # We can NOT bind to the host's LAN IP directly here — compose
+      # runs inside the VM, where 192.168.10.3 isn't a local address.
+      # Override DNS_PORT for parallel-with-v1 testing (e.g. 5354;
+      # 5353 collides with macOS mDNSResponder).
+      - "0.0.0.0:${DNS_PORT:-53}:53/udp"
+      - "0.0.0.0:${DNS_PORT:-53}:53/tcp"
+      # Web UI on :8080 (the container's :80) — fronted by Caddy.
+      # The wizard port (:3000) is NOT published; it's only needed on
+      # first run with a fresh data volume. If you ever need to redo
+      # the wizard, add `- "0.0.0.0:3000:3000"` temporarily.
+      - "0.0.0.0:${ADGUARD_UI_PORT:-8080}:80"
+      # AdGuard UI — internal only, fronted by Caddy via homelab network.
+      # 3000 is the setup wizard port; 80 is the post-wizard UI port.
+    expose:
+      - "80"
+      - "3000"
+    environment:
+      TZ: "${TZ:-UTC}"
+    volumes:
+      - adguard-conf:/opt/adguardhome/conf
+      - adguard-work:/opt/adguardhome/work
+    labels:
+      homelab.caddy.host: "adguard"
+      homelab.caddy.port: "80"
+
+  adguard-exporter:
+    # Same image v1 used (cluster/apps/adguard-exporter). Different env
+    # var names than henrywhitaker3/adguard-exporter (used briefly in
+    # early v2 builds), and crucially exposes adguard_exporter_up plus
+    # the metric schema the v1 dashboards expect.
+    image: ghcr.io/znandev/adguardexporter:latest
+    container_name: homelab-dns-adguard-exporter
+    restart: unless-stopped
+    networks: [internal, homelab]
+    depends_on:
+      adguard:
+        condition: service_started
+    environment:
+      ADGUARD_HOST:    "http://adguard:80"
+      ADGUARD_USER:    "${ADGUARD_USER:-admin}"
+      ADGUARD_PASS:    "${ADGUARD_PASSWORD}"
+      EXPORTER_PORT:   "9617"
+      SCRAPE_INTERVAL: "30s"
+      LOG_LEVEL:       "INFO"
+    labels:
+      homelab.metrics.port: "9617"
+      homelab.metrics.path: "/metrics"

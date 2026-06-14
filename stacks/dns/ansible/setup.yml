@@ -1,0 +1,149 @@
+---
+# Post-`compose up` setup task for the dns stack.
+#
+# Idempotent:
+#   1. Probe the UI on :8080. If it responds (200 or 401), wizard is done.
+#   2. If UI is unreachable, the wizard hasn't been completed yet —
+#      POST /control/install/configure on :3000.
+#   3. Restart container on first-time wizard completion so :53 binds.
+#   4. Apply upstream + cache config via /control/dns_config.
+#   5. Add blocklists via /control/filtering/add_url (already-added URLs
+#      return 400, treated as ok).
+#
+# All API calls hit 127.0.0.1 because Colima reliably forwards published
+# TCP ports there. The vmnet IP (192.168.64.x) sometimes returns
+# "No route to host" mid-reconcile due to a routing race.
+#
+# Called automatically by the compose-stack role.
+
+# ---------------------------------------------------------------------- 0
+# Probe the UI. 200/401 means wizard is done and AdGuard is serving.
+# Any error (refused, no route, closed connection) means UI isn't up
+# — either wizard not yet run, or container still starting.
+
+- name: "dns/setup: probe AdGuard UI"
+  ansible.builtin.uri:
+    url: "http://127.0.0.1:{{ adguard_ui_port | default(8080) }}/control/status"
+    method: GET
+    status_code: [200, 401, 403]
+    timeout: 5
+  register: ui_probe
+  retries: 10
+  delay: 3
+  failed_when: false
+  changed_when: false
+
+- name: "dns/setup: detect wizard state"
+  ansible.builtin.set_fact:
+    wizard_already_done: "{{ ui_probe.status in [200, 401, 403] }}"
+
+# ---------------------------------------------------------------------- 1
+# First-run wizard, only if UI didn't respond.
+
+- name: "dns/setup: warn if wizard needed but password missing"
+  ansible.builtin.fail:
+    msg: >-
+      AdGuard UI is not responding on :{{ adguard_ui_port | default(8080) }}
+      and ADGUARD_PASSWORD is empty — cannot complete the wizard
+      automatically. Set ADGUARD_PASSWORD in .env, or finish the wizard
+      manually via http://127.0.0.1:{{ adguard_wizard_port | default(3000) }}.
+  when:
+    - not wizard_already_done
+    - (adguard_password | default('') | length) == 0
+
+- name: "dns/setup: complete the wizard"
+  ansible.builtin.uri:
+    url: "http://127.0.0.1:{{ adguard_wizard_port | default(3000) }}/control/install/configure"
+    method: POST
+    headers:
+      Content-Type: application/json
+    body_format: json
+    body:
+      web:
+        ip: "0.0.0.0"
+        port: 80
+        autofix: false
+      dns:
+        ip: "0.0.0.0"
+        port: 53
+        autofix: false
+      username: "{{ adguard_user }}"
+      password: "{{ adguard_password }}"
+    status_code: [200, 201, 204]
+  register: wizard_post
+  when: not wizard_already_done
+  no_log: true
+  changed_when: true
+
+- name: "dns/setup: restart adguard so :53 binds after wizard"
+  ansible.builtin.command:
+    cmd: docker restart homelab-dns-adguard
+  environment:
+    DOCKER_HOST: "{{ docker_host }}"
+  when: wizard_post is defined and wizard_post is changed
+  changed_when: true
+
+- name: "dns/setup: re-probe UI after wizard"
+  ansible.builtin.uri:
+    url: "http://127.0.0.1:{{ adguard_ui_port | default(8080) }}/control/status"
+    method: GET
+    status_code: [200, 401, 403]
+    timeout: 5
+  register: ui_reprobe
+  retries: 15
+  delay: 3
+  until: ui_reprobe.status in [200, 401, 403]
+  when: wizard_post is defined and wizard_post is changed
+
+# ---------------------------------------------------------------------- 3
+# Apply upstream + cache config from adguard/config/dns.yaml.
+
+- name: "dns/setup: load managed dns config"
+  ansible.builtin.set_fact:
+    adguard_dns_config: "{{ lookup('file', stack_dir ~ '/adguard/config/dns.yaml') | from_yaml }}"
+  when: adguard_password | default('') | length > 0
+
+- name: "dns/setup: POST /control/dns_config"
+  ansible.builtin.uri:
+    url: "http://127.0.0.1:{{ adguard_ui_port | default(8080) }}/control/dns_config"
+    method: POST
+    user: "{{ adguard_user }}"
+    password: "{{ adguard_password }}"
+    force_basic_auth: true
+    headers:
+      Content-Type: application/json
+    body_format: json
+    body: "{{ adguard_dns_config }}"
+    status_code: [200, 201, 204]
+  no_log: true
+  when: adguard_password | default('') | length > 0
+
+# ---------------------------------------------------------------------- 4
+# Add blocklists. AdGuard returns 400 with body "filter with such url
+# already exists" on duplicates — treat as ok.
+
+- name: "dns/setup: load managed blocklists"
+  ansible.builtin.set_fact:
+    adguard_blocklists: "{{ (lookup('file', stack_dir ~ '/adguard/config/blocklists.yaml') | from_yaml).filters }}"
+  when: adguard_password | default('') | length > 0
+
+- name: "dns/setup: POST each blocklist URL"
+  ansible.builtin.uri:
+    url: "http://127.0.0.1:{{ adguard_ui_port | default(8080) }}/control/filtering/add_url"
+    method: POST
+    user: "{{ adguard_user }}"
+    password: "{{ adguard_password }}"
+    force_basic_auth: true
+    headers:
+      Content-Type: application/json
+    body_format: json
+    body:
+      name: "{{ item.name }}"
+      url: "{{ item.url }}"
+      whitelist: false
+    status_code: [200, 201, 204, 400]   # 400 = already added; idempotent
+  loop: "{{ adguard_blocklists | default([]) }}"
+  loop_control:
+    label: "{{ item.name }}"
+  no_log: true
+  when: adguard_password | default('') | length > 0

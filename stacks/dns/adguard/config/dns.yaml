@@ -1,0 +1,39 @@
+# AdGuard upstream configuration — applied by stacks/dns/ansible/setup.yml
+# via the /control/dns_config POST endpoint, post-wizard.
+#
+# YAML below mirrors what AdGuard's API expects. Keep keys snake_case.
+
+upstream_dns:
+  # Local Unbound recursive resolver, reached at a pinned static IP on
+  # the internal docker network (172.30.53.0/24 — see stacks/dns/compose.yaml).
+  # TCP avoids the UDP→TC→TCP retry on DNSSEC-bloated responses.
+  - "tcp://172.30.53.53:53"
+fallback_dns:
+  - "192.168.10.1"             # MikroTik (LAN)
+  - "1.1.1.1"                  # Cloudflare
+
+# Race upstream resolvers in parallel, use the first response.
+upstream_mode: parallel
+
+# Used at startup to resolve upstream hostnames (we have IPs + a docker
+# name here, so this is essentially unused, but kept for safety).
+bootstrap_dns:
+  - "1.1.1.1"
+  - "8.8.8.8"
+  - "9.9.9.9"
+
+# Per-client rate limit, aggregated by /16 (v4) and /56 (v6).
+ratelimit: 50
+ratelimit_subnet_len_ipv4: 16
+ratelimit_subnet_len_ipv6: 56
+
+# Forward coarse client subnet for CDN locality.
+edns_cs_enabled: true
+
+# 64 MiB cache (in bytes). TTL clamped to 60s–24h.
+cache_size: 67108864
+cache_ttl_min: 60
+cache_ttl_max: 86400
+
+# Short blocked-response TTL so filter changes take effect quickly.
+blocked_response_ttl: 60
