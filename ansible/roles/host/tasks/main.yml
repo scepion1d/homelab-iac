@@ -1,16 +1,30 @@
 ---
 - name: Include dependency tasks
-  ansible.builtin.include_tasks: deps.yml
+  ansible.builtin.include_tasks:
+    file: deps.yml
+    apply:
+      tags: [deps]
   tags: [deps]
 
 - name: Include runtime tasks
-  ansible.builtin.include_tasks: runtime.yml
+  ansible.builtin.include_tasks:
+    file: runtime.yml
+    apply:
+      tags: [runtime]
   tags: [runtime]
 
 - name: Include services tasks
-  ansible.builtin.include_tasks: services.yml
+  ansible.builtin.include_tasks:
+    file: services.yml
+    apply:
+      tags: [services]
   tags: [services]
 
-- name: Include host apps tasks
-  ansible.builtin.include_tasks: ../apps/main.yml
-  tags: [apps]
+# v1 host apps removed in v2 — replaced by stacks/smart-home and friends.
+# Old `host/apps/*` directories remain in the repo until Phase 6 cleanup.
+# - name: Include host apps tasks
+#   ansible.builtin.include_tasks:
+#     file: ../apps/main.yml
+#     apply:
+#       tags: [apps]
+#   tags: [apps]

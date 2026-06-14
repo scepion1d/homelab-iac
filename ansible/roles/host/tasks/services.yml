@@ -3,6 +3,24 @@
 # Each is a LaunchDaemon with templated config.
 # After templating, bootstrap with launchd if not already loaded.
 
+# Ensure colima_vm_ip is resolved before any template needs it. The
+# play-level pre_tasks in reconcile.yml set it too, but --tags services
+# skips pre_tasks; this fallback keeps the role self-contained.
+- name: "host/services: resolve Colima VM IP if not already set"
+  when: colima_vm_ip is not defined or (colima_vm_ip | length) == 0
+  block:
+    - name: "host/services: query colima status for VM address"
+      ansible.builtin.shell: |
+        colima status --profile {{ colima_profile }} 2>&1 \
+          | grep -oE 'address:[[:space:]]+[0-9.]+' \
+          | awk '{print $2}'
+      register: colima_vm_ip_raw
+      changed_when: false
+
+    - name: "host/services: set colima_vm_ip"
+      ansible.builtin.set_fact:
+        colima_vm_ip: "{{ colima_vm_ip_raw.stdout | trim }}"
+
 - name: Ensure homelab lib directory exists
   become: true
   ansible.builtin.file:
@@ -40,6 +58,53 @@
     owner: root
     group: wheel
     mode: "0755"
+
+# --- mdns-reflector: script + venv with zeroconf ----------------------------
+# The plist references /usr/local/lib/homelab/mdns-reflector/venv/bin/python3.
+# If the venv doesn't exist (e.g. fresh host or someone wiped /usr/local/lib),
+# launchd spawn fails forever. Build/refresh on every reconcile — idempotent
+# (python3 -m venv is no-op on existing, pip install short-circuits).
+
+- name: Ensure mdns-reflector app directory exists
+  become: true
+  ansible.builtin.file:
+    path: /usr/local/lib/homelab/mdns-reflector
+    state: directory
+    owner: root
+    group: wheel
+    mode: "0755"
+
+- name: Copy mdns-reflector script
+  become: true
+  ansible.builtin.copy:
+    src: "{{ repo_root }}/bootstrap/services/mdns-reflector.py"
+    dest: /usr/local/lib/homelab/mdns-reflector/mdns-reflector.py
+    owner: root
+    group: wheel
+    mode: "0644"
+  notify: restart-mdns-reflector
+
+- name: Check mdns-reflector venv exists
+  ansible.builtin.stat:
+    path: /usr/local/lib/homelab/mdns-reflector/venv/bin/python3
+  register: mdns_venv_stat
+
+- name: Create mdns-reflector venv
+  become: true
+  ansible.builtin.command:
+    cmd: /usr/bin/python3 -m venv /usr/local/lib/homelab/mdns-reflector/venv
+  when: not mdns_venv_stat.stat.exists
+  changed_when: true
+  notify: restart-mdns-reflector
+
+- name: Ensure zeroconf installed in venv
+  become: true
+  ansible.builtin.pip:
+    name: "zeroconf==0.132.2"
+    state: present
+    virtualenv: /usr/local/lib/homelab/mdns-reflector/venv
+    virtualenv_command: /usr/bin/python3 -m venv
+  notify: restart-mdns-reflector
 
 # Resolve the actual node_exporter binary path. On Apple Silicon Homebrew
 # installs to /opt/homebrew/bin (not /usr/local/bin), and launchd refuses
@@ -101,11 +166,46 @@
     mode: "0644"
   notify: restart-mdns-reflector
 
+# --- ansible-reconcile LaunchDaemon (manages itself) ----------------------
+# The plist that runs THIS very playbook every 5 min. Tracked in
+# ansible/launchd/com.homelab.ansible-reconcile.plist; this task keeps
+# the copy at /Library/LaunchDaemons/ in sync with the repo.
+#
+# NO auto-reload: a launchctl bootout/bootstrap from inside the running
+# daemon would terminate the in-flight playbook (race). On change, we
+# print the manual command. launchd also picks up the new plist on the
+# next boot, so doing nothing is also fine.
+- name: Ensure ansible-reconcile plist is installed
+  become: true
+  ansible.builtin.copy:
+    src: "{{ repo_root }}/ansible/launchd/com.homelab.ansible-reconcile.plist"
+    dest: /Library/LaunchDaemons/com.homelab.ansible-reconcile.plist
+    owner: root
+    group: wheel
+    mode: "0644"
+  register: reconcile_plist
+
+- name: "host/services: reconcile plist changed — manual reload required"
+  ansible.builtin.debug:
+    msg: |
+      com.homelab.ansible-reconcile.plist updated.
+      Apply with:
+        sudo launchctl bootout system/com.homelab.ansible-reconcile
+        sudo launchctl bootstrap system /Library/LaunchDaemons/com.homelab.ansible-reconcile.plist
+      (Or reboot — launchd reloads plists on boot.)
+  when: reconcile_plist.changed
+
 # Ensure all services are loaded with launchd (idempotent — bootstrap
 # is a no-op if already loaded).
+#
+# Using `launchctl print system/<label>` instead of grepping `list`:
+# print's exit code is 0 iff the service is bootstrapped, no shell
+# parsing quirks. (The previous `grep -c '...' || echo 0` approach
+# emitted "0\n0" on no-match — both grep AND the fallback fired — so
+# the bootstrap conditional below never matched.)
 - name: Check which services are loaded
   become: true
-  ansible.builtin.shell: launchctl list | grep -c '{{ item }}' || echo 0
+  ansible.builtin.command: launchctl print system/{{ item }}
   loop:
     - com.homelab.dns-proxy
     - com.homelab.node-exporter
@@ -113,6 +213,7 @@
     - com.homelab.mdns-reflector
   register: svc_loaded
   changed_when: false
+  failed_when: false
 
 # `enable` clears the persistent disabled-list flag that a previous
 # `bootout` may have set ("Bootstrap failed: 5: Input/output error" is
@@ -123,7 +224,7 @@
   loop: "{{ svc_loaded.results }}"
   loop_control:
     label: "{{ item.item }}"
-  when: "(item.stdout | trim) == '0'"
+  when: item.rc != 0
   changed_when: false
   failed_when: false
 
@@ -133,6 +234,5 @@
   loop: "{{ svc_loaded.results }}"
   loop_control:
     label: "{{ item.item }}"
-  when: "(item.stdout | trim) == '0'"
+  when: item.rc != 0
   failed_when: false
-  notify: restart-mdns-reflector
