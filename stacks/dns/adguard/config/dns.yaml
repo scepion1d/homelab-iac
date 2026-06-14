@@ -42,8 +42,15 @@ ratelimit_subnet_len_ipv6: 56
 # Forward coarse client subnet for CDN locality.
 edns_cs_enabled: true
 
-# 64 MiB cache (in bytes). TTL clamped to 60s–24h.
-cache_size: 67108864
+# Layer-1 cache at 16 MiB. Half of v1's 64 MiB on purpose: AdGuard's
+# cache here is the HOT-PATH absorber, not the working set. Unbound
+# (with cache-min-ttl=300 + serve-expired RFC8767) holds the broader
+# working set, so AdGuard only needs to catch the high-frequency
+# queries. cache_ttl_min=60 means even AdGuard's tightest entry
+# survives 5x as long as unbound's floor flushes, so the two layers
+# no longer expire in lockstep (the original reason 7eab3e4 disabled
+# this entirely). cache_ttl_max=86400 caps to unbound's max.
+cache_size: 16777216
 cache_ttl_min: 60
 cache_ttl_max: 86400
 

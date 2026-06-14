@@ -147,3 +147,44 @@
     label: "{{ item.name }}"
   no_log: true
   when: adguard_password | default('') | length > 0
+
+# ---------------------------------------------------------------------- 5
+# Recreate unbound on unbound.conf change. Colima's virtiofs caches
+# single-file bind-mount inodes at container start -- editing the host
+# file on disk does NOT propagate into the running container, and
+# `unbound-control reload` reads stale config. The only reliable way
+# to apply a conf change is to recreate the container so virtiofs
+# re-resolves the inode. Cache survives via the cache-dumper sidecar
+# (dump.bin in named volume); cold window is ~5s post-restart.
+#
+# Marker-file pattern: the marker stores the sha256 of the conf that
+# was last applied; on conf change, copy reports `changed` -> we
+# `compose up -d --force-recreate unbound unbound-cache-dumper`. No
+# recreate (and no Slack ping) on no-op reconciles.
+
+- name: "dns/setup: ensure stack data dir exists"
+  ansible.builtin.file:
+    path: "{{ stack_data }}"
+    state: directory
+    mode: "0755"
+
+- name: "dns/setup: hash current unbound.conf"
+  ansible.builtin.stat:
+    path: "{{ stack_dir }}/unbound/unbound.conf"
+    checksum_algorithm: sha256
+  register: unbound_conf_stat
+
+- name: "dns/setup: write unbound.conf checksum marker"
+  ansible.builtin.copy:
+    content: "{{ unbound_conf_stat.stat.checksum }}\n"
+    dest: "{{ stack_data }}/unbound.conf.sha256"
+    mode: "0644"
+  register: unbound_marker
+
+- name: "dns/setup: recreate unbound + cache-dumper on conf change"
+  ansible.builtin.command:
+    cmd: docker compose -f {{ stack_dir }}/compose.yaml up -d --force-recreate unbound unbound-cache-dumper
+  environment:
+    DOCKER_HOST: "{{ docker_host }}"
+  when: unbound_marker is changed
+  changed_when: true
