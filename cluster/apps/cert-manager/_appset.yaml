@@ -1,9 +1,0 @@
-namespace: cert-manager
-revision: 2
-source:
-  repoURL: https://charts.jetstack.io
-  chart: cert-manager
-  targetRevision: v1.15.3
-  helm:
-    values:
-      installCRDs: true

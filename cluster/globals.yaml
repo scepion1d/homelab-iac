@@ -1,7 +1,0 @@
-repoUrl: https://github.com/scepion1d/homelab-iac.git
-lanDomain: int
-hostIp: 192.168.10.3
-slack-infra: infra
-slack-cluster: cluster
-slack-dns: dns
-slack-network: network
