@@ -1,0 +1,73 @@
+---
+# Build a Slack attachment payload summarizing the play and post it.
+# Used by reconcile.yml's `always:` so we get a Slack ping on both
+# success and failure.
+#
+# Inputs (all optional):
+#   play_failed       — true/false (caller sets)
+#   failed_task_name  — string (caller passes ansible_failed_task.name)
+#   failed_task_msg   — string (caller passes the error message)
+#
+# Reads ansible runtime stats from the magic `ansible_play_hosts_all` +
+# the per-host fact mapping ansible maintains.
+
+- name: "slack-summary: gather per-host stats"
+  ansible.builtin.set_fact:
+    summary_stats: >-
+      {{ {
+        'ok':       hostvars[inventory_hostname]['ansible_facts'] | default({}) | length,
+        'host_ip':  host_ip | default('unknown'),
+        'colima':   colima_vm_ip | default('unknown')
+      } }}
+
+- name: "slack-summary: build attachment fields"
+  ansible.builtin.set_fact:
+    summary_fields:
+      - title: "Host IP"
+        value: "{{ host_ip | default('unknown') }}"
+        short: true
+      - title: "Colima VM"
+        value: "{{ colima_vm_ip | default('unknown') }}"
+        short: true
+      - title: "Stacks"
+        value: "{{ stacks_enabled | default([]) | join(', ') | default('(none)', true) }}"
+        short: true
+      - title: "Result"
+        value: "{{ '✗ FAILED' if (play_failed | default(false)) else '✓ OK' }}"
+        short: true
+
+- name: "slack-summary: build attachment text (success)"
+  ansible.builtin.set_fact:
+    summary_text: "Reconcile completed cleanly."
+  when: not (play_failed | default(false))
+
+- name: "slack-summary: build attachment text (failure)"
+  ansible.builtin.set_fact:
+    summary_text: |-
+      Reconcile FAILED.
+      *Task:* {{ failed_task_name | default('unknown') }}
+      ```
+      {{ (failed_task_msg | default('(no message)')) | truncate(800, true, '…') }}
+      ```
+  when: play_failed | default(false)
+
+- name: "slack-summary: post to Slack"
+  ansible.builtin.uri:
+    url: https://slack.com/api/chat.postMessage
+    method: POST
+    headers:
+      Authorization: "Bearer {{ slack_ansible_token }}"
+      Content-Type: "application/json"
+    body_format: json
+    body:
+      channel: "{{ slack_channels.deploy }}"
+      attachments:
+        - color: "{{ 'danger' if (play_failed | default(false)) else 'good' }}"
+          title: "Homelab Reconcile"
+          text: "{{ summary_text }}"
+          fields: "{{ summary_fields }}"
+          mrkdwn_in: ["text"]
+    status_code: [200]
+  when: slack_ansible_token | default('') | length > 0
+  ignore_errors: true
+  no_log: false
