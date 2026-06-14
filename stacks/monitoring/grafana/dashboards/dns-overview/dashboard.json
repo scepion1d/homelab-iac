@@ -1,0 +1,3566 @@
+{
+    "title": "DNS Overview",
+    "uid": "dns-overview",
+    "tags": [
+        "dns",
+        "network",
+        "adguard",
+        "unbound"
+    ],
+    "schemaVersion": 42,
+    "timezone": "browser",
+    "editable": true,
+    "graphTooltip": 1,
+    "time": {
+        "from": "now-30m",
+        "to": "now"
+    },
+    "refresh": "30s",
+    "templating": {
+        "list": []
+    },
+    "annotations": {
+        "list": [
+            {
+                "builtIn": 1,
+                "datasource": {
+                    "type": "grafana",
+                    "uid": "-- Grafana --"
+                },
+                "enable": true,
+                "hide": true,
+                "iconColor": "rgba(0, 211, 255, 1)",
+                "name": "Annotations & Alerts",
+                "type": "dashboard"
+            }
+        ]
+    },
+    "panels": [
+        {
+            "id": 1,
+            "type": "row",
+            "title": "AdGuard Health",
+            "gridPos": {
+                "h": 1,
+                "w": 24,
+                "x": 0,
+                "y": 0
+            },
+            "collapsed": false,
+            "panels": []
+        },
+        {
+            "id": 2,
+            "type": "timeseries",
+            "title": "Service",
+            "datasource": {
+                "type": "prometheus",
+                "uid": "prometheus"
+            },
+            "gridPos": {
+                "h": 4,
+                "w": 3,
+                "x": 0,
+                "y": 1
+            },
+            "targets": [
+                {
+                    "expr": "(max(adguard_running) == 1) or on() (max(adguard_running) * NaN)",
+                    "legendFormat": "UP",
+                    "refId": "A",
+                    "instant": false,
+                    "datasource": {
+                        "type": "prometheus",
+                        "uid": "prometheus"
+                    },
+                    "editorMode": "code",
+                    "range": true
+                },
+                {
+                    "expr": "(1 - min(adguard_running) == 1) or on() (min(adguard_running) * NaN)",
+                    "legendFormat": "DOWN",
+                    "refId": "B",
+                    "instant": false,
+                    "datasource": {
+                        "type": "prometheus",
+                        "uid": "prometheus"
+                    },
+                    "editorMode": "code",
+                    "range": true
+                }
+            ],
+            "fieldConfig": {
+                "defaults": {
+                    "color": {
+                        "mode": "palette-classic"
+                    },
+                    "custom": {
+                        "axisBorderShow": false,
+                        "axisCenteredZero": false,
+                        "axisColorMode": "text",
+                        "axisGridShow": false,
+                        "axisLabel": "",
+                        "axisPlacement": "hidden",
+                        "barAlignment": 0,
+                        "barWidthFactor": 0.6,
+                        "drawStyle": "points",
+                        "fillOpacity": 30,
+                        "gradientMode": "none",
+                        "hideFrom": {
+                            "legend": false,
+                            "tooltip": false,
+                            "viz": false
+                        },
+                        "insertNulls": false,
+                        "lineInterpolation": "linear",
+                        "lineWidth": 2,
+                        "pointSize": 5,
+                        "scaleDistribution": {
+                            "type": "linear"
+                        },
+                        "showPoints": "auto",
+                        "showValues": false,
+                        "spanNulls": false,
+                        "stacking": {
+                            "group": "A",
+                            "mode": "none"
+                        },
+                        "thresholdsStyle": {
+                            "mode": "off"
+                        }
+                    },
+                    "mappings": [],
+                    "thresholds": {
+                        "mode": "absolute",
+                        "steps": [
+                            {
+                                "color": "light-red",
+                                "value": 0
+                            }
+                        ]
+                    }
+                },
+                "overrides": [
+                    {
+                        "matcher": {
+                            "id": "byName",
+                            "options": "UP",
+                            "scope": "series"
+                        },
+                        "properties": [
+                            {
+                                "id": "color",
+                                "value": {
+                                    "fixedColor": "light-green",
+                                    "mode": "fixed"
+                                }
+                            }
+                        ]
+                    },
+                    {
+                        "matcher": {
+                            "id": "byName",
+                            "options": "DOWN",
+                            "scope": "series"
+                        },
+                        "properties": [
+                            {
+                                "id": "color",
+                                "value": {
+                                    "fixedColor": "light-red",
+                                    "mode": "fixed"
+                                }
+                            }
+                        ]
+                    }
+                ]
+            },
+            "options": {
+                "annotations": {
+                    "clustering": -1,
+                    "multiLane": false
+                },
+                "legend": {
+                    "calcs": [],
+                    "displayMode": "list",
+                    "placement": "bottom",
+                    "showLegend": false
+                },
+                "tooltip": {
+                    "hideZeros": false,
+                    "mode": "all",
+                    "sort": "none"
+                }
+            },
+            "pluginVersion": "12.4.3"
+        },
+        {
+            "id": 31,
+            "type": "stat",
+            "title": "Svc CPU",
+            "datasource": {
+                "type": "prometheus",
+                "uid": "prometheus"
+            },
+            "gridPos": {
+                "h": 4,
+                "w": 3,
+                "x": 3,
+                "y": 1
+            },
+            "targets": [
+                {
+                    "expr": "max(\r\n    rate(\r\n        container_cpu_usage_seconds_total{\r\n            container=\"adguardhome\", namespace=\"dns\"\r\n        }[$__rate_interval]\r\n    )\r\n)",
+                    "legendFormat": "{{cache}}",
+                    "refId": "A",
+                    "datasource": {
+                        "type": "prometheus",
+                        "uid": "prometheus"
+                    },
+                    "editorMode": "code",
+                    "range": true
+                }
+            ],
+            "fieldConfig": {
+                "defaults": {
+                    "color": {
+                        "mode": "thresholds"
+                    },
+                    "mappings": [],
+                    "max": 100,
+                    "min": 0,
+                    "thresholds": {
+                        "mode": "absolute",
+                        "steps": [
+                            {
+                                "color": "light-green",
+                                "value": 0
+                            },
+                            {
+                                "color": "light-yellow",
+                                "value": 33554432
+                            },
+                            {
+                                "color": "light-orange",
+                                "value": 53687091
+                            },
+                            {
+                                "color": "light-red",
+                                "value": 63730688
+                            }
+                        ]
+                    },
+                    "unit": "percentunit"
+                },
+                "overrides": []
+            },
+            "options": {
+                "colorMode": "value",
+                "graphMode": "area",
+                "justifyMode": "auto",
+                "orientation": "vertical",
+                "percentChangeColorMode": "same_as_value",
+                "reduceOptions": {
+                    "calcs": [
+                        "lastNotNull"
+                    ],
+                    "fields": "",
+                    "values": false
+                },
+                "showPercentChange": true,
+                "textMode": "value",
+                "wideLayout": true
+            },
+            "pluginVersion": "12.4.3"
+        },
+        {
+            "id": 35,
+            "type": "timeseries",
+            "title": "DHCP",
+            "datasource": {
+                "type": "prometheus",
+                "uid": "prometheus"
+            },
+            "gridPos": {
+                "h": 4,
+                "w": 3,
+                "x": 6,
+                "y": 1
+            },
+            "targets": [
+                {
+                    "expr": "(max(adguard_dhcp_available) == 1) or on() (max(adguard_dhcp_available) * NaN)",
+                    "legendFormat": "UP",
+                    "refId": "A",
+                    "instant": false,
+                    "datasource": {
+                        "type": "prometheus",
+                        "uid": "prometheus"
+                    },
+                    "editorMode": "code",
+                    "range": true
+                },
+                {
+                    "expr": "(1 - min(adguard_dhcp_available) == 1) or on() (min(adguard_dhcp_available) * NaN)",
+                    "legendFormat": "DOWN",
+                    "refId": "B",
+                    "instant": false,
+                    "datasource": {
+                        "type": "prometheus",
+                        "uid": "prometheus"
+                    },
+                    "editorMode": "code",
+                    "range": true
+                }
+            ],
+            "fieldConfig": {
+                "defaults": {
+                    "color": {
+                        "mode": "palette-classic"
+                    },
+                    "custom": {
+                        "axisBorderShow": false,
+                        "axisCenteredZero": false,
+                        "axisColorMode": "text",
+                        "axisGridShow": false,
+                        "axisLabel": "",
+                        "axisPlacement": "hidden",
+                        "barAlignment": 0,
+                        "barWidthFactor": 0.6,
+                        "drawStyle": "points",
+                        "fillOpacity": 30,
+                        "gradientMode": "none",
+                        "hideFrom": {
+                            "legend": false,
+                            "tooltip": false,
+                            "viz": false
+                        },
+                        "insertNulls": false,
+                        "lineInterpolation": "linear",
+                        "lineWidth": 2,
+                        "pointSize": 5,
+                        "scaleDistribution": {
+                            "type": "linear"
+                        },
+                        "showPoints": "auto",
+                        "showValues": false,
+                        "spanNulls": false,
+                        "stacking": {
+                            "group": "A",
+                            "mode": "none"
+                        },
+                        "thresholdsStyle": {
+                            "mode": "off"
+                        }
+                    },
+                    "mappings": [],
+                    "thresholds": {
+                        "mode": "absolute",
+                        "steps": [
+                            {
+                                "color": "light-red",
+                                "value": 0
+                            }
+                        ]
+                    }
+                },
+                "overrides": [
+                    {
+                        "matcher": {
+                            "id": "byName",
+                            "options": "UP",
+                            "scope": "series"
+                        },
+                        "properties": [
+                            {
+                                "id": "color",
+                                "value": {
+                                    "fixedColor": "light-green",
+                                    "mode": "fixed"
+                                }
+                            }
+                        ]
+                    },
+                    {
+                        "matcher": {
+                            "id": "byName",
+                            "options": "DOWN",
+                            "scope": "series"
+                        },
+                        "properties": [
+                            {
+                                "id": "color",
+                                "value": {
+                                    "fixedColor": "light-red",
+                                    "mode": "fixed"
+                                }
+                            }
+                        ]
+                    }
+                ]
+            },
+            "options": {
+                "annotations": {
+                    "clustering": -1,
+                    "multiLane": false
+                },
+                "legend": {
+                    "calcs": [],
+                    "displayMode": "list",
+                    "placement": "bottom",
+                    "showLegend": false
+                },
+                "tooltip": {
+                    "hideZeros": false,
+                    "mode": "all",
+                    "sort": "none"
+                }
+            },
+            "pluginVersion": "12.4.3"
+        },
+        {
+            "id": 3,
+            "type": "timeseries",
+            "title": "Protection",
+            "datasource": {
+                "type": "prometheus",
+                "uid": "prometheus"
+            },
+            "gridPos": {
+                "h": 4,
+                "w": 3,
+                "x": 9,
+                "y": 1
+            },
+            "targets": [
+                {
+                    "expr": "(max(adguard_protection_enabled) == 1) or on() (max(adguard_protection_enabled) * NaN)",
+                    "legendFormat": "ON",
+                    "refId": "A",
+                    "instant": false,
+                    "datasource": {
+                        "type": "prometheus",
+                        "uid": "prometheus"
+                    },
+                    "editorMode": "code",
+                    "range": true
+                },
+                {
+                    "expr": "(1 - max(adguard_protection_enabled) == 1) or on() (max(adguard_protection_enabled) * NaN)",
+                    "legendFormat": "OFF",
+                    "refId": "B",
+                    "instant": false,
+                    "datasource": {
+                        "type": "prometheus",
+                        "uid": "prometheus"
+                    },
+                    "editorMode": "code",
+                    "range": true
+                }
+            ],
+            "fieldConfig": {
+                "defaults": {
+                    "color": {
+                        "mode": "palette-classic"
+                    },
+                    "custom": {
+                        "axisBorderShow": false,
+                        "axisCenteredZero": false,
+                        "axisColorMode": "text",
+                        "axisLabel": "",
+                        "axisPlacement": "hidden",
+                        "barAlignment": 0,
+                        "barWidthFactor": 0.5,
+                        "drawStyle": "points",
+                        "fillOpacity": 30,
+                        "gradientMode": "none",
+                        "hideFrom": {
+                            "legend": false,
+                            "tooltip": false,
+                            "viz": false
+                        },
+                        "insertNulls": false,
+                        "lineInterpolation": "linear",
+                        "lineWidth": 2,
+                        "pointSize": 5,
+                        "scaleDistribution": {
+                            "type": "linear"
+                        },
+                        "showPoints": "auto",
+                        "showValues": false,
+                        "spanNulls": false,
+                        "stacking": {
+                            "group": "A",
+                            "mode": "none"
+                        },
+                        "thresholdsStyle": {
+                            "mode": "off"
+                        }
+                    },
+                    "mappings": [],
+                    "thresholds": {
+                        "mode": "absolute",
+                        "steps": [
+                            {
+                                "color": "light-red",
+                                "value": 0
+                            }
+                        ]
+                    }
+                },
+                "overrides": [
+                    {
+                        "matcher": {
+                            "id": "byName",
+                            "options": "ON",
+                            "scope": "series"
+                        },
+                        "properties": [
+                            {
+                                "id": "color",
+                                "value": {
+                                    "fixedColor": "light-green",
+                                    "mode": "fixed"
+                                }
+                            }
+                        ]
+                    },
+                    {
+                        "matcher": {
+                            "id": "byName",
+                            "options": "OFF",
+                            "scope": "series"
+                        },
+                        "properties": [
+                            {
+                                "id": "color",
+                                "value": {
+                                    "fixedColor": "light-red",
+                                    "mode": "fixed"
+                                }
+                            }
+                        ]
+                    }
+                ]
+            },
+            "options": {
+                "annotations": {
+                    "clustering": -1,
+                    "multiLane": false
+                },
+                "legend": {
+                    "calcs": [],
+                    "displayMode": "list",
+                    "placement": "bottom",
+                    "showLegend": false
+                },
+                "tooltip": {
+                    "hideZeros": false,
+                    "mode": "all",
+                    "sort": "none"
+                }
+            },
+            "pluginVersion": "12.4.3"
+        },
+        {
+            "id": 4,
+            "type": "stat",
+            "title": "Protection Inactive",
+            "datasource": {
+                "type": "prometheus",
+                "uid": "prometheus"
+            },
+            "gridPos": {
+                "h": 4,
+                "w": 3,
+                "x": 12,
+                "y": 1
+            },
+            "targets": [
+                {
+                    "expr": "adguard_protection_disabled_duration_seconds",
+                    "legendFormat": "Duration",
+                    "refId": "A",
+                    "datasource": {
+                        "type": "prometheus",
+                        "uid": "prometheus"
+                    },
+                    "editorMode": "code",
+                    "range": true
+                }
+            ],
+            "fieldConfig": {
+                "defaults": {
+                    "color": {
+                        "mode": "thresholds"
+                    },
+                    "mappings": [],
+                    "thresholds": {
+                        "mode": "absolute",
+                        "steps": [
+                            {
+                                "color": "light-green",
+                                "value": 0
+                            },
+                            {
+                                "color": "light-yellow",
+                                "value": 0.2
+                            },
+                            {
+                                "color": "light-orange",
+                                "value": 0.5
+                            },
+                            {
+                                "color": "light-red",
+                                "value": 1
+                            }
+                        ]
+                    },
+                    "unit": "s"
+                },
+                "overrides": []
+            },
+            "options": {
+                "colorMode": "value",
+                "graphMode": "none",
+                "justifyMode": "auto",
+                "orientation": "auto",
+                "percentChangeColorMode": "standard",
+                "reduceOptions": {
+                    "calcs": [
+                        "lastNotNull"
+                    ],
+                    "fields": "",
+                    "values": false
+                },
+                "showPercentChange": false,
+                "textMode": "auto",
+                "wideLayout": true
+            },
+            "pluginVersion": "12.4.3"
+        },
+        {
+            "id": 5,
+            "type": "timeseries",
+            "title": "Exporter",
+            "datasource": {
+                "type": "prometheus",
+                "uid": "prometheus"
+            },
+            "gridPos": {
+                "h": 4,
+                "w": 3,
+                "x": 15,
+                "y": 1
+            },
+            "targets": [
+                {
+                    "expr": "(max(adguard_exporter_up) == 1) or on() (max(adguard_exporter_up) * NaN)",
+                    "legendFormat": "UP",
+                    "refId": "A",
+                    "instant": false,
+                    "datasource": {
+                        "type": "prometheus",
+                        "uid": "prometheus"
+                    },
+                    "editorMode": "code",
+                    "range": true
+                },
+                {
+                    "expr": "(1 - min(adguard_exporter_up) == 1) or on() (min(adguard_exporter_up) * NaN)",
+                    "legendFormat": "DOWN",
+                    "refId": "B",
+                    "instant": false,
+                    "datasource": {
+                        "type": "prometheus",
+                        "uid": "prometheus"
+                    },
+                    "editorMode": "code",
+                    "range": true
+                }
+            ],
+            "fieldConfig": {
+                "defaults": {
+                    "color": {
+                        "mode": "palette-classic"
+                    },
+                    "custom": {
+                        "axisBorderShow": false,
+                        "axisCenteredZero": false,
+                        "axisColorMode": "text",
+                        "axisGridShow": false,
+                        "axisLabel": "",
+                        "axisPlacement": "hidden",
+                        "barAlignment": 0,
+                        "barWidthFactor": 0.6,
+                        "drawStyle": "points",
+                        "fillOpacity": 30,
+                        "gradientMode": "none",
+                        "hideFrom": {
+                            "legend": false,
+                            "tooltip": false,
+                            "viz": false
+                        },
+                        "insertNulls": false,
+                        "lineInterpolation": "linear",
+                        "lineWidth": 2,
+                        "pointSize": 5,
+                        "scaleDistribution": {
+                            "type": "linear"
+                        },
+                        "showPoints": "auto",
+                        "showValues": false,
+                        "spanNulls": false,
+                        "stacking": {
+                            "group": "A",
+                            "mode": "none"
+                        },
+                        "thresholdsStyle": {
+                            "mode": "off"
+                        }
+                    },
+                    "mappings": [],
+                    "thresholds": {
+                        "mode": "absolute",
+                        "steps": [
+                            {
+                                "color": "light-red",
+                                "value": 0
+                            }
+                        ]
+                    }
+                },
+                "overrides": [
+                    {
+                        "matcher": {
+                            "id": "byName",
+                            "options": "UP",
+                            "scope": "series"
+                        },
+                        "properties": [
+                            {
+                                "id": "color",
+                                "value": {
+                                    "fixedColor": "light-green",
+                                    "mode": "fixed"
+                                }
+                            }
+                        ]
+                    },
+                    {
+                        "matcher": {
+                            "id": "byName",
+                            "options": "DOWN",
+                            "scope": "series"
+                        },
+                        "properties": [
+                            {
+                                "id": "color",
+                                "value": {
+                                    "fixedColor": "light-red",
+                                    "mode": "fixed"
+                                }
+                            }
+                        ]
+                    }
+                ]
+            },
+            "options": {
+                "annotations": {
+                    "clustering": -1,
+                    "multiLane": false
+                },
+                "legend": {
+                    "calcs": [],
+                    "displayMode": "list",
+                    "placement": "bottom",
+                    "showLegend": false
+                },
+                "tooltip": {
+                    "hideZeros": false,
+                    "mode": "all",
+                    "sort": "none"
+                }
+            },
+            "pluginVersion": "12.4.3"
+        },
+        {
+            "id": 32,
+            "type": "stat",
+            "title": "Exp CPU",
+            "datasource": {
+                "type": "prometheus",
+                "uid": "prometheus"
+            },
+            "gridPos": {
+                "h": 4,
+                "w": 3,
+                "x": 18,
+                "y": 1
+            },
+            "targets": [
+                {
+                    "expr": "rate(\r\n    container_cpu_usage_seconds_total{\r\n        container=\"adguard-exporter\", namespace=\"dns\"\r\n    }[$__rate_interval]\r\n)",
+                    "legendFormat": "{{cache}}",
+                    "refId": "A",
+                    "datasource": {
+                        "type": "prometheus",
+                        "uid": "prometheus"
+                    },
+                    "editorMode": "code",
+                    "range": true
+                }
+            ],
+            "fieldConfig": {
+                "defaults": {
+                    "color": {
+                        "mode": "thresholds"
+                    },
+                    "mappings": [],
+                    "max": 100,
+                    "min": 0,
+                    "thresholds": {
+                        "mode": "absolute",
+                        "steps": [
+                            {
+                                "color": "light-green",
+                                "value": 0
+                            },
+                            {
+                                "color": "light-yellow",
+                                "value": 33554432
+                            },
+                            {
+                                "color": "light-orange",
+                                "value": 53687091
+                            },
+                            {
+                                "color": "light-red",
+                                "value": 63730688
+                            }
+                        ]
+                    },
+                    "unit": "percentunit"
+                },
+                "overrides": []
+            },
+            "options": {
+                "colorMode": "value",
+                "graphMode": "area",
+                "justifyMode": "auto",
+                "orientation": "vertical",
+                "percentChangeColorMode": "same_as_value",
+                "reduceOptions": {
+                    "calcs": [
+                        "lastNotNull"
+                    ],
+                    "fields": "",
+                    "values": false
+                },
+                "showPercentChange": true,
+                "textMode": "value",
+                "wideLayout": true
+            },
+            "pluginVersion": "12.4.3"
+        },
+        {
+            "id": 6,
+            "type": "stat",
+            "title": "Scrape Duration",
+            "datasource": {
+                "type": "prometheus",
+                "uid": "prometheus"
+            },
+            "gridPos": {
+                "h": 4,
+                "w": 3,
+                "x": 21,
+                "y": 1
+            },
+            "targets": [
+                {
+                    "expr": "adguard_exporter_scrape_duration_seconds",
+                    "legendFormat": "Duration",
+                    "refId": "A",
+                    "datasource": {
+                        "type": "prometheus",
+                        "uid": "prometheus"
+                    },
+                    "editorMode": "code",
+                    "range": true
+                }
+            ],
+            "fieldConfig": {
+                "defaults": {
+                    "color": {
+                        "mode": "thresholds"
+                    },
+                    "mappings": [],
+                    "thresholds": {
+                        "mode": "absolute",
+                        "steps": [
+                            {
+                                "color": "light-green",
+                                "value": 0
+                            },
+                            {
+                                "color": "light-yellow",
+                                "value": 0.2
+                            },
+                            {
+                                "color": "light-orange",
+                                "value": 0.5
+                            },
+                            {
+                                "color": "light-red",
+                                "value": 1
+                            }
+                        ]
+                    },
+                    "unit": "s"
+                },
+                "overrides": []
+            },
+            "options": {
+                "colorMode": "value",
+                "graphMode": "area",
+                "justifyMode": "auto",
+                "orientation": "auto",
+                "percentChangeColorMode": "standard",
+                "reduceOptions": {
+                    "calcs": [
+                        "lastNotNull"
+                    ],
+                    "fields": "",
+                    "values": false
+                },
+                "showPercentChange": false,
+                "textMode": "auto",
+                "wideLayout": true
+            },
+            "pluginVersion": "12.4.3"
+        },
+        {
+            "id": 7,
+            "type": "row",
+            "title": "Unbound Health",
+            "gridPos": {
+                "h": 1,
+                "w": 24,
+                "x": 0,
+                "y": 5
+            },
+            "collapsed": false,
+            "panels": []
+        },
+        {
+            "id": 8,
+            "type": "stat",
+            "title": "Uptime",
+            "datasource": {
+                "type": "prometheus",
+                "uid": "prometheus"
+            },
+            "gridPos": {
+                "h": 4,
+                "w": 3,
+                "x": 0,
+                "y": 6
+            },
+            "targets": [
+                {
+                    "expr": "max(unbound_time_up_seconds_total)",
+                    "legendFormat": "UP",
+                    "refId": "A",
+                    "instant": false,
+                    "datasource": {
+                        "type": "prometheus",
+                        "uid": "prometheus"
+                    },
+                    "editorMode": "code",
+                    "range": true
+                }
+            ],
+            "fieldConfig": {
+                "defaults": {
+                    "color": {
+                        "mode": "thresholds"
+                    },
+                    "fieldMinMax": false,
+                    "mappings": [],
+                    "thresholds": {
+                        "mode": "absolute",
+                        "steps": [
+                            {
+                                "color": "light-blue",
+                                "value": 0
+                            }
+                        ]
+                    },
+                    "unit": "s"
+                },
+                "overrides": []
+            },
+            "options": {
+                "colorMode": "value",
+                "graphMode": "none",
+                "justifyMode": "auto",
+                "orientation": "auto",
+                "percentChangeColorMode": "standard",
+                "reduceOptions": {
+                    "calcs": [
+                        "lastNotNull"
+                    ],
+                    "fields": "",
+                    "values": false
+                },
+                "showPercentChange": false,
+                "textMode": "auto",
+                "wideLayout": true
+            },
+            "pluginVersion": "12.4.3"
+        },
+        {
+            "id": 9,
+            "type": "timeseries",
+            "title": "Service",
+            "datasource": {
+                "type": "prometheus",
+                "uid": "prometheus"
+            },
+            "gridPos": {
+                "h": 4,
+                "w": 3,
+                "x": 3,
+                "y": 6
+            },
+            "targets": [
+                {
+                    "expr": "(max(unbound_up) == 1) or on() (max(unbound_up) * NaN)",
+                    "legendFormat": "UP",
+                    "refId": "A",
+                    "instant": false,
+                    "datasource": {
+                        "type": "prometheus",
+                        "uid": "prometheus"
+                    },
+                    "editorMode": "code",
+                    "range": true
+                },
+                {
+                    "expr": "((1 - max(unbound_up) == 1)) or on() (max(unbound_up) * NaN)",
+                    "legendFormat": "OFF",
+                    "refId": "B",
+                    "instant": false,
+                    "datasource": {
+                        "type": "prometheus",
+                        "uid": "prometheus"
+                    },
+                    "editorMode": "code",
+                    "range": true
+                }
+            ],
+            "fieldConfig": {
+                "defaults": {
+                    "color": {
+                        "mode": "palette-classic"
+                    },
+                    "custom": {
+                        "axisBorderShow": false,
+                        "axisCenteredZero": false,
+                        "axisColorMode": "text",
+                        "axisLabel": "",
+                        "axisPlacement": "hidden",
+                        "barAlignment": 0,
+                        "barWidthFactor": 0.6,
+                        "drawStyle": "points",
+                        "fillOpacity": 0,
+                        "gradientMode": "none",
+                        "hideFrom": {
+                            "legend": false,
+                            "tooltip": false,
+                            "viz": false
+                        },
+                        "insertNulls": false,
+                        "lineInterpolation": "linear",
+                        "lineWidth": 3,
+                        "pointSize": 5,
+                        "scaleDistribution": {
+                            "type": "linear"
+                        },
+                        "showPoints": "always",
+                        "showValues": false,
+                        "spanNulls": false,
+                        "stacking": {
+                            "group": "A",
+                            "mode": "none"
+                        },
+                        "thresholdsStyle": {
+                            "mode": "off"
+                        }
+                    },
+                    "fieldMinMax": false,
+                    "mappings": [],
+                    "thresholds": {
+                        "mode": "absolute",
+                        "steps": [
+                            {
+                                "color": "light-red",
+                                "value": 0
+                            }
+                        ]
+                    }
+                },
+                "overrides": [
+                    {
+                        "matcher": {
+                            "id": "byName",
+                            "options": "OFF",
+                            "scope": "series"
+                        },
+                        "properties": [
+                            {
+                                "id": "color",
+                                "value": {
+                                    "fixedColor": "light-red",
+                                    "mode": "fixed"
+                                }
+                            }
+                        ]
+                    },
+                    {
+                        "matcher": {
+                            "id": "byName",
+                            "options": "UP"
+                        },
+                        "properties": [
+                            {
+                                "id": "color",
+                                "value": {
+                                    "fixedColor": "light-green",
+                                    "mode": "fixed"
+                                }
+                            }
+                        ]
+                    }
+                ]
+            },
+            "options": {
+                "annotations": {
+                    "clustering": -1,
+                    "multiLane": false
+                },
+                "legend": {
+                    "calcs": [],
+                    "displayMode": "list",
+                    "placement": "bottom",
+                    "showLegend": false
+                },
+                "tooltip": {
+                    "hideZeros": false,
+                    "mode": "all",
+                    "sort": "none"
+                }
+            },
+            "pluginVersion": "12.4.3"
+        },
+        {
+            "id": 30,
+            "type": "stat",
+            "title": "Svc CPU",
+            "datasource": {
+                "type": "prometheus",
+                "uid": "prometheus"
+            },
+            "gridPos": {
+                "h": 4,
+                "w": 3,
+                "x": 6,
+                "y": 6
+            },
+            "targets": [
+                {
+                    "expr": "max(\r\n    rate(\r\n        container_cpu_usage_seconds_total{\r\n            container=\"unbound\", namespace=\"dns\"\r\n        }[$__rate_interval]\r\n    )\r\n)",
+                    "legendFormat": "{{cache}}",
+                    "refId": "A",
+                    "datasource": {
+                        "type": "prometheus",
+                        "uid": "prometheus"
+                    },
+                    "editorMode": "code",
+                    "range": true
+                }
+            ],
+            "fieldConfig": {
+                "defaults": {
+                    "color": {
+                        "mode": "thresholds"
+                    },
+                    "mappings": [],
+                    "max": 100,
+                    "min": 0,
+                    "thresholds": {
+                        "mode": "absolute",
+                        "steps": [
+                            {
+                                "color": "light-green",
+                                "value": 0
+                            },
+                            {
+                                "color": "light-yellow",
+                                "value": 33554432
+                            },
+                            {
+                                "color": "light-orange",
+                                "value": 53687091
+                            },
+                            {
+                                "color": "light-red",
+                                "value": 63730688
+                            }
+                        ]
+                    },
+                    "unit": "percentunit"
+                },
+                "overrides": []
+            },
+            "options": {
+                "colorMode": "value",
+                "graphMode": "area",
+                "justifyMode": "auto",
+                "orientation": "vertical",
+                "percentChangeColorMode": "same_as_value",
+                "reduceOptions": {
+                    "calcs": [
+                        "lastNotNull"
+                    ],
+                    "fields": "",
+                    "values": false
+                },
+                "showPercentChange": true,
+                "textMode": "value",
+                "wideLayout": true
+            },
+            "pluginVersion": "12.4.3"
+        },
+        {
+            "id": 29,
+            "type": "stat",
+            "title": "Svc Throttled",
+            "datasource": {
+                "type": "prometheus",
+                "uid": "prometheus"
+            },
+            "gridPos": {
+                "h": 4,
+                "w": 3,
+                "x": 9,
+                "y": 6
+            },
+            "targets": [
+                {
+                    "expr": " max(\r\n    rate(\r\n        container_cpu_cfs_throttled_seconds_total{\r\n            container=\"unbound\", namespace=\"dns\"\r\n        }[$__rate_interval]\r\n    )\r\n)",
+                    "legendFormat": "{{cache}}",
+                    "refId": "A",
+                    "datasource": {
+                        "type": "prometheus",
+                        "uid": "prometheus"
+                    },
+                    "editorMode": "code",
+                    "range": true
+                }
+            ],
+            "fieldConfig": {
+                "defaults": {
+                    "color": {
+                        "mode": "thresholds"
+                    },
+                    "mappings": [],
+                    "max": 100,
+                    "min": 0,
+                    "thresholds": {
+                        "mode": "absolute",
+                        "steps": [
+                            {
+                                "color": "light-green",
+                                "value": 0
+                            },
+                            {
+                                "color": "light-yellow",
+                                "value": 33554432
+                            },
+                            {
+                                "color": "light-orange",
+                                "value": 53687091
+                            },
+                            {
+                                "color": "light-red",
+                                "value": 63730688
+                            }
+                        ]
+                    },
+                    "unit": "s"
+                },
+                "overrides": []
+            },
+            "options": {
+                "colorMode": "value",
+                "graphMode": "none",
+                "justifyMode": "auto",
+                "orientation": "vertical",
+                "percentChangeColorMode": "same_as_value",
+                "reduceOptions": {
+                    "calcs": [
+                        "lastNotNull"
+                    ],
+                    "fields": "",
+                    "values": false
+                },
+                "showPercentChange": true,
+                "textMode": "value",
+                "wideLayout": true
+            },
+            "pluginVersion": "12.4.3"
+        },
+        {
+            "id": 10,
+            "type": "stat",
+            "title": "Msg Cache / 64M",
+            "datasource": {
+                "type": "prometheus",
+                "uid": "prometheus"
+            },
+            "gridPos": {
+                "h": 4,
+                "w": 3,
+                "x": 12,
+                "y": 6
+            },
+            "targets": [
+                {
+                    "expr": "sum by (cache) (unbound_memory_caches_bytes{cache=\"message\"}) / 67108864 * 100",
+                    "legendFormat": "{{cache}}",
+                    "refId": "A",
+                    "datasource": {
+                        "type": "prometheus",
+                        "uid": "prometheus"
+                    },
+                    "editorMode": "code",
+                    "range": true
+                }
+            ],
+            "fieldConfig": {
+                "defaults": {
+                    "color": {
+                        "mode": "thresholds"
+                    },
+                    "mappings": [],
+                    "max": 100,
+                    "min": 0,
+                    "thresholds": {
+                        "mode": "absolute",
+                        "steps": [
+                            {
+                                "color": "light-green",
+                                "value": 0
+                            },
+                            {
+                                "color": "light-yellow",
+                                "value": 33554432
+                            },
+                            {
+                                "color": "light-orange",
+                                "value": 53687091
+                            },
+                            {
+                                "color": "light-red",
+                                "value": 63730688
+                            }
+                        ]
+                    },
+                    "unit": "percent"
+                },
+                "overrides": []
+            },
+            "options": {
+                "colorMode": "value",
+                "graphMode": "none",
+                "justifyMode": "auto",
+                "orientation": "vertical",
+                "percentChangeColorMode": "same_as_value",
+                "reduceOptions": {
+                    "calcs": [
+                        "lastNotNull"
+                    ],
+                    "fields": "",
+                    "values": false
+                },
+                "showPercentChange": true,
+                "textMode": "value",
+                "wideLayout": true
+            },
+            "pluginVersion": "12.4.3"
+        },
+        {
+            "id": 12,
+            "type": "stat",
+            "title": "RRSet Cache / 128M",
+            "datasource": {
+                "type": "prometheus",
+                "uid": "prometheus"
+            },
+            "gridPos": {
+                "h": 4,
+                "w": 3,
+                "x": 15,
+                "y": 6
+            },
+            "targets": [
+                {
+                    "expr": "sum by (cache) (unbound_memory_caches_bytes{cache=\"rrset\"}) / 134217728 * 100",
+                    "legendFormat": "{{cache}}",
+                    "refId": "A",
+                    "datasource": {
+                        "type": "prometheus",
+                        "uid": "prometheus"
+                    },
+                    "editorMode": "code",
+                    "range": true
+                }
+            ],
+            "fieldConfig": {
+                "defaults": {
+                    "color": {
+                        "mode": "thresholds"
+                    },
+                    "mappings": [],
+                    "max": 100,
+                    "min": 0,
+                    "thresholds": {
+                        "mode": "absolute",
+                        "steps": [
+                            {
+                                "color": "light-green",
+                                "value": 0
+                            },
+                            {
+                                "color": "light-yellow",
+                                "value": 67108864
+                            },
+                            {
+                                "color": "light-orange",
+                                "value": 107374182
+                            },
+                            {
+                                "color": "light-red",
+                                "value": 127401984
+                            }
+                        ]
+                    },
+                    "unit": "percent"
+                },
+                "overrides": []
+            },
+            "options": {
+                "colorMode": "value",
+                "graphMode": "none",
+                "justifyMode": "auto",
+                "orientation": "vertical",
+                "percentChangeColorMode": "same_as_value",
+                "reduceOptions": {
+                    "calcs": [
+                        "lastNotNull"
+                    ],
+                    "fields": "",
+                    "values": false
+                },
+                "showPercentChange": true,
+                "textMode": "value",
+                "wideLayout": true
+            },
+            "pluginVersion": "12.4.3"
+        },
+        {
+            "id": 11,
+            "type": "stat",
+            "title": "Dumper Uptimr",
+            "datasource": {
+                "type": "prometheus",
+                "uid": "prometheus"
+            },
+            "gridPos": {
+                "h": 4,
+                "w": 3,
+                "x": 18,
+                "y": 6
+            },
+            "targets": [
+                {
+                    "expr": "time() - max(\r\n    container_start_time_seconds{container=\"unbound-cache-manager\", namespace=\"dns\"}\r\n)",
+                    "legendFormat": "__auto",
+                    "refId": "A",
+                    "datasource": {
+                        "type": "prometheus",
+                        "uid": "prometheus"
+                    },
+                    "editorMode": "code",
+                    "range": true
+                }
+            ],
+            "fieldConfig": {
+                "defaults": {
+                    "color": {
+                        "mode": "thresholds"
+                    },
+                    "mappings": [],
+                    "max": 100,
+                    "min": 0,
+                    "thresholds": {
+                        "mode": "absolute",
+                        "steps": [
+                            {
+                                "color": "light-blue",
+                                "value": 0
+                            }
+                        ]
+                    },
+                    "unit": "s"
+                },
+                "overrides": []
+            },
+            "options": {
+                "colorMode": "value",
+                "graphMode": "none",
+                "justifyMode": "auto",
+                "orientation": "auto",
+                "percentChangeColorMode": "same_as_value",
+                "reduceOptions": {
+                    "calcs": [
+                        "lastNotNull"
+                    ],
+                    "fields": "",
+                    "values": false
+                },
+                "showPercentChange": false,
+                "textMode": "value",
+                "wideLayout": true
+            },
+            "pluginVersion": "12.4.3"
+        },
+        {
+            "id": 13,
+            "type": "stat",
+            "title": "Cch PVC",
+            "datasource": {
+                "type": "prometheus",
+                "uid": "prometheus"
+            },
+            "gridPos": {
+                "h": 4,
+                "w": 3,
+                "x": 21,
+                "y": 6
+            },
+            "targets": [
+                {
+                    "expr": "kubelet_volume_stats_used_bytes{namespace=\"dns\", persistentvolumeclaim=\"unbound-cache\"}\r\n/\r\nkubelet_volume_stats_capacity_bytes{namespace=\"dns\", persistentvolumeclaim=\"unbound-cache\"}\r\n* 100",
+                    "legendFormat": "__auto",
+                    "refId": "A",
+                    "datasource": {
+                        "type": "prometheus",
+                        "uid": "prometheus"
+                    },
+                    "editorMode": "code",
+                    "range": true
+                }
+            ],
+            "fieldConfig": {
+                "defaults": {
+                    "color": {
+                        "mode": "thresholds"
+                    },
+                    "mappings": [],
+                    "max": 100,
+                    "min": 0,
+                    "thresholds": {
+                        "mode": "absolute",
+                        "steps": [
+                            {
+                                "color": "light-green",
+                                "value": 0
+                            },
+                            {
+                                "color": "light-yellow",
+                                "value": 67108864
+                            },
+                            {
+                                "color": "light-orange",
+                                "value": 107374182
+                            },
+                            {
+                                "color": "light-red",
+                                "value": 127401984
+                            }
+                        ]
+                    },
+                    "unit": "percent"
+                },
+                "overrides": []
+            },
+            "options": {
+                "colorMode": "value",
+                "graphMode": "none",
+                "justifyMode": "auto",
+                "orientation": "auto",
+                "percentChangeColorMode": "same_as_value",
+                "reduceOptions": {
+                    "calcs": [
+                        "lastNotNull"
+                    ],
+                    "fields": "",
+                    "values": false
+                },
+                "showPercentChange": true,
+                "textMode": "value",
+                "wideLayout": true
+            },
+            "pluginVersion": "12.4.3"
+        },
+        {
+            "id": 14,
+            "type": "row",
+            "title": "Statistics",
+            "gridPos": {
+                "h": 1,
+                "w": 24,
+                "x": 0,
+                "y": 10
+            },
+            "collapsed": false,
+            "panels": []
+        },
+        {
+            "id": 15,
+            "type": "stat",
+            "title": "Queries",
+            "datasource": {
+                "type": "prometheus",
+                "uid": "prometheus"
+            },
+            "gridPos": {
+                "h": 4,
+                "w": 3,
+                "x": 0,
+                "y": 11
+            },
+            "targets": [
+                {
+                    "expr": "sum(increase(adguard_dns_queries_total[$__range]))",
+                    "legendFormat": "queries",
+                    "refId": "A",
+                    "datasource": {
+                        "type": "prometheus",
+                        "uid": "prometheus"
+                    },
+                    "editorMode": "code",
+                    "range": true
+                }
+            ],
+            "fieldConfig": {
+                "defaults": {
+                    "color": {
+                        "mode": "thresholds"
+                    },
+                    "mappings": [],
+                    "min": 0,
+                    "thresholds": {
+                        "mode": "absolute",
+                        "steps": [
+                            {
+                                "color": "light-green",
+                                "value": 0
+                            }
+                        ]
+                    }
+                },
+                "overrides": []
+            },
+            "options": {
+                "colorMode": "value",
+                "graphMode": "area",
+                "justifyMode": "auto",
+                "orientation": "auto",
+                "percentChangeColorMode": "standard",
+                "reduceOptions": {
+                    "calcs": [
+                        "lastNotNull"
+                    ],
+                    "fields": "",
+                    "values": false
+                },
+                "showPercentChange": true,
+                "textMode": "auto",
+                "wideLayout": true
+            },
+            "pluginVersion": "12.4.3"
+        },
+        {
+            "id": 16,
+            "type": "stat",
+            "title": "Block Rate",
+            "datasource": {
+                "type": "prometheus",
+                "uid": "prometheus"
+            },
+            "gridPos": {
+                "h": 4,
+                "w": 3,
+                "x": 3,
+                "y": 11
+            },
+            "targets": [
+                {
+                    "expr": "(adguard_blocked_filtering_total / adguard_dns_queries_total) * 100",
+                    "legendFormat": "Block Rate",
+                    "refId": "A",
+                    "datasource": {
+                        "type": "prometheus",
+                        "uid": "prometheus"
+                    },
+                    "editorMode": "code",
+                    "range": true
+                }
+            ],
+            "fieldConfig": {
+                "defaults": {
+                    "color": {
+                        "mode": "thresholds"
+                    },
+                    "mappings": [],
+                    "max": 100,
+                    "min": 0,
+                    "thresholds": {
+                        "mode": "absolute",
+                        "steps": [
+                            {
+                                "color": "light-green",
+                                "value": 0
+                            },
+                            {
+                                "color": "light-yellow",
+                                "value": 40
+                            },
+                            {
+                                "color": "light-orange",
+                                "value": 60
+                            },
+                            {
+                                "color": "light-red",
+                                "value": 80
+                            }
+                        ]
+                    },
+                    "unit": "percent"
+                },
+                "overrides": []
+            },
+            "options": {
+                "colorMode": "value",
+                "graphMode": "area",
+                "justifyMode": "auto",
+                "orientation": "auto",
+                "percentChangeColorMode": "standard",
+                "reduceOptions": {
+                    "calcs": [
+                        "lastNotNull"
+                    ],
+                    "fields": "",
+                    "values": false
+                },
+                "showPercentChange": true,
+                "textMode": "auto",
+                "wideLayout": true
+            },
+            "pluginVersion": "12.4.3"
+        },
+        {
+            "id": 33,
+            "type": "stat",
+            "title": "Avg Time",
+            "datasource": {
+                "type": "prometheus",
+                "uid": "prometheus"
+            },
+            "gridPos": {
+                "h": 4,
+                "w": 3,
+                "x": 6,
+                "y": 11
+            },
+            "targets": [
+                {
+                    "expr": "adguard_avg_processing_time\r\n",
+                    "legendFormat": "{{cache}}",
+                    "refId": "A",
+                    "datasource": {
+                        "type": "prometheus",
+                        "uid": "prometheus"
+                    },
+                    "editorMode": "code",
+                    "range": true
+                }
+            ],
+            "fieldConfig": {
+                "defaults": {
+                    "color": {
+                        "mode": "thresholds"
+                    },
+                    "mappings": [],
+                    "max": 100,
+                    "min": 0,
+                    "thresholds": {
+                        "mode": "absolute",
+                        "steps": [
+                            {
+                                "color": "light-green",
+                                "value": 0
+                            },
+                            {
+                                "color": "light-yellow",
+                                "value": 33554432
+                            },
+                            {
+                                "color": "light-orange",
+                                "value": 53687091
+                            },
+                            {
+                                "color": "light-red",
+                                "value": 63730688
+                            }
+                        ]
+                    },
+                    "unit": "s"
+                },
+                "overrides": []
+            },
+            "options": {
+                "colorMode": "value",
+                "graphMode": "area",
+                "justifyMode": "auto",
+                "orientation": "vertical",
+                "percentChangeColorMode": "same_as_value",
+                "reduceOptions": {
+                    "calcs": [
+                        "lastNotNull"
+                    ],
+                    "fields": "",
+                    "values": false
+                },
+                "showPercentChange": true,
+                "textMode": "value",
+                "wideLayout": true
+            },
+            "pluginVersion": "12.4.3"
+        },
+        {
+            "id": 17,
+            "type": "heatmap",
+            "title": "Query Types",
+            "datasource": {
+                "type": "prometheus",
+                "uid": "prometheus"
+            },
+            "gridPos": {
+                "h": 8,
+                "w": 7,
+                "x": 9,
+                "y": 11
+            },
+            "targets": [
+                {
+                    "expr": "sum(\n  increase(adguard_query_type_total[$__rate_interval])\n  or (\n    label_replace(vector(0.01), \"type\", \"A\", \"\", \"\")\n    or label_replace(vector(0.01), \"type\", \"AAAA\", \"\", \"\")\n    or label_replace(vector(0.01), \"type\", \"CAA\", \"\", \"\")\n    or label_replace(vector(0.01), \"type\", \"CNAME\", \"\", \"\")\n    or label_replace(vector(0.01), \"type\", \"HTTPS\", \"\", \"\")\n    or label_replace(vector(0.01), \"type\", \"MX\", \"\", \"\")\n    or label_replace(vector(0.01), \"type\", \"NS\", \"\", \"\")\n    or label_replace(vector(0.01), \"type\", \"PTR\", \"\", \"\")\n    or label_replace(vector(0.01), \"type\", \"SOA\", \"\", \"\")\n    or label_replace(vector(0.01), \"type\", \"SRV\", \"\", \"\")\n    or label_replace(vector(0.01), \"type\", \"TXT\", \"\", \"\")\n  )\n) by (type)",
+                    "legendFormat": "{{type}}",
+                    "refId": "A",
+                    "instant": false,
+                    "format": "time_series",
+                    "datasource": {
+                        "type": "prometheus",
+                        "uid": "prometheus"
+                    },
+                    "editorMode": "code",
+                    "exemplar": false,
+                    "interval": "",
+                    "range": true
+                }
+            ],
+            "fieldConfig": {
+                "defaults": {
+                    "custom": {
+                        "hideFrom": {
+                            "legend": false,
+                            "tooltip": false,
+                            "viz": false
+                        },
+                        "scaleDistribution": {
+                            "type": "linear"
+                        }
+                    }
+                },
+                "overrides": [
+                    {
+                        "matcher": {
+                            "id": "byName",
+                            "options": "A"
+                        },
+                        "properties": []
+                    },
+                    {
+                        "matcher": {
+                            "id": "byName",
+                            "options": "AAAA"
+                        },
+                        "properties": []
+                    }
+                ]
+            },
+            "options": {
+                "annotations": {
+                    "clustering": -1,
+                    "multiLane": false
+                },
+                "calculate": false,
+                "calculation": {
+                    "yBuckets": {
+                        "scale": {
+                            "type": "linear"
+                        }
+                    }
+                },
+                "cellGap": 0,
+                "cellValues": {
+                    "decimals": 0
+                },
+                "color": {
+                    "exponent": 0.5,
+                    "fill": "dark-orange",
+                    "mode": "scheme",
+                    "reverse": false,
+                    "scale": "exponential",
+                    "scheme": "YlOrRd",
+                    "steps": 128
+                },
+                "exemplars": {
+                    "color": "rgba(255,0,255,0.7)"
+                },
+                "filterValues": {
+                    "le": 0
+                },
+                "legend": {
+                    "show": true
+                },
+                "rowsFrame": {
+                    "layout": "auto"
+                },
+                "tooltip": {
+                    "mode": "multi",
+                    "showColorScale": false,
+                    "yHistogram": false
+                },
+                "yAxis": {
+                    "axisPlacement": "left",
+                    "reverse": true
+                }
+            },
+            "pluginVersion": "12.4.3"
+        },
+        {
+            "id": 18,
+            "type": "timeseries",
+            "title": "Top 10 Queried Domains",
+            "datasource": {
+                "type": "prometheus",
+                "uid": "prometheus"
+            },
+            "gridPos": {
+                "h": 8,
+                "w": 8,
+                "x": 16,
+                "y": 11
+            },
+            "targets": [
+                {
+                    "expr": "topk(\r\n  10,\r\n  sum by (domain) (\r\n    increase(\r\n      adguard_top_queried_domain_total[$__rate_interval]\r\n    )\r\n  )\r\n)",
+                    "legendFormat": "{{domain}}",
+                    "refId": "A",
+                    "datasource": {
+                        "type": "prometheus",
+                        "uid": "prometheus"
+                    },
+                    "editorMode": "code",
+                    "range": true
+                }
+            ],
+            "fieldConfig": {
+                "defaults": {
+                    "color": {
+                        "mode": "palette-classic"
+                    },
+                    "custom": {
+                        "axisBorderShow": false,
+                        "axisCenteredZero": false,
+                        "axisColorMode": "text",
+                        "axisLabel": "",
+                        "axisPlacement": "auto",
+                        "barAlignment": 0,
+                        "barWidthFactor": 0.6,
+                        "drawStyle": "bars",
+                        "fillOpacity": 0,
+                        "gradientMode": "none",
+                        "hideFrom": {
+                            "legend": false,
+                            "tooltip": false,
+                            "viz": false
+                        },
+                        "insertNulls": false,
+                        "lineInterpolation": "linear",
+                        "lineWidth": 2,
+                        "pointSize": 5,
+                        "scaleDistribution": {
+                            "type": "linear"
+                        },
+                        "showPoints": "auto",
+                        "showValues": false,
+                        "spanNulls": false,
+                        "stacking": {
+                            "group": "A",
+                            "mode": "normal"
+                        },
+                        "thresholdsStyle": {
+                            "mode": "off"
+                        }
+                    },
+                    "mappings": [],
+                    "thresholds": {
+                        "mode": "absolute",
+                        "steps": [
+                            {
+                                "color": "light-blue",
+                                "value": 0
+                            }
+                        ]
+                    }
+                },
+                "overrides": [
+                    {
+                        "matcher": {
+                            "id": "byName",
+                            "options": "q/s",
+                            "scope": "series"
+                        },
+                        "properties": [
+                            {
+                                "id": "color",
+                                "value": {
+                                    "fixedColor": "light-green",
+                                    "mode": "fixed"
+                                }
+                            }
+                        ]
+                    }
+                ]
+            },
+            "options": {
+                "annotations": {
+                    "clustering": -1,
+                    "multiLane": false
+                },
+                "legend": {
+                    "calcs": [],
+                    "displayMode": "list",
+                    "placement": "bottom",
+                    "showLegend": false
+                },
+                "tooltip": {
+                    "hideZeros": false,
+                    "mode": "all",
+                    "sort": "none"
+                }
+            },
+            "pluginVersion": "12.4.3"
+        },
+        {
+            "id": 19,
+            "type": "stat",
+            "title": "Cache Hits",
+            "datasource": {
+                "type": "prometheus",
+                "uid": "prometheus"
+            },
+            "gridPos": {
+                "h": 4,
+                "w": 3,
+                "x": 0,
+                "y": 15
+            },
+            "targets": [
+                {
+                    "expr": "sum(rate(unbound_cache_hits_total[$__rate_interval])) /\r\n(\r\n  sum(rate(unbound_cache_hits_total[$__rate_interval])) +\r\n  sum(rate(unbound_cache_misses_total[$__rate_interval]))\r\n)",
+                    "legendFormat": "p99",
+                    "refId": "A",
+                    "datasource": {
+                        "type": "prometheus",
+                        "uid": "prometheus"
+                    },
+                    "editorMode": "code",
+                    "range": true
+                }
+            ],
+            "fieldConfig": {
+                "defaults": {
+                    "color": {
+                        "mode": "thresholds"
+                    },
+                    "mappings": [],
+                    "max": 1,
+                    "min": 0,
+                    "thresholds": {
+                        "mode": "absolute",
+                        "steps": [
+                            {
+                                "color": "light-red",
+                                "value": 0
+                            },
+                            {
+                                "color": "light-orange",
+                                "value": 0.5
+                            },
+                            {
+                                "color": "light-yellow",
+                                "value": 0.7
+                            },
+                            {
+                                "color": "light-green",
+                                "value": 0.85
+                            }
+                        ]
+                    },
+                    "unit": "percentunit"
+                },
+                "overrides": []
+            },
+            "options": {
+                "colorMode": "value",
+                "graphMode": "area",
+                "justifyMode": "auto",
+                "orientation": "auto",
+                "percentChangeColorMode": "standard",
+                "reduceOptions": {
+                    "calcs": [
+                        "lastNotNull"
+                    ],
+                    "fields": "",
+                    "values": false
+                },
+                "showPercentChange": true,
+                "textMode": "auto",
+                "wideLayout": true
+            },
+            "pluginVersion": "12.4.3"
+        },
+        {
+            "id": 20,
+            "type": "stat",
+            "title": "Cache Prefetch",
+            "datasource": {
+                "type": "prometheus",
+                "uid": "prometheus"
+            },
+            "gridPos": {
+                "h": 4,
+                "w": 3,
+                "x": 3,
+                "y": 15
+            },
+            "targets": [
+                {
+                    "expr": "sum(increase(unbound_prefetches_total[$__rate_interval]))",
+                    "legendFormat": "Ops",
+                    "refId": "A",
+                    "instant": false,
+                    "datasource": {
+                        "type": "prometheus",
+                        "uid": "prometheus"
+                    },
+                    "editorMode": "code",
+                    "range": true
+                }
+            ],
+            "fieldConfig": {
+                "defaults": {
+                    "color": {
+                        "mode": "thresholds"
+                    },
+                    "mappings": [],
+                    "thresholds": {
+                        "mode": "absolute",
+                        "steps": [
+                            {
+                                "color": "light-blue",
+                                "value": 0
+                            }
+                        ]
+                    }
+                },
+                "overrides": [
+                    {
+                        "matcher": {
+                            "id": "byName",
+                            "options": "Ops",
+                            "scope": "series"
+                        },
+                        "properties": [
+                            {
+                                "id": "color",
+                                "value": {
+                                    "fixedColor": "light-green",
+                                    "mode": "fixed"
+                                }
+                            }
+                        ]
+                    }
+                ]
+            },
+            "options": {
+                "colorMode": "value",
+                "graphMode": "area",
+                "justifyMode": "auto",
+                "orientation": "auto",
+                "percentChangeColorMode": "standard",
+                "reduceOptions": {
+                    "calcs": [
+                        "lastNotNull"
+                    ],
+                    "fields": "",
+                    "values": false
+                },
+                "showPercentChange": false,
+                "textMode": "auto",
+                "wideLayout": true
+            },
+            "pluginVersion": "12.4.3"
+        },
+        {
+            "id": 34,
+            "type": "stat",
+            "title": "DNSSEC, %",
+            "datasource": {
+                "type": "prometheus",
+                "uid": "prometheus"
+            },
+            "gridPos": {
+                "h": 4,
+                "w": 3,
+                "x": 6,
+                "y": 15
+            },
+            "targets": [
+                {
+                    "expr": "(rate(unbound_answers_secure_total[$__rate_interval]) or vector(0))\r\n/\r\nsum(rate(unbound_queries_total[$__rate_interval]))",
+                    "legendFormat": "Ops",
+                    "refId": "A",
+                    "instant": false,
+                    "datasource": {
+                        "type": "prometheus",
+                        "uid": "prometheus"
+                    },
+                    "editorMode": "code",
+                    "range": true
+                }
+            ],
+            "fieldConfig": {
+                "defaults": {
+                    "color": {
+                        "mode": "thresholds"
+                    },
+                    "mappings": [],
+                    "thresholds": {
+                        "mode": "absolute",
+                        "steps": [
+                            {
+                                "color": "light-blue",
+                                "value": 0
+                            }
+                        ]
+                    }
+                },
+                "overrides": [
+                    {
+                        "matcher": {
+                            "id": "byName",
+                            "options": "Ops",
+                            "scope": "series"
+                        },
+                        "properties": [
+                            {
+                                "id": "color",
+                                "value": {
+                                    "fixedColor": "light-green",
+                                    "mode": "fixed"
+                                }
+                            }
+                        ]
+                    }
+                ]
+            },
+            "options": {
+                "colorMode": "value",
+                "graphMode": "area",
+                "justifyMode": "auto",
+                "orientation": "auto",
+                "percentChangeColorMode": "standard",
+                "reduceOptions": {
+                    "calcs": [
+                        "lastNotNull"
+                    ],
+                    "fields": "",
+                    "values": false
+                },
+                "showPercentChange": false,
+                "textMode": "auto",
+                "wideLayout": true
+            },
+            "pluginVersion": "12.4.3"
+        },
+        {
+            "id": 36,
+            "type": "row",
+            "title": "Queries Processing",
+            "gridPos": {
+                "h": 1,
+                "w": 24,
+                "x": 0,
+                "y": 19
+            },
+            "collapsed": false,
+            "panels": []
+        },
+        {
+            "id": 21,
+            "type": "timeseries",
+            "title": "Total Queries Rate",
+            "datasource": {
+                "type": "prometheus",
+                "uid": "prometheus"
+            },
+            "gridPos": {
+                "h": 10,
+                "w": 12,
+                "x": 0,
+                "y": 20
+            },
+            "targets": [
+                {
+                    "expr": "rate(adguard_dns_queries_total[$__rate_interval])",
+                    "legendFormat": "Rate",
+                    "refId": "A",
+                    "datasource": {
+                        "type": "prometheus",
+                        "uid": "prometheus"
+                    },
+                    "editorMode": "code",
+                    "range": true
+                }
+            ],
+            "fieldConfig": {
+                "defaults": {
+                    "color": {
+                        "mode": "palette-classic"
+                    },
+                    "custom": {
+                        "axisBorderShow": false,
+                        "axisCenteredZero": false,
+                        "axisColorMode": "text",
+                        "axisLabel": "",
+                        "axisPlacement": "auto",
+                        "barAlignment": 0,
+                        "barWidthFactor": 0.5,
+                        "drawStyle": "bars",
+                        "fillOpacity": 30,
+                        "gradientMode": "none",
+                        "hideFrom": {
+                            "legend": false,
+                            "tooltip": false,
+                            "viz": false
+                        },
+                        "insertNulls": false,
+                        "lineInterpolation": "linear",
+                        "lineWidth": 2,
+                        "pointSize": 5,
+                        "scaleDistribution": {
+                            "log": 2,
+                            "type": "log"
+                        },
+                        "showPoints": "auto",
+                        "showValues": false,
+                        "spanNulls": false,
+                        "stacking": {
+                            "group": "A",
+                            "mode": "none"
+                        },
+                        "thresholdsStyle": {
+                            "mode": "off"
+                        }
+                    },
+                    "mappings": [],
+                    "thresholds": {
+                        "mode": "absolute",
+                        "steps": [
+                            {
+                                "color": "light-blue",
+                                "value": 0
+                            }
+                        ]
+                    },
+                    "unit": "q/s"
+                },
+                "overrides": [
+                    {
+                        "matcher": {
+                            "id": "byName",
+                            "options": "Rate",
+                            "scope": "series"
+                        },
+                        "properties": [
+                            {
+                                "id": "color",
+                                "value": {
+                                    "fixedColor": "light-green",
+                                    "mode": "fixed"
+                                }
+                            }
+                        ]
+                    }
+                ]
+            },
+            "options": {
+                "annotations": {
+                    "clustering": -1,
+                    "multiLane": false
+                },
+                "legend": {
+                    "calcs": [],
+                    "displayMode": "list",
+                    "placement": "bottom",
+                    "showLegend": false
+                },
+                "tooltip": {
+                    "hideZeros": false,
+                    "mode": "all",
+                    "sort": "none"
+                }
+            },
+            "pluginVersion": "12.4.3"
+        },
+        {
+            "id": 22,
+            "type": "timeseries",
+            "title": "Total Queries TTR, p95",
+            "datasource": {
+                "type": "prometheus",
+                "uid": "prometheus"
+            },
+            "gridPos": {
+                "h": 10,
+                "w": 12,
+                "x": 12,
+                "y": 20
+            },
+            "targets": [
+                {
+                    "expr": "histogram_quantile(\r\n    0.95, \r\n    sum(\r\n        rate(adguard_query_elapsed_ms_bucket[$__rate_interval])\r\n    ) by (le)\r\n)",
+                    "legendFormat": "le",
+                    "refId": "A",
+                    "datasource": {
+                        "type": "prometheus",
+                        "uid": "prometheus"
+                    },
+                    "editorMode": "code",
+                    "range": true
+                }
+            ],
+            "fieldConfig": {
+                "defaults": {
+                    "color": {
+                        "mode": "palette-classic"
+                    },
+                    "custom": {
+                        "axisBorderShow": false,
+                        "axisCenteredZero": false,
+                        "axisColorMode": "text",
+                        "axisLabel": "",
+                        "axisPlacement": "auto",
+                        "barAlignment": 0,
+                        "barWidthFactor": 0.5,
+                        "drawStyle": "bars",
+                        "fillOpacity": 30,
+                        "gradientMode": "none",
+                        "hideFrom": {
+                            "legend": false,
+                            "tooltip": false,
+                            "viz": false
+                        },
+                        "insertNulls": false,
+                        "lineInterpolation": "linear",
+                        "lineWidth": 2,
+                        "pointSize": 5,
+                        "scaleDistribution": {
+                            "log": 2,
+                            "type": "log"
+                        },
+                        "showPoints": "auto",
+                        "showValues": false,
+                        "spanNulls": false,
+                        "stacking": {
+                            "group": "A",
+                            "mode": "none"
+                        },
+                        "thresholdsStyle": {
+                            "mode": "off"
+                        }
+                    },
+                    "mappings": [],
+                    "thresholds": {
+                        "mode": "absolute",
+                        "steps": [
+                            {
+                                "color": "light-blue",
+                                "value": 0
+                            }
+                        ]
+                    },
+                    "unit": "ms"
+                },
+                "overrides": [
+                    {
+                        "matcher": {
+                            "id": "byName",
+                            "options": "le",
+                            "scope": "series"
+                        },
+                        "properties": [
+                            {
+                                "id": "color",
+                                "value": {
+                                    "fixedColor": "light-green",
+                                    "mode": "fixed"
+                                }
+                            }
+                        ]
+                    }
+                ]
+            },
+            "options": {
+                "annotations": {
+                    "clustering": -1,
+                    "multiLane": false
+                },
+                "legend": {
+                    "calcs": [],
+                    "displayMode": "list",
+                    "placement": "bottom",
+                    "showLegend": false
+                },
+                "tooltip": {
+                    "hideZeros": false,
+                    "mode": "all",
+                    "sort": "none"
+                }
+            },
+            "pluginVersion": "12.4.3"
+        },
+        {
+            "id": 23,
+            "type": "timeseries",
+            "title": "Upstream Queries Rate",
+            "datasource": {
+                "type": "prometheus",
+                "uid": "prometheus"
+            },
+            "gridPos": {
+                "h": 9,
+                "w": 12,
+                "x": 0,
+                "y": 30
+            },
+            "targets": [
+                {
+                    "expr": "sum by (upstream) (\r\n    rate(adguard_query_upstream_total[$__rate_interval])\r\n)",
+                    "legendFormat": "{{upstream}}",
+                    "refId": "A",
+                    "datasource": {
+                        "type": "prometheus",
+                        "uid": "prometheus"
+                    },
+                    "editorMode": "code",
+                    "range": true
+                }
+            ],
+            "fieldConfig": {
+                "defaults": {
+                    "color": {
+                        "fixedColor": "blue",
+                        "mode": "fixed"
+                    },
+                    "custom": {
+                        "axisBorderShow": false,
+                        "axisCenteredZero": false,
+                        "axisColorMode": "text",
+                        "axisLabel": "",
+                        "axisPlacement": "auto",
+                        "barAlignment": 0,
+                        "barWidthFactor": 0.6,
+                        "drawStyle": "line",
+                        "fillOpacity": 10,
+                        "gradientMode": "none",
+                        "hideFrom": {
+                            "legend": false,
+                            "tooltip": false,
+                            "viz": false
+                        },
+                        "insertNulls": false,
+                        "lineInterpolation": "linear",
+                        "lineStyle": {
+                            "fill": "solid"
+                        },
+                        "lineWidth": 2,
+                        "pointSize": 5,
+                        "scaleDistribution": {
+                            "type": "linear"
+                        },
+                        "showPoints": "never",
+                        "showValues": false,
+                        "spanNulls": true,
+                        "stacking": {
+                            "group": "A",
+                            "mode": "none"
+                        },
+                        "thresholdsStyle": {
+                            "mode": "off"
+                        }
+                    },
+                    "fieldMinMax": false,
+                    "mappings": [],
+                    "thresholds": {
+                        "mode": "absolute",
+                        "steps": [
+                            {
+                                "color": "light-blue",
+                                "value": 0
+                            }
+                        ]
+                    },
+                    "unit": "q/s"
+                },
+                "overrides": [
+                    {
+                        "matcher": {
+                            "id": "byName",
+                            "options": "10.43.10.43:53"
+                        },
+                        "properties": [
+                            {
+                                "id": "displayName",
+                                "value": "Unbound"
+                            },
+                            {
+                                "id": "color",
+                                "value": {
+                                    "fixedColor": "light-green",
+                                    "mode": "fixed"
+                                }
+                            }
+                        ]
+                    },
+                    {
+                        "matcher": {
+                            "id": "byName",
+                            "options": "192.168.10.1:53"
+                        },
+                        "properties": [
+                            {
+                                "id": "displayName",
+                                "value": "MikroTik"
+                            },
+                            {
+                                "id": "color",
+                                "value": {
+                                    "fixedColor": "light-red",
+                                    "mode": "fixed"
+                                }
+                            }
+                        ]
+                    },
+                    {
+                        "matcher": {
+                            "id": "byRegexp",
+                            "options": "^(?!Unbound$|MikroTik$).*",
+                            "scope": "series"
+                        },
+                        "properties": [
+                            {
+                                "id": "custom.hideFrom",
+                                "value": {
+                                    "legend": true,
+                                    "tooltip": true,
+                                    "viz": true
+                                }
+                            }
+                        ]
+                    }
+                ]
+            },
+            "options": {
+                "annotations": {
+                    "clustering": -1,
+                    "multiLane": false
+                },
+                "legend": {
+                    "calcs": [],
+                    "displayMode": "list",
+                    "placement": "bottom",
+                    "showLegend": false
+                },
+                "tooltip": {
+                    "hideZeros": false,
+                    "mode": "all",
+                    "sort": "none"
+                }
+            },
+            "pluginVersion": "12.4.3"
+        },
+        {
+            "id": 24,
+            "type": "timeseries",
+            "title": "Upstream Queries TTR, p95",
+            "datasource": {
+                "type": "prometheus",
+                "uid": "prometheus"
+            },
+            "gridPos": {
+                "h": 9,
+                "w": 12,
+                "x": 12,
+                "y": 30
+            },
+            "targets": [
+                {
+                    "expr": "1000 * histogram_quantile(\r\n    0.95, \r\n    sum by (le, upstream) (\r\n        rate(adguard_upstream_latency_seconds_bucket{}[$__rate_interval])\r\n    )\r\n)",
+                    "legendFormat": "{{upstream}}",
+                    "refId": "A",
+                    "format": "time_series",
+                    "datasource": {
+                        "type": "prometheus",
+                        "uid": "prometheus"
+                    },
+                    "editorMode": "code",
+                    "interval": "",
+                    "range": true
+                }
+            ],
+            "fieldConfig": {
+                "defaults": {
+                    "color": {
+                        "mode": "palette-classic"
+                    },
+                    "custom": {
+                        "axisBorderShow": false,
+                        "axisCenteredZero": false,
+                        "axisColorMode": "text",
+                        "axisLabel": "",
+                        "axisPlacement": "auto",
+                        "barAlignment": 1,
+                        "barWidthFactor": 0.6,
+                        "drawStyle": "line",
+                        "fillOpacity": 10,
+                        "gradientMode": "none",
+                        "hideFrom": {
+                            "legend": false,
+                            "tooltip": false,
+                            "viz": false
+                        },
+                        "insertNulls": false,
+                        "lineInterpolation": "linear",
+                        "lineWidth": 2,
+                        "pointSize": 5,
+                        "scaleDistribution": {
+                            "log": 2,
+                            "type": "log"
+                        },
+                        "showPoints": "auto",
+                        "showValues": true,
+                        "spanNulls": false,
+                        "stacking": {
+                            "group": "A",
+                            "mode": "none"
+                        },
+                        "thresholdsStyle": {
+                            "mode": "off"
+                        }
+                    },
+                    "mappings": [],
+                    "thresholds": {
+                        "mode": "absolute",
+                        "steps": [
+                            {
+                                "color": "light-blue",
+                                "value": 0
+                            }
+                        ]
+                    },
+                    "unit": "ms"
+                },
+                "overrides": [
+                    {
+                        "matcher": {
+                            "id": "byName",
+                            "options": "10.43.10.43:53"
+                        },
+                        "properties": [
+                            {
+                                "id": "displayName",
+                                "value": "Unbound"
+                            },
+                            {
+                                "id": "color",
+                                "value": {
+                                    "fixedColor": "light-green",
+                                    "mode": "fixed"
+                                }
+                            }
+                        ]
+                    },
+                    {
+                        "matcher": {
+                            "id": "byName",
+                            "options": "192.168.10.1:53"
+                        },
+                        "properties": [
+                            {
+                                "id": "displayName",
+                                "value": "MikroTik"
+                            },
+                            {
+                                "id": "color",
+                                "value": {
+                                    "fixedColor": "super-light-orange",
+                                    "mode": "fixed"
+                                }
+                            }
+                        ]
+                    },
+                    {
+                        "matcher": {
+                            "id": "byRegexp",
+                            "options": "^(?!Unbound$|MikroTik$).*",
+                            "scope": "series"
+                        },
+                        "properties": [
+                            {
+                                "id": "custom.hideFrom",
+                                "value": {
+                                    "legend": true,
+                                    "tooltip": true,
+                                    "viz": true
+                                }
+                            }
+                        ]
+                    },
+                    {
+                        "matcher": {
+                            "id": "byName",
+                            "options": "MikroTik"
+                        },
+                        "properties": [
+                            {
+                                "id": "color",
+                                "value": {
+                                    "fixedColor": "light-red",
+                                    "mode": "fixed"
+                                }
+                            }
+                        ]
+                    }
+                ]
+            },
+            "options": {
+                "annotations": {
+                    "clustering": -1,
+                    "multiLane": false
+                },
+                "legend": {
+                    "calcs": [],
+                    "displayMode": "list",
+                    "placement": "bottom",
+                    "showLegend": false,
+                    "sortBy": "Name",
+                    "sortDesc": false
+                },
+                "tooltip": {
+                    "hideZeros": false,
+                    "mode": "all",
+                    "sort": "none"
+                }
+            },
+            "pluginVersion": "12.4.3"
+        },
+        {
+            "id": 25,
+            "type": "timeseries",
+            "title": "Recursion Packets Sent",
+            "datasource": {
+                "type": "prometheus",
+                "uid": "prometheus"
+            },
+            "gridPos": {
+                "h": 10,
+                "w": 12,
+                "x": 0,
+                "y": 39
+            },
+            "targets": [
+                {
+                    "expr": "sum(rate(unbound_query_udpout_total[$__rate_interval]))\r\n/\r\nsum(rate(unbound_cache_misses_total[$__rate_interval]))",
+                    "legendFormat": "UDP",
+                    "refId": "A",
+                    "datasource": {
+                        "type": "prometheus",
+                        "uid": "prometheus"
+                    },
+                    "editorMode": "code",
+                    "range": true
+                },
+                {
+                    "expr": "sum(rate(unbound_query_tcpout_total[$__rate_interval]))\r\n/\r\nsum(rate(unbound_cache_misses_total[$__rate_interval]))",
+                    "legendFormat": "TCP",
+                    "refId": "B",
+                    "datasource": {
+                        "type": "prometheus",
+                        "uid": "prometheus"
+                    },
+                    "editorMode": "code",
+                    "range": true
+                }
+            ],
+            "fieldConfig": {
+                "defaults": {
+                    "color": {
+                        "mode": "palette-classic"
+                    },
+                    "custom": {
+                        "axisBorderShow": false,
+                        "axisCenteredZero": false,
+                        "axisColorMode": "text",
+                        "axisLabel": "",
+                        "axisPlacement": "auto",
+                        "barAlignment": 0,
+                        "barWidthFactor": 0.5,
+                        "drawStyle": "bars",
+                        "fillOpacity": 30,
+                        "gradientMode": "none",
+                        "hideFrom": {
+                            "legend": false,
+                            "tooltip": false,
+                            "viz": false
+                        },
+                        "insertNulls": false,
+                        "lineInterpolation": "linear",
+                        "lineWidth": 2,
+                        "pointSize": 5,
+                        "scaleDistribution": {
+                            "type": "linear"
+                        },
+                        "showPoints": "never",
+                        "showValues": false,
+                        "spanNulls": true,
+                        "stacking": {
+                            "group": "A",
+                            "mode": "none"
+                        },
+                        "thresholdsStyle": {
+                            "mode": "off"
+                        }
+                    },
+                    "mappings": [],
+                    "thresholds": {
+                        "mode": "absolute",
+                        "steps": [
+                            {
+                                "color": "light-blue",
+                                "value": 0
+                            }
+                        ]
+                    }
+                },
+                "overrides": [
+                    {
+                        "matcher": {
+                            "id": "byName",
+                            "options": "UDP",
+                            "scope": "series"
+                        },
+                        "properties": [
+                            {
+                                "id": "color",
+                                "value": {
+                                    "fixedColor": "light-green",
+                                    "mode": "fixed"
+                                }
+                            }
+                        ]
+                    },
+                    {
+                        "matcher": {
+                            "id": "byName",
+                            "options": "TCP",
+                            "scope": "series"
+                        },
+                        "properties": [
+                            {
+                                "id": "color",
+                                "value": {
+                                    "fixedColor": "light-red",
+                                    "mode": "fixed"
+                                }
+                            }
+                        ]
+                    }
+                ]
+            },
+            "options": {
+                "annotations": {
+                    "clustering": -1,
+                    "multiLane": false
+                },
+                "legend": {
+                    "calcs": [],
+                    "displayMode": "list",
+                    "placement": "bottom",
+                    "showLegend": true
+                },
+                "tooltip": {
+                    "hideZeros": false,
+                    "mode": "all",
+                    "sort": "none"
+                }
+            },
+            "pluginVersion": "12.4.3"
+        },
+        {
+            "id": 26,
+            "type": "timeseries",
+            "title": "Recursion Queries TTR, p95",
+            "datasource": {
+                "type": "prometheus",
+                "uid": "prometheus"
+            },
+            "gridPos": {
+                "h": 10,
+                "w": 12,
+                "x": 12,
+                "y": 39
+            },
+            "targets": [
+                {
+                    "expr": "histogram_quantile(\r\n    0.95, \r\n    sum(\r\n        rate(unbound_response_time_seconds_bucket[$__rate_interval])\r\n    ) by (le)\r\n)",
+                    "legendFormat": "p95",
+                    "refId": "A",
+                    "datasource": {
+                        "type": "prometheus",
+                        "uid": "prometheus"
+                    },
+                    "editorMode": "code",
+                    "range": true
+                }
+            ],
+            "fieldConfig": {
+                "defaults": {
+                    "color": {
+                        "fixedColor": "light-blue",
+                        "mode": "fixed"
+                    },
+                    "custom": {
+                        "axisBorderShow": false,
+                        "axisCenteredZero": false,
+                        "axisColorMode": "text",
+                        "axisLabel": "",
+                        "axisPlacement": "auto",
+                        "barAlignment": 0,
+                        "barWidthFactor": 0.5,
+                        "drawStyle": "bars",
+                        "fillOpacity": 30,
+                        "gradientMode": "none",
+                        "hideFrom": {
+                            "legend": false,
+                            "tooltip": false,
+                            "viz": false
+                        },
+                        "insertNulls": false,
+                        "lineInterpolation": "smooth",
+                        "lineWidth": 2,
+                        "pointSize": 5,
+                        "scaleDistribution": {
+                            "type": "linear"
+                        },
+                        "showPoints": "never",
+                        "showValues": false,
+                        "spanNulls": true,
+                        "stacking": {
+                            "group": "A",
+                            "mode": "none"
+                        },
+                        "thresholdsStyle": {
+                            "mode": "off"
+                        }
+                    },
+                    "mappings": [],
+                    "min": 0,
+                    "thresholds": {
+                        "mode": "absolute",
+                        "steps": [
+                            {
+                                "color": "light-blue",
+                                "value": 0
+                            }
+                        ]
+                    },
+                    "unit": "s"
+                },
+                "overrides": [
+                    {
+                        "matcher": {
+                            "id": "byName",
+                            "options": "p95"
+                        },
+                        "properties": [
+                            {
+                                "id": "color",
+                                "value": {
+                                    "fixedColor": "light-green",
+                                    "mode": "fixed"
+                                }
+                            }
+                        ]
+                    }
+                ]
+            },
+            "options": {
+                "annotations": {
+                    "clustering": -1,
+                    "multiLane": false
+                },
+                "legend": {
+                    "calcs": [
+                        "mean",
+                        "max"
+                    ],
+                    "displayMode": "list",
+                    "placement": "bottom",
+                    "showLegend": false
+                },
+                "tooltip": {
+                    "hideZeros": false,
+                    "mode": "all",
+                    "sort": "none"
+                }
+            },
+            "pluginVersion": "12.4.3"
+        },
+        {
+            "id": 27,
+            "type": "timeseries",
+            "title": "Upstream Cache Hit / Miss",
+            "datasource": {
+                "type": "prometheus",
+                "uid": "prometheus"
+            },
+            "gridPos": {
+                "h": 6,
+                "w": 24,
+                "x": 0,
+                "y": 49
+            },
+            "targets": [
+                {
+                    "expr": "sum(\r\n    increase(unbound_cache_hits_total[$__rate_interval])\r\n)",
+                    "legendFormat": "Hits",
+                    "refId": "A",
+                    "datasource": {
+                        "type": "prometheus",
+                        "uid": "prometheus"
+                    },
+                    "editorMode": "code",
+                    "range": true
+                },
+                {
+                    "expr": "-1 * sum(\r\n    increase(unbound_cache_misses_total[$__rate_interval])\r\n)",
+                    "legendFormat": "Misses",
+                    "refId": "B",
+                    "datasource": {
+                        "type": "prometheus",
+                        "uid": "prometheus"
+                    },
+                    "editorMode": "code",
+                    "range": true
+                }
+            ],
+            "fieldConfig": {
+                "defaults": {
+                    "color": {
+                        "mode": "palette-classic"
+                    },
+                    "custom": {
+                        "axisBorderShow": false,
+                        "axisCenteredZero": false,
+                        "axisColorMode": "text",
+                        "axisLabel": "",
+                        "axisPlacement": "auto",
+                        "barAlignment": 0,
+                        "barWidthFactor": 0.5,
+                        "drawStyle": "bars",
+                        "fillOpacity": 30,
+                        "gradientMode": "none",
+                        "hideFrom": {
+                            "legend": false,
+                            "tooltip": false,
+                            "viz": false
+                        },
+                        "insertNulls": false,
+                        "lineInterpolation": "linear",
+                        "lineWidth": 1,
+                        "pointSize": 5,
+                        "scaleDistribution": {
+                            "type": "linear"
+                        },
+                        "showPoints": "never",
+                        "showValues": false,
+                        "spanNulls": true,
+                        "stacking": {
+                            "group": "A",
+                            "mode": "none"
+                        },
+                        "thresholdsStyle": {
+                            "mode": "off"
+                        }
+                    },
+                    "mappings": [],
+                    "thresholds": {
+                        "mode": "absolute",
+                        "steps": [
+                            {
+                                "color": "light-blue",
+                                "value": 0
+                            }
+                        ]
+                    }
+                },
+                "overrides": [
+                    {
+                        "matcher": {
+                            "id": "byName",
+                            "options": "Hits"
+                        },
+                        "properties": [
+                            {
+                                "id": "color",
+                                "value": {
+                                    "fixedColor": "light-green",
+                                    "mode": "fixed"
+                                }
+                            }
+                        ]
+                    },
+                    {
+                        "matcher": {
+                            "id": "byName",
+                            "options": "Misses"
+                        },
+                        "properties": [
+                            {
+                                "id": "color",
+                                "value": {
+                                    "fixedColor": "light-red",
+                                    "mode": "fixed"
+                                }
+                            }
+                        ]
+                    }
+                ]
+            },
+            "options": {
+                "annotations": {
+                    "clustering": -1,
+                    "multiLane": false
+                },
+                "legend": {
+                    "calcs": [],
+                    "displayMode": "list",
+                    "placement": "bottom",
+                    "showLegend": false
+                },
+                "tooltip": {
+                    "hideZeros": false,
+                    "mode": "all",
+                    "sort": "none"
+                }
+            },
+            "pluginVersion": "12.4.3"
+        },
+        {
+            "id": 28,
+            "type": "timeseries",
+            "title": "Upstream Queries TTR, %",
+            "datasource": {
+                "type": "prometheus",
+                "uid": "prometheus"
+            },
+            "gridPos": {
+                "h": 6,
+                "w": 24,
+                "x": 0,
+                "y": 55
+            },
+            "targets": [
+                {
+                    "expr": "100 * sum(\r\n    increase(adguard_upstream_latency_seconds_bucket{le=\"0.008\"}[$__rate_interval])\r\n) \r\n/ \r\nclamp_min(\r\n    sum(\r\n        increase(adguard_upstream_latency_seconds_count[$__rate_interval])\r\n    ), \r\n    1\r\n)",
+                    "legendFormat": "≤ 8 ms",
+                    "refId": "A",
+                    "datasource": {
+                        "type": "prometheus",
+                        "uid": "prometheus"
+                    },
+                    "editorMode": "code",
+                    "range": true
+                },
+                {
+                    "expr": "100 * (\r\n    sum(\r\n        increase(adguard_upstream_latency_seconds_bucket{le=\"0.064\"}[$__rate_interval])\r\n    ) \r\n    - \r\n    sum(\r\n        increase(adguard_upstream_latency_seconds_bucket{le=\"0.008\"}[$__rate_interval])\r\n    )\r\n) \r\n/ \r\nclamp_min(\r\n    sum(\r\n        increase(adguard_upstream_latency_seconds_count[$__rate_interval])\r\n    ), \r\n    1\r\n)",
+                    "legendFormat": "≤ 64 ms",
+                    "refId": "B",
+                    "datasource": {
+                        "type": "prometheus",
+                        "uid": "prometheus"
+                    },
+                    "editorMode": "code",
+                    "range": true
+                },
+                {
+                    "expr": "100 * (\r\n    sum(\r\n        increase(adguard_upstream_latency_seconds_bucket{le=\"0.256\"}[$__rate_interval])\r\n    ) \r\n    - \r\n    sum(\r\n        increase(adguard_upstream_latency_seconds_bucket{le=\"0.064\"}[$__rate_interval])\r\n    )\r\n) \r\n/ \r\nclamp_min(\r\n    sum(\r\n        increase(adguard_upstream_latency_seconds_count[$__rate_interval])\r\n    ), \r\n    1\r\n)",
+                    "legendFormat": "≤ 256 ms",
+                    "refId": "C",
+                    "datasource": {
+                        "type": "prometheus",
+                        "uid": "prometheus"
+                    },
+                    "editorMode": "code",
+                    "range": true
+                },
+                {
+                    "expr": "100 * (\r\n    sum(\r\n        increase(adguard_upstream_latency_seconds_bucket{le=\"0.512\"}[$__rate_interval])\r\n    ) \r\n    - \r\n    sum(\r\n        increase(adguard_upstream_latency_seconds_bucket{le=\"0.256\"}[$__rate_interval])\r\n    )\r\n) \r\n/ \r\nclamp_min(\r\n    sum(\r\n        increase(adguard_upstream_latency_seconds_count[$__rate_interval])\r\n    ), \r\n    1\r\n)",
+                    "legendFormat": "≤ 512 ms",
+                    "refId": "D",
+                    "datasource": {
+                        "type": "prometheus",
+                        "uid": "prometheus"
+                    },
+                    "editorMode": "code",
+                    "range": true
+                },
+                {
+                    "expr": "100 * (\r\n    sum(\r\n        increase(adguard_upstream_latency_seconds_count[$__rate_interval])\r\n    ) \r\n    - \r\n    sum(\r\n        increase(adguard_upstream_latency_seconds_bucket{le=\"0.512\"}[$__rate_interval])\r\n    )\r\n) \r\n/ \r\nclamp_min(\r\n    sum(\r\n        increase(adguard_upstream_latency_seconds_count[$__rate_interval])\r\n    ), \r\n    1\r\n)",
+                    "legendFormat": "> 512 ms",
+                    "refId": "E",
+                    "datasource": {
+                        "type": "prometheus",
+                        "uid": "prometheus"
+                    },
+                    "editorMode": "code",
+                    "range": true
+                }
+            ],
+            "fieldConfig": {
+                "defaults": {
+                    "color": {
+                        "mode": "palette-classic"
+                    },
+                    "custom": {
+                        "axisBorderShow": false,
+                        "axisCenteredZero": false,
+                        "axisColorMode": "text",
+                        "axisLabel": "",
+                        "axisPlacement": "auto",
+                        "barAlignment": 0,
+                        "barWidthFactor": 0.5,
+                        "drawStyle": "bars",
+                        "fillOpacity": 30,
+                        "gradientMode": "none",
+                        "hideFrom": {
+                            "legend": false,
+                            "tooltip": false,
+                            "viz": false
+                        },
+                        "insertNulls": false,
+                        "lineInterpolation": "smooth",
+                        "lineWidth": 2,
+                        "pointSize": 5,
+                        "scaleDistribution": {
+                            "type": "linear"
+                        },
+                        "showPoints": "never",
+                        "showValues": false,
+                        "spanNulls": true,
+                        "stacking": {
+                            "group": "latency",
+                            "mode": "normal"
+                        },
+                        "thresholdsStyle": {
+                            "mode": "off"
+                        }
+                    },
+                    "mappings": [],
+                    "max": 100,
+                    "min": 0,
+                    "thresholds": {
+                        "mode": "absolute",
+                        "steps": [
+                            {
+                                "color": "light-green",
+                                "value": 0
+                            },
+                            {
+                                "color": "light-yellow",
+                                "value": 100
+                            },
+                            {
+                                "color": "light-orange",
+                                "value": 250
+                            },
+                            {
+                                "color": "light-red",
+                                "value": 500
+                            }
+                        ]
+                    },
+                    "unit": "percent"
+                },
+                "overrides": [
+                    {
+                        "matcher": {
+                            "id": "byName",
+                            "options": "≤ 8 ms"
+                        },
+                        "properties": [
+                            {
+                                "id": "color",
+                                "value": {
+                                    "fixedColor": "light-green",
+                                    "mode": "fixed"
+                                }
+                            }
+                        ]
+                    },
+                    {
+                        "matcher": {
+                            "id": "byName",
+                            "options": "≤ 64 ms",
+                            "scope": "series"
+                        },
+                        "properties": [
+                            {
+                                "id": "color",
+                                "value": {
+                                    "fixedColor": "light-yellow",
+                                    "mode": "fixed"
+                                }
+                            }
+                        ]
+                    },
+                    {
+                        "matcher": {
+                            "id": "byName",
+                            "options": "≤ 256 ms",
+                            "scope": "series"
+                        },
+                        "properties": [
+                            {
+                                "id": "color",
+                                "value": {
+                                    "fixedColor": "light-orange",
+                                    "mode": "fixed"
+                                }
+                            }
+                        ]
+                    },
+                    {
+                        "matcher": {
+                            "id": "byName",
+                            "options": "≤ 512 ms",
+                            "scope": "series"
+                        },
+                        "properties": [
+                            {
+                                "id": "color",
+                                "value": {
+                                    "fixedColor": "light-red",
+                                    "mode": "fixed"
+                                }
+                            }
+                        ]
+                    },
+                    {
+                        "matcher": {
+                            "id": "byName",
+                            "options": "> 512 ms"
+                        },
+                        "properties": [
+                            {
+                                "id": "color",
+                                "value": {
+                                    "fixedColor": "dark-red",
+                                    "mode": "fixed"
+                                }
+                            }
+                        ]
+                    }
+                ]
+            },
+            "options": {
+                "annotations": {
+                    "clustering": -1,
+                    "multiLane": false
+                },
+                "legend": {
+                    "calcs": [
+                        "mean"
+                    ],
+                    "displayMode": "table",
+                    "placement": "right",
+                    "showLegend": false,
+                    "sortBy": "99th %",
+                    "sortDesc": true
+                },
+                "tooltip": {
+                    "hideZeros": false,
+                    "mode": "all",
+                    "sort": "none"
+                }
+            },
+            "pluginVersion": "12.4.3"
+        }
+    ],
+    "fiscalYearStartMonth": 0,
+    "links": [],
+    "liveNow": true,
+    "preload": true,
+    "timepicker": {},
+    "version": 8,
+    "weekStart": ""
+}

@@ -1,0 +1,53 @@
+apiVersion: 1
+contactPoints:
+  - orgId: 1
+    name: slack-infra
+    receivers:
+      - uid: slack-infra
+        type: slack
+        disableResolveMessage: false
+        settings:
+          token: '$SLACK_BOT_TOKEN'
+          recipient: '#infra'
+          title: '{{ template "slack.homelab.title" . }}'
+          text: '{{ template "slack.homelab.text" . }}'
+          color: '{{ template "slack.homelab.color" . }}'
+
+  - orgId: 1
+    name: slack-cluster
+    receivers:
+      - uid: slack-cluster
+        type: slack
+        disableResolveMessage: false
+        settings:
+          token: '$SLACK_BOT_TOKEN'
+          recipient: '#infra'
+          title: '{{ template "slack.homelab.title" . }}'
+          text: '{{ template "slack.homelab.text" . }}'
+          color: '{{ template "slack.homelab.color" . }}'
+
+  - orgId: 1
+    name: slack-network
+    receivers:
+      - uid: slack-network
+        type: slack
+        disableResolveMessage: false
+        settings:
+          token: '$SLACK_BOT_TOKEN'
+          recipient: '#network'
+          title: '{{ template "slack.homelab.title" . }}'
+          text: '{{ template "slack.homelab.text" . }}'
+          color: '{{ template "slack.homelab.color" . }}'
+
+  - orgId: 1
+    name: slack-dns
+    receivers:
+      - uid: slack-dns
+        type: slack
+        disableResolveMessage: false
+        settings:
+          token: '$SLACK_BOT_TOKEN'
+          recipient: '#dns'
+          title: '{{ template "slack.homelab.title" . }}'
+          text: '{{ template "slack.homelab.text" . }}'
+          color: '{{ template "slack.homelab.color" . }}'

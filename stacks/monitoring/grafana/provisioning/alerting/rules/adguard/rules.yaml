@@ -1,0 +1,193 @@
+apiVersion: 1
+groups:
+  - orgId: 1
+    name: adguard.homelab
+    folder: AdGuard
+    interval: 1m
+    rules:
+      # ─────────────────────────────────────────────────────────────────────
+      # Inhibits every other adguard-* rule via notifications/inhibit-rules.yaml
+      # (no point alerting on latency when the scraper itself is dead).
+      - uid: adguard-exporter-down
+        title: adguard-exporter-down
+        condition: B
+        for: 2m
+        noDataState: Alerting
+        execErrState: Error
+        data:
+          - refId: A
+            datasourceUid: prometheus
+            relativeTimeRange: {from: 600, to: 0}
+            model:
+              refId: A
+              instant: true
+              editorMode: code
+              expr: 'up{service="adguard-exporter"}'
+          - refId: B
+            datasourceUid: __expr__
+            relativeTimeRange: {from: 0, to: 0}
+            model:
+              refId: B
+              type: math
+              expression: '$A < 1'
+              datasource: {type: __expr__, uid: __expr__}
+        labels:
+          severity: critical
+          entity: adguard
+          component: exporter
+          channel: infra
+        annotations:
+          summary: 'AdGuard exporter down'
+          description: 'adguard-exporter has been down for 2m. DNS observability lost; downstream DNS alerts suppressed.'
+          dashboard_url: 'https://grafana.int/d/adguard-home/adguard-overview?viewPanel=1'
+          value_label: 'up'
+        isPaused: false
+
+      # ─────────────────────────────────────────────────────────────────────
+      - uid: adguard-upstream-p95-warning
+        title: adguard-upstream-p95-warning
+        condition: B
+        for: 10m
+        noDataState: OK
+        execErrState: Error
+        data:
+          - refId: A
+            datasourceUid: prometheus
+            relativeTimeRange: {from: 600, to: 0}
+            model:
+              refId: A
+              instant: true
+              editorMode: code
+              expr: 'histogram_quantile(0.95, sum by(le)(rate(adguard_upstream_latency_seconds_bucket[5m])))'
+          - refId: B
+            datasourceUid: __expr__
+            relativeTimeRange: {from: 0, to: 0}
+            model:
+              refId: B
+              type: math
+              expression: '$A > 1'
+              datasource: {type: __expr__, uid: __expr__}
+        labels:
+          severity: warning
+          entity: adguard
+          component: upstream
+          channel: dns
+        annotations:
+          summary: 'AdGuard upstream p95 {{ printf "%.0f" (mul $values.A.Value 1000) }}ms'
+          description: 'Upstream DNS resolver p95 latency above 1s for 10m.'
+          dashboard_url: 'https://grafana.int/d/adguard-home/adguard-overview?viewPanel=9'
+          value_label: 'p95 ms'
+        isPaused: false
+
+      # ─────────────────────────────────────────────────────────────────────
+      - uid: adguard-upstream-p95-critical
+        title: adguard-upstream-p95-critical
+        condition: B
+        for: 5m
+        noDataState: OK
+        execErrState: Error
+        data:
+          - refId: A
+            datasourceUid: prometheus
+            relativeTimeRange: {from: 600, to: 0}
+            model:
+              refId: A
+              instant: true
+              editorMode: code
+              expr: 'histogram_quantile(0.95, sum by(le)(rate(adguard_upstream_latency_seconds_bucket[5m])))'
+          - refId: B
+            datasourceUid: __expr__
+            relativeTimeRange: {from: 0, to: 0}
+            model:
+              refId: B
+              type: math
+              expression: '$A > 2'
+              datasource: {type: __expr__, uid: __expr__}
+        labels:
+          severity: critical
+          entity: adguard
+          component: upstream
+          channel: dns
+        annotations:
+          summary: 'AdGuard upstream p95 {{ printf "%.0f" (mul $values.A.Value 1000) }}ms (critical)'
+          description: 'Upstream DNS resolver p95 latency above 2s for 5m.'
+          dashboard_url: 'https://grafana.int/d/adguard-home/adguard-overview?viewPanel=9'
+          value_label: 'p95 ms'
+        isPaused: false
+
+      # ─────────────────────────────────────────────────────────────────────
+      # AdGuard-internal processing time (excludes upstream wait). Catches
+      # AdGuard-side slowdowns (filter list size, regex cost, container CPU
+      # starvation) that the upstream-p95 rule wouldn't see.
+      - uid: adguard-processing-time-high
+        title: adguard-processing-time-high
+        condition: B
+        for: 10m
+        noDataState: OK
+        execErrState: Error
+        data:
+          - refId: A
+            datasourceUid: prometheus
+            relativeTimeRange: {from: 600, to: 0}
+            model:
+              refId: A
+              instant: true
+              editorMode: code
+              expr: 'adguard_avg_processing_time'
+          - refId: B
+            datasourceUid: __expr__
+            relativeTimeRange: {from: 0, to: 0}
+            model:
+              refId: B
+              type: math
+              expression: '$A > 0.1'
+              datasource: {type: __expr__, uid: __expr__}
+        labels:
+          severity: warning
+          entity: adguard
+          component: processing
+          channel: dns
+        annotations:
+          summary: 'AdGuard internal processing {{ printf "%.0f" (mul $values.A.Value 1000) }}ms'
+          description: 'AdGuard-internal average processing time >100ms for 10m (excludes upstream wait).'
+          dashboard_url: 'https://grafana.int/d/adguard-home/adguard-overview?viewPanel=9'
+          value_label: 'avg ms'
+        isPaused: false
+
+      # ─────────────────────────────────────────────────────────────────────
+      # Query rate diverges >200% from 1h rolling baseline. Captures both
+      # sudden silences (client dropped DNS) and sudden bursts (loop / scan).
+      - uid: adguard-query-rate-anomaly
+        title: adguard-query-rate-anomaly
+        condition: B
+        for: 10m
+        noDataState: OK
+        execErrState: Error
+        data:
+          - refId: A
+            datasourceUid: prometheus
+            relativeTimeRange: {from: 3600, to: 0}
+            model:
+              refId: A
+              instant: true
+              editorMode: code
+              expr: 'abs(sum(rate(adguard_query_domain_total[5m])) - avg_over_time(sum(rate(adguard_query_domain_total[5m]))[1h:5m])) / clamp_min(avg_over_time(sum(rate(adguard_query_domain_total[5m]))[1h:5m]), 0.1)'
+          - refId: B
+            datasourceUid: __expr__
+            relativeTimeRange: {from: 0, to: 0}
+            model:
+              refId: B
+              type: math
+              expression: '$A > 2'
+              datasource: {type: __expr__, uid: __expr__}
+        labels:
+          severity: warning
+          entity: adguard
+          component: query-rate
+          channel: dns
+        annotations:
+          summary: 'DNS query rate anomaly ({{ printf "%.0f" (mul $values.A.Value 100) }}% off baseline)'
+          description: 'Current query rate diverges >200% from the rolling 1h baseline for 10m.'
+          dashboard_url: 'https://grafana.int/d/adguard-home/adguard-overview?viewPanel=8'
+          value_label: 'Δ vs baseline'
+        isPaused: false

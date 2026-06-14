@@ -1,0 +1,97 @@
+---
+# Pre-`compose up` for monitoring stack.
+
+# --- mktxp credentials -----------------------------------------------------
+# Splice MIKROTIK_USER/PASSWORD into a rendered mktxp.conf in the data dir
+# (NOT the repo). compose mounts this copy in place of the placeholder file.
+- name: "monitoring/prepare: ensure mktxp data dir"
+  ansible.builtin.file:
+    path: "{{ stack_data }}/mktxp"
+    state: directory
+    mode: "0755"
+
+- name: "monitoring/prepare: read placeholder mktxp.conf"
+  ansible.builtin.slurp:
+    src: "{{ stack_dir }}/mktxp/mktxp.conf"
+  register: mktxp_conf_raw
+
+- name: "monitoring/prepare: render mktxp.conf with credentials"
+  ansible.builtin.copy:
+    dest: "{{ stack_data }}/mktxp/mktxp.conf"
+    mode: "0600"
+    content: >-
+      {{ (mktxp_conf_raw.content | b64decode)
+         | replace('__MIKROTIK_USER__',     mikrotik_user)
+         | replace('__MIKROTIK_PASSWORD__', mikrotik_password) }}
+  no_log: true
+  when:
+    - mikrotik_user | default('') | length > 0
+    - mikrotik_password | default('') | length > 0
+
+- name: "monitoring/prepare: warn if mktxp creds missing"
+  ansible.builtin.debug:
+    msg: >-
+      MIKROTIK_USER / MIKROTIK_PASSWORD not set in .env — mktxp will keep
+      logging "invalid user name or password" until you fill them in
+      and re-run reconcile.
+  when: (mikrotik_user | default('') | length) == 0
+
+# --- Grafana Slack token splice -------------------------------------------
+# contact-points.yaml in the repo uses '$SLACK_BOT_TOKEN' as a placeholder
+# so secrets stay out of git. We render the substituted file into the
+# data_root (NOT the repo) and have compose mount that copy.
+# (Grafana's runtime $VAR substitution is fragile — quoting trips it.)
+
+- name: "monitoring/prepare: ensure grafana alerting data dir"
+  ansible.builtin.file:
+    path: "{{ stack_data }}/grafana/provisioning/alerting"
+    state: directory
+    mode: "0755"
+
+- name: "monitoring/prepare: read contact-points.yaml from repo"
+  ansible.builtin.set_fact:
+    contact_points_raw: "{{ lookup('file', stack_dir ~ '/grafana/provisioning/alerting/contact-points.yaml') }}"
+
+- name: "monitoring/prepare: write contact-points.yaml with token substituted"
+  ansible.builtin.copy:
+    dest: "{{ stack_data }}/grafana/provisioning/alerting/contact-points.yaml"
+    mode: "0600"
+    content: "{{ contact_points_raw | replace(\"'$SLACK_BOT_TOKEN'\", \"'\" ~ slack_grafana_token ~ \"'\") }}"
+  no_log: true
+  when: slack_grafana_token | default('') | length > 0
+
+- name: "monitoring/prepare: blank-out contact points if token missing"
+  ansible.builtin.copy:
+    dest: "{{ stack_data }}/grafana/provisioning/alerting/contact-points.yaml"
+    mode: "0644"
+    content: |
+      apiVersion: 1
+      # GRAFANA_SLACK_BOT_TOKEN not set in .env — no Slack contact points.
+      contactPoints: []
+  when: (slack_grafana_token | default('') | length) == 0
+
+# --- Home Assistant Prometheus token --------------------------------------
+# Scraped by prometheus via Bearer auth. Token from HA UI → Profile →
+# Long-Lived Access Tokens, set as HOMEASSISTANT_PROMETHEUS_TOKEN in .env.
+
+- name: "monitoring/prepare: ensure prometheus secrets dir"
+  ansible.builtin.file:
+    path: "{{ stack_data }}/prometheus/secrets"
+    state: directory
+    mode: "0700"
+
+- name: "monitoring/prepare: write HA bearer token"
+  ansible.builtin.copy:
+    dest: "{{ stack_data }}/prometheus/secrets/ha_token"
+    content: "{{ homeassistant_prometheus_token }}"
+    mode: "0600"
+  no_log: true
+  when: homeassistant_prometheus_token | default('') | length > 0
+
+- name: "monitoring/prepare: write empty HA token (avoid prom file-not-found)"
+  ansible.builtin.copy:
+    dest: "{{ stack_data }}/prometheus/secrets/ha_token"
+    content: ""
+    mode: "0600"
+    force: false
+  when: (homeassistant_prometheus_token | default('') | length) == 0

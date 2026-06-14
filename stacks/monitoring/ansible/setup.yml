@@ -1,0 +1,36 @@
+---
+# Post-`compose up` setup for the monitoring stack.
+#
+# Prometheus reads prometheus.yml at startup; later edits via `compose up
+# -d` won't re-read it (the file is bind-mounted, but prometheus only
+# looks at it on start or on SIGHUP / POST /-/reload). Without this hook,
+# changes to scrape configs sat dormant until the next container recreate.
+#
+# We wait for /-/ready (prom may still be initialising right after compose
+# brought it up for the first time) then POST /-/reload. The reload is
+# idempotent on the prometheus side, so we mark changed_when: false to
+# avoid noisy "changed" reports in slack_summary on every reconcile.
+
+- name: "monitoring/setup: wait for prometheus /-/ready"
+  ansible.builtin.uri:
+    url: "http://127.0.0.1:9090/-/ready"
+    method: GET
+    status_code: [200]
+    timeout: 5
+  register: prom_ready
+  retries: 30
+  delay: 2
+  until: prom_ready.status == 200
+  changed_when: false
+
+- name: "monitoring/setup: POST /-/reload to pick up prometheus.yml edits"
+  ansible.builtin.uri:
+    url: "http://127.0.0.1:9090/-/reload"
+    method: POST
+    status_code: [200]
+    timeout: 5
+  register: prom_reload
+  retries: 5
+  delay: 2
+  until: prom_reload.status == 200
+  changed_when: false

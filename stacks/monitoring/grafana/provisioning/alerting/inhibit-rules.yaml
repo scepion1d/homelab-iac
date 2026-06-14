@@ -1,0 +1,48 @@
+apiVersion: 1
+inhibitRules:
+  # Generic: a critical alert silences a warning of the same entity+component.
+  - orgId: 1
+    sourceMatchers:
+      - severity = critical
+    targetMatchers:
+      - severity = warning
+    equal: [entity, component]
+
+  # Cluster catastrophic state silences node/pod/container alerts within
+  # the cluster (they're all symptoms of the same underlying outage).
+  - orgId: 1
+    sourceMatchers:
+      - alertname = cluster-nothing-ready
+    targetMatchers:
+      - alertname =~ "cluster-(node-not-ready|pod-crashloop|containers-not-ready)"
+    equal: [entity]
+
+  # When the router exporter is dead, every other router-* alert is just
+  # stale/missing data. Suppress them; the exporter-down alert is enough.
+  - orgId: 1
+    sourceMatchers:
+      - alertname = router-mktxp-exporter-down
+    targetMatchers:
+      - entity = router
+      - alertname != router-mktxp-exporter-down
+    equal: [entity]
+
+  # Same idea for AdGuard.
+  - orgId: 1
+    sourceMatchers:
+      - alertname = adguard-exporter-down
+    targetMatchers:
+      - entity = adguard
+      - alertname != adguard-exporter-down
+    equal: [entity]
+
+  # Same idea for the mac host. When Prometheus can't reach node_exporter on
+  # the Mac, every host-* signal is stale; the exporter-down alert alone
+  # carries the page so we don't flood #infra with derivative failures.
+  - orgId: 1
+    sourceMatchers:
+      - alertname = host-mac-exporter-down
+    targetMatchers:
+      - entity = host
+      - alertname != host-mac-exporter-down
+    equal: [entity]

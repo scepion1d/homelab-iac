@@ -1,0 +1,110 @@
+name: homelab-monitoring
+
+# Monitoring stack: Prometheus + Grafana + MikroTik exporter.
+# Targets:
+#   - dns stack: adguard-exporter (:9618), unbound-exporter (:9167)
+#   - host:     node-exporter (host.docker.internal:9100)
+#   - router:   mikrotik-exporter sibling (:49090)
+#   - (later)   home-assistant /api/prometheus (smart-home stack)
+
+networks:
+  homelab:
+    name: ${NETWORK_NAME:-homelab}
+    external: true
+  internal:
+    driver: bridge
+
+volumes:
+  prometheus-data:
+    name: homelab-monitoring-prometheus
+  grafana-data:
+    name: homelab-monitoring-grafana
+
+services:
+  prometheus:
+    # Latest 3.x track. Pinning to a real published tag matters more than
+    # picking a specific patch — we read /-/ready as health, not version.
+    image: prom/prometheus:v3.7.0
+    container_name: homelab-monitoring-prometheus
+    restart: unless-stopped
+    networks: [homelab, internal]
+    ports:
+      - "0.0.0.0:${PROM_UI_PORT:-9090}:9090"
+    command:
+      - "--config.file=/etc/prometheus/prometheus.yml"
+      - "--storage.tsdb.path=/prometheus"
+      - "--storage.tsdb.retention.time=7d"
+      - "--web.enable-lifecycle"        # POST /-/reload triggers reread
+    volumes:
+      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./prometheus/rules:/etc/prometheus/rules:ro
+      # HA bearer token rendered by ansible into the data dir, mounted
+      # into the path prometheus.yml's credentials_file points at.
+      - ${DATA_ROOT}/monitoring/prometheus/secrets:/etc/prometheus/secrets:ro
+      - prometheus-data:/prometheus
+    labels:
+      homelab.caddy.host: "prometheus"
+      homelab.caddy.port: "9090"
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O-", "http://127.0.0.1:9090/-/ready"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
+
+  grafana:
+    # Grafana 11.x — provisioning format aligned with v1.
+    image: grafana/grafana:11.6.0
+    container_name: homelab-monitoring-grafana
+    restart: unless-stopped
+    networks: [homelab, internal]
+    ports:
+      - "0.0.0.0:${GRAFANA_UI_PORT:-3001}:3000"
+    environment:
+      GF_SECURITY_ADMIN_PASSWORD: "${GRAFANA_ADMIN_PASSWORD:-admin}"
+      GF_USERS_ALLOW_SIGN_UP: "false"
+      GF_AUTH_ANONYMOUS_ENABLED: "false"
+      GF_INSTALL_PLUGINS: "grafana-polystat-panel"
+    volumes:
+      - ./grafana/provisioning:/etc/grafana/provisioning:ro
+      # contact-points.yaml is rendered by ansible (with Slack token spliced
+      # in) into ${DATA_ROOT}/monitoring/grafana/provisioning/alerting/.
+      # Override the read-only mount above so Grafana sees the real token.
+      - ${DATA_ROOT}/monitoring/grafana/provisioning/alerting/contact-points.yaml:/etc/grafana/provisioning/alerting/contact-points.yaml:ro
+      - ./grafana/dashboards:/var/lib/grafana/dashboards:ro
+      - grafana-data:/var/lib/grafana
+    depends_on:
+      prometheus:
+        condition: service_healthy
+    labels:
+      homelab.caddy.host: "grafana"
+      homelab.caddy.port: "3000"
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O- http://127.0.0.1:3000/api/health || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
+
+  mikrotik-exporter:
+    image: ghcr.io/akpw/mktxp:1.2.17
+    container_name: homelab-monitoring-mktxp
+    restart: unless-stopped
+    networks: [homelab, internal]
+    command: ["mktxp", "--cfg-dir", "/etc/mktxp", "export"]
+    volumes:
+      - ./mktxp/_mktxp.conf:/etc/mktxp/_mktxp.conf:ro
+      # Rendered by ansible (with MIKROTIK_USER/PASSWORD spliced into the
+      # [mikrotik] section) into the data dir. The placeholder file in
+      # the repo holds __MIKROTIK_USER__ / __MIKROTIK_PASSWORD__ markers
+      # and is NOT mounted directly.
+      - ${DATA_ROOT}/monitoring/mktxp/mktxp.conf:/etc/mktxp/mktxp.conf:ro
+    labels:
+      homelab.metrics.port: "49090"
+      homelab.metrics.path: "/metrics"
+    healthcheck:
+      test: ["CMD-SHELL", "nc -z 127.0.0.1 49090 || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 20s

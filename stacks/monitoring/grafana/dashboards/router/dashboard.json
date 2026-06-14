@@ -1,0 +1,1015 @@
+{
+    "title": "Router",
+    "uid": "router-overview",
+    "tags": [
+        "infra",
+        "network"
+    ],
+    "schemaVersion": 39,
+    "timezone": "",
+    "editable": true,
+    "graphTooltip": 1,
+    "time": {
+        "from": "now-1h",
+        "to": "now"
+    },
+    "refresh": "30s",
+    "templating": {
+        "list": []
+    },
+    "annotations": {
+        "list": []
+    },
+    "panels": [
+        {
+            "id": 1,
+            "type": "stat",
+            "title": "Leases",
+            "datasource": {
+                "default": true,
+                "type": "prometheus",
+                "uid": "prometheus"
+            },
+            "gridPos": {
+                "h": 4,
+                "w": 3,
+                "x": 0,
+                "y": 0
+            },
+            "targets": [
+                {
+                    "expr": "count by (routerboard_name) (mktxp_dhcp_lease_info{active_address!=\"\"})",
+                    "legendFormat": "__auto",
+                    "refId": "A",
+                    "instant": true,
+                    "format": "table",
+                    "datasource": {
+                        "type": "prometheus",
+                        "uid": "prometheus"
+                    },
+                    "editorMode": "code"
+                }
+            ],
+            "transformations": [
+                {
+                    "id": "labelsToFields",
+                    "options": {}
+                },
+                {
+                    "id": "filterFieldsByName",
+                    "options": {
+                        "include": {
+                            "names": "routerboard,model,serial_number"
+                        }
+                    }
+                }
+            ],
+            "fieldConfig": {
+                "defaults": {
+                    "mappings": [],
+                    "thresholds": {
+                        "mode": "absolute",
+                        "steps": [
+                            {
+                                "color": "green",
+                                "value": null
+                            }
+                        ]
+                    }
+                },
+                "overrides": []
+            },
+            "options": {
+                "colorMode": "value",
+                "graphMode": "none",
+                "justifyMode": "left",
+                "orientation": "auto",
+                "percentChangeColorMode": "standard",
+                "reduceOptions": {
+                    "calcs": [
+                        "lastNotNull"
+                    ],
+                    "fields": "",
+                    "values": false
+                },
+                "showPercentChange": false,
+                "textMode": "value",
+                "wideLayout": true
+            },
+            "pluginVersion": "11.2.0"
+        },
+        {
+            "id": 2,
+            "type": "stat",
+            "title": "Quarantined",
+            "datasource": {
+                "default": true,
+                "type": "prometheus",
+                "uid": "prometheus"
+            },
+            "gridPos": {
+                "h": 4,
+                "w": 3,
+                "x": 3,
+                "y": 0
+            },
+            "targets": [
+                {
+                    "expr": "count(mktxp_capsman_clients_devices_info{dhcp_address=\"No DHCP Record\"}) or vector(0)",
+                    "refId": "A",
+                    "instant": true,
+                    "datasource": {
+                        "type": "prometheus",
+                        "uid": "prometheus"
+                    },
+                    "editorMode": "code"
+                }
+            ],
+            "fieldConfig": {
+                "defaults": {
+                    "mappings": [],
+                    "thresholds": {
+                        "mode": "absolute",
+                        "steps": [
+                            {
+                                "color": "light-green",
+                                "value": null
+                            },
+                            {
+                                "color": "light-red",
+                                "value": 1
+                            }
+                        ]
+                    }
+                },
+                "overrides": []
+            },
+            "options": {
+                "colorMode": "value",
+                "graphMode": "none",
+                "justifyMode": "left",
+                "orientation": "auto",
+                "percentChangeColorMode": "standard",
+                "reduceOptions": {
+                    "calcs": [
+                        "lastNotNull"
+                    ],
+                    "fields": "",
+                    "values": false
+                },
+                "showPercentChange": false,
+                "textMode": "value",
+                "wideLayout": true
+            },
+            "pluginVersion": "11.2.0"
+        },
+        {
+            "id": 3,
+            "type": "stat",
+            "title": "CPU Temp",
+            "datasource": "Prometheus",
+            "gridPos": {
+                "h": 4,
+                "w": 3,
+                "x": 6,
+                "y": 0
+            },
+            "targets": [
+                {
+                    "expr": "mktxp_system_cpu_temperature",
+                    "refId": "A",
+                    "instant": true
+                }
+            ],
+            "fieldConfig": {
+                "defaults": {
+                    "color": {
+                        "mode": "thresholds"
+                    },
+                    "thresholds": {
+                        "mode": "absolute",
+                        "steps": [
+                            {
+                                "color": "green",
+                                "value": null
+                            },
+                            {
+                                "color": "orange",
+                                "value": 60
+                            },
+                            {
+                                "color": "red",
+                                "value": 75
+                            }
+                        ]
+                    },
+                    "unit": "celsius"
+                }
+            },
+            "options": {
+                "colorMode": "value",
+                "graphMode": "area",
+                "reduceOptions": {
+                    "calcs": [
+                        "lastNotNull"
+                    ]
+                },
+                "textMode": "value"
+            }
+        },
+        {
+            "id": 4,
+            "type": "stat",
+            "title": "CPU Use",
+            "datasource": "Prometheus",
+            "gridPos": {
+                "h": 4,
+                "w": 3,
+                "x": 9,
+                "y": 0
+            },
+            "targets": [
+                {
+                    "expr": "avg(mktxp_system_cpu_load) / 100",
+                    "refId": "A",
+                    "instant": true
+                }
+            ],
+            "fieldConfig": {
+                "defaults": {
+                    "color": {
+                        "mode": "thresholds"
+                    },
+                    "max": 1,
+                    "min": 0,
+                    "thresholds": {
+                        "mode": "absolute",
+                        "steps": [
+                            {
+                                "color": "green",
+                                "value": null
+                            },
+                            {
+                                "color": "orange",
+                                "value": 0.6
+                            },
+                            {
+                                "color": "red",
+                                "value": 0.85
+                            }
+                        ]
+                    },
+                    "unit": "percentunit"
+                }
+            },
+            "options": {
+                "colorMode": "value",
+                "graphMode": "area",
+                "reduceOptions": {
+                    "calcs": [
+                        "lastNotNull"
+                    ]
+                },
+                "textMode": "value"
+            }
+        },
+        {
+            "id": 5,
+            "type": "stat",
+            "title": "RAM Use",
+            "datasource": "Prometheus",
+            "gridPos": {
+                "h": 4,
+                "w": 3,
+                "x": 12,
+                "y": 0
+            },
+            "targets": [
+                {
+                    "expr": "(mktxp_system_total_memory - mktxp_system_free_memory) / mktxp_system_total_memory",
+                    "refId": "A",
+                    "instant": true
+                }
+            ],
+            "fieldConfig": {
+                "defaults": {
+                    "color": {
+                        "mode": "thresholds"
+                    },
+                    "max": 1,
+                    "min": 0,
+                    "thresholds": {
+                        "mode": "absolute",
+                        "steps": [
+                            {
+                                "color": "green",
+                                "value": null
+                            },
+                            {
+                                "color": "orange",
+                                "value": 0.5
+                            },
+                            {
+                                "color": "red",
+                                "value": 0.75
+                            }
+                        ]
+                    },
+                    "unit": "percentunit"
+                }
+            },
+            "options": {
+                "colorMode": "value",
+                "graphMode": "none",
+                "reduceOptions": {
+                    "calcs": [
+                        "lastNotNull"
+                    ]
+                },
+                "textMode": "value"
+            }
+        },
+        {
+            "id": 6,
+            "type": "stat",
+            "title": "HDD Use",
+            "datasource": "Prometheus",
+            "gridPos": {
+                "h": 4,
+                "w": 3,
+                "x": 15,
+                "y": 0
+            },
+            "targets": [
+                {
+                    "expr": "(mktxp_system_total_hdd_space - mktxp_system_free_hdd_space) / mktxp_system_total_hdd_space",
+                    "refId": "A",
+                    "instant": true
+                }
+            ],
+            "fieldConfig": {
+                "defaults": {
+                    "color": {
+                        "mode": "thresholds"
+                    },
+                    "max": 1,
+                    "min": 0,
+                    "thresholds": {
+                        "mode": "absolute",
+                        "steps": [
+                            {
+                                "color": "green",
+                                "value": null
+                            },
+                            {
+                                "color": "orange",
+                                "value": 0.5
+                            },
+                            {
+                                "color": "red",
+                                "value": 0.75
+                            }
+                        ]
+                    },
+                    "unit": "percentunit"
+                }
+            },
+            "options": {
+                "colorMode": "value",
+                "graphMode": "none",
+                "reduceOptions": {
+                    "calcs": [
+                        "lastNotNull"
+                    ]
+                },
+                "textMode": "value"
+            }
+        },
+        {
+            "id": 7,
+            "type": "stat",
+            "title": "Uptime",
+            "datasource": "Prometheus",
+            "gridPos": {
+                "h": 4,
+                "w": 6,
+                "x": 18,
+                "y": 0
+            },
+            "targets": [
+                {
+                    "expr": "mktxp_system_uptime",
+                    "refId": "A",
+                    "instant": true
+                }
+            ],
+            "fieldConfig": {
+                "defaults": {
+                    "color": {
+                        "fixedColor": "blue",
+                        "mode": "fixed"
+                    },
+                    "unit": "s"
+                }
+            },
+            "options": {
+                "colorMode": "value",
+                "graphMode": "none",
+                "reduceOptions": {
+                    "calcs": [
+                        "lastNotNull"
+                    ]
+                },
+                "textMode": "value"
+            }
+        },
+        {
+            "id": 8,
+            "type": "row",
+            "title": "WAN",
+            "gridPos": {
+                "h": 1,
+                "w": 24,
+                "x": 0,
+                "y": 4
+            },
+            "collapsed": false,
+            "panels": []
+        },
+        {
+            "id": 9,
+            "type": "timeseries",
+            "title": "WAN RX",
+            "datasource": "Prometheus",
+            "gridPos": {
+                "h": 7,
+                "w": 8,
+                "x": 0,
+                "y": 5
+            },
+            "targets": [
+                {
+                    "expr": "sum by (name) (rate(mktxp_interface_rx_byte_total{name=~\"iac.ether.wan.*\", name!~\"back-to-home-vpn.*\"}[$__rate_interval])) * 8",
+                    "legendFormat": "{{name}}",
+                    "refId": "A"
+                }
+            ],
+            "fieldConfig": {
+                "defaults": {
+                    "custom": {
+                        "drawStyle": "line",
+                        "fillOpacity": 10,
+                        "lineWidth": 1,
+                        "showPoints": "never",
+                        "spanNulls": true
+                    },
+                    "min": 0,
+                    "unit": "bps"
+                }
+            },
+            "options": {
+                "legend": {
+                    "calcs": [
+                        "mean",
+                        "max"
+                    ],
+                    "displayMode": "list",
+                    "placement": "bottom"
+                },
+                "tooltip": {
+                    "mode": "multi"
+                }
+            }
+        },
+        {
+            "id": 10,
+            "type": "timeseries",
+            "title": "WAN TX",
+            "datasource": "Prometheus",
+            "gridPos": {
+                "h": 7,
+                "w": 8,
+                "x": 8,
+                "y": 5
+            },
+            "targets": [
+                {
+                    "expr": "sum by (name) (rate(mktxp_interface_tx_byte_total{name=~\"iac.ether.wan.*\", name!~\"back-to-home-vpn.*\"}[$__rate_interval])) * 8",
+                    "legendFormat": "{{name}}",
+                    "refId": "A"
+                }
+            ],
+            "fieldConfig": {
+                "defaults": {
+                    "custom": {
+                        "drawStyle": "line",
+                        "fillOpacity": 10,
+                        "lineWidth": 1,
+                        "showPoints": "never",
+                        "spanNulls": true
+                    },
+                    "min": 0,
+                    "unit": "bps"
+                }
+            },
+            "options": {
+                "legend": {
+                    "calcs": [
+                        "mean",
+                        "max"
+                    ],
+                    "displayMode": "list",
+                    "placement": "bottom"
+                },
+                "tooltip": {
+                    "mode": "multi"
+                }
+            }
+        },
+        {
+            "id": 11,
+            "type": "timeseries",
+            "title": "WAN err / drop",
+            "datasource": "Prometheus",
+            "gridPos": {
+                "h": 7,
+                "w": 8,
+                "x": 16,
+                "y": 5
+            },
+            "targets": [
+                {
+                    "expr": "sum(rate(mktxp_interface_rx_error_total{name=~\"iac.ether.wan.*\", name!~\"back-to-home-vpn.*\"}[$__rate_interval])) + sum(rate(mktxp_interface_rx_drop_total{name=~\"iac.ether.wan.*\", name!~\"back-to-home-vpn.*\"}[$__rate_interval]))",
+                    "legendFormat": "RX err + drop",
+                    "refId": "A"
+                },
+                {
+                    "expr": "sum(rate(mktxp_interface_tx_error_total{name=~\"iac.ether.wan.*\", name!~\"back-to-home-vpn.*\"}[$__rate_interval])) + sum(rate(mktxp_interface_tx_drop_total{name=~\"iac.ether.wan.*\", name!~\"back-to-home-vpn.*\"}[$__rate_interval]))",
+                    "legendFormat": "TX err + drop",
+                    "refId": "B"
+                }
+            ],
+            "fieldConfig": {
+                "defaults": {
+                    "custom": {
+                        "drawStyle": "line",
+                        "fillOpacity": 10,
+                        "lineWidth": 1,
+                        "showPoints": "never",
+                        "spanNulls": true
+                    },
+                    "min": 0,
+                    "unit": "pps"
+                }
+            },
+            "options": {
+                "legend": {
+                    "displayMode": "list",
+                    "placement": "bottom"
+                },
+                "tooltip": {
+                    "mode": "multi"
+                }
+            }
+        },
+        {
+            "id": 12,
+            "type": "row",
+            "title": "WiFi",
+            "gridPos": {
+                "h": 1,
+                "w": 24,
+                "x": 0,
+                "y": 12
+            },
+            "collapsed": false,
+            "panels": []
+        },
+        {
+            "id": 13,
+            "type": "timeseries",
+            "title": "WiFi RX",
+            "datasource": "Prometheus",
+            "gridPos": {
+                "h": 7,
+                "w": 8,
+                "x": 0,
+                "y": 13
+            },
+            "targets": [
+                {
+                    "expr": "sum by (name) (rate(mktxp_interface_rx_byte_total{name=~\"iac.wifi.*\", name!~\"back-to-home-vpn.*\"}[$__rate_interval])) * 8",
+                    "legendFormat": "{{name}}",
+                    "refId": "A"
+                }
+            ],
+            "fieldConfig": {
+                "defaults": {
+                    "custom": {
+                        "drawStyle": "line",
+                        "fillOpacity": 10,
+                        "lineWidth": 1,
+                        "showPoints": "never",
+                        "spanNulls": true
+                    },
+                    "min": 0,
+                    "unit": "bps"
+                }
+            },
+            "options": {
+                "legend": {
+                    "calcs": [
+                        "mean",
+                        "max"
+                    ],
+                    "displayMode": "list",
+                    "placement": "bottom"
+                },
+                "tooltip": {
+                    "mode": "multi"
+                }
+            }
+        },
+        {
+            "id": 14,
+            "type": "timeseries",
+            "title": "WiFi TX",
+            "datasource": "Prometheus",
+            "gridPos": {
+                "h": 7,
+                "w": 8,
+                "x": 8,
+                "y": 13
+            },
+            "targets": [
+                {
+                    "expr": "sum by (name) (rate(mktxp_interface_tx_byte_total{name=~\"iac.wifi.*\", name!~\"back-to-home-vpn.*\"}[$__rate_interval])) * 8",
+                    "legendFormat": "{{name}}",
+                    "refId": "A"
+                }
+            ],
+            "fieldConfig": {
+                "defaults": {
+                    "custom": {
+                        "drawStyle": "line",
+                        "fillOpacity": 10,
+                        "lineWidth": 1,
+                        "showPoints": "never",
+                        "spanNulls": true
+                    },
+                    "min": 0,
+                    "unit": "bps"
+                }
+            },
+            "options": {
+                "legend": {
+                    "calcs": [
+                        "mean",
+                        "max"
+                    ],
+                    "displayMode": "list",
+                    "placement": "bottom"
+                },
+                "tooltip": {
+                    "mode": "multi"
+                }
+            }
+        },
+        {
+            "id": 15,
+            "type": "timeseries",
+            "title": "WiFi err / drop",
+            "datasource": "Prometheus",
+            "gridPos": {
+                "h": 7,
+                "w": 8,
+                "x": 16,
+                "y": 13
+            },
+            "targets": [
+                {
+                    "expr": "sum(rate(mktxp_interface_rx_error_total{name=~\"iac.wifi.*\", name!~\"back-to-home-vpn.*\"}[$__rate_interval])) + sum(rate(mktxp_interface_rx_drop_total{name=~\"iac.wifi.*\", name!~\"back-to-home-vpn.*\"}[$__rate_interval]))",
+                    "legendFormat": "RX err + drop",
+                    "refId": "A"
+                },
+                {
+                    "expr": "sum(rate(mktxp_interface_tx_error_total{name=~\"iac.wifi.*\", name!~\"back-to-home-vpn.*\"}[$__rate_interval])) + sum(rate(mktxp_interface_tx_drop_total{name=~\"iac.wifi.*\", name!~\"back-to-home-vpn.*\"}[$__rate_interval]))",
+                    "legendFormat": "TX err + drop",
+                    "refId": "B"
+                }
+            ],
+            "fieldConfig": {
+                "defaults": {
+                    "custom": {
+                        "drawStyle": "line",
+                        "fillOpacity": 10,
+                        "lineWidth": 1,
+                        "showPoints": "never",
+                        "spanNulls": true
+                    },
+                    "min": 0,
+                    "unit": "pps"
+                }
+            },
+            "options": {
+                "legend": {
+                    "displayMode": "list",
+                    "placement": "bottom"
+                },
+                "tooltip": {
+                    "mode": "multi"
+                }
+            }
+        },
+        {
+            "id": 16,
+            "type": "row",
+            "title": "LAN",
+            "gridPos": {
+                "h": 1,
+                "w": 24,
+                "x": 0,
+                "y": 20
+            },
+            "collapsed": false,
+            "panels": []
+        },
+        {
+            "id": 17,
+            "type": "timeseries",
+            "title": "LAN RX",
+            "datasource": "Prometheus",
+            "gridPos": {
+                "h": 7,
+                "w": 8,
+                "x": 0,
+                "y": 21
+            },
+            "targets": [
+                {
+                    "expr": "sum by (name) (rate(mktxp_interface_rx_byte_total{name=~\"iac.ether.lan.*\", name!~\"back-to-home-vpn.*\"}[$__rate_interval])) * 8",
+                    "legendFormat": "{{name}}",
+                    "refId": "A"
+                }
+            ],
+            "fieldConfig": {
+                "defaults": {
+                    "custom": {
+                        "drawStyle": "line",
+                        "fillOpacity": 10,
+                        "lineWidth": 1,
+                        "showPoints": "never",
+                        "spanNulls": true
+                    },
+                    "min": 0,
+                    "unit": "bps"
+                }
+            },
+            "options": {
+                "legend": {
+                    "calcs": [
+                        "mean",
+                        "max"
+                    ],
+                    "displayMode": "table",
+                    "placement": "bottom"
+                },
+                "tooltip": {
+                    "mode": "multi"
+                }
+            }
+        },
+        {
+            "id": 18,
+            "type": "timeseries",
+            "title": "LAN TX",
+            "datasource": "Prometheus",
+            "gridPos": {
+                "h": 7,
+                "w": 8,
+                "x": 8,
+                "y": 21
+            },
+            "targets": [
+                {
+                    "expr": "sum by (name) (rate(mktxp_interface_tx_byte_total{name=~\"iac.ether.lan.*\", name!~\"back-to-home-vpn.*\"}[$__rate_interval])) * 8",
+                    "legendFormat": "{{name}}",
+                    "refId": "A"
+                }
+            ],
+            "fieldConfig": {
+                "defaults": {
+                    "custom": {
+                        "drawStyle": "line",
+                        "fillOpacity": 10,
+                        "lineWidth": 1,
+                        "showPoints": "never",
+                        "spanNulls": true
+                    },
+                    "min": 0,
+                    "unit": "bps"
+                }
+            },
+            "options": {
+                "legend": {
+                    "calcs": [
+                        "mean",
+                        "max"
+                    ],
+                    "displayMode": "table",
+                    "placement": "bottom"
+                },
+                "tooltip": {
+                    "mode": "multi"
+                }
+            }
+        },
+        {
+            "id": 19,
+            "type": "timeseries",
+            "title": "LAN err / drop",
+            "datasource": "Prometheus",
+            "gridPos": {
+                "h": 7,
+                "w": 8,
+                "x": 16,
+                "y": 21
+            },
+            "targets": [
+                {
+                    "expr": "sum(rate(mktxp_interface_rx_error_total{name=~\"iac.ether.lan.*\", name!~\"back-to-home-vpn.*\"}[$__rate_interval])) + sum(rate(mktxp_interface_rx_drop_total{name=~\"iac.ether.lan.*\", name!~\"back-to-home-vpn.*\"}[$__rate_interval]))",
+                    "legendFormat": "RX err + drop",
+                    "refId": "A"
+                },
+                {
+                    "expr": "sum(rate(mktxp_interface_tx_error_total{name=~\"iac.ether.lan.*\", name!~\"back-to-home-vpn.*\"}[$__rate_interval])) + sum(rate(mktxp_interface_tx_drop_total{name=~\"iac.ether.lan.*\", name!~\"back-to-home-vpn.*\"}[$__rate_interval]))",
+                    "legendFormat": "TX err + drop",
+                    "refId": "B"
+                }
+            ],
+            "fieldConfig": {
+                "defaults": {
+                    "custom": {
+                        "drawStyle": "line",
+                        "fillOpacity": 10,
+                        "lineWidth": 1,
+                        "showPoints": "never",
+                        "spanNulls": true
+                    },
+                    "min": 0,
+                    "unit": "pps"
+                }
+            },
+            "options": {
+                "legend": {
+                    "displayMode": "list",
+                    "placement": "bottom"
+                },
+                "tooltip": {
+                    "mode": "multi"
+                }
+            }
+        },
+        {
+            "id": 20,
+            "type": "row",
+            "title": "VPN  (back-to-home)",
+            "gridPos": {
+                "h": 1,
+                "w": 24,
+                "x": 0,
+                "y": 28
+            },
+            "collapsed": false,
+            "panels": []
+        },
+        {
+            "id": 21,
+            "type": "timeseries",
+            "title": "VPN RX",
+            "datasource": "Prometheus",
+            "gridPos": {
+                "h": 7,
+                "w": 8,
+                "x": 0,
+                "y": 29
+            },
+            "targets": [
+                {
+                    "expr": "sum(rate(mktxp_interface_rx_byte_total{name=~\"back-to-home-vpn.*\"}[$__rate_interval])) * 8",
+                    "legendFormat": "back-to-home-vpn",
+                    "refId": "A"
+                }
+            ],
+            "fieldConfig": {
+                "defaults": {
+                    "custom": {
+                        "drawStyle": "line",
+                        "fillOpacity": 10,
+                        "lineWidth": 1,
+                        "showPoints": "never",
+                        "spanNulls": true
+                    },
+                    "min": 0,
+                    "unit": "bps"
+                }
+            },
+            "options": {
+                "legend": {
+                    "displayMode": "list",
+                    "placement": "bottom"
+                },
+                "tooltip": {
+                    "mode": "multi"
+                }
+            }
+        },
+        {
+            "id": 22,
+            "type": "timeseries",
+            "title": "VPN TX",
+            "datasource": "Prometheus",
+            "gridPos": {
+                "h": 7,
+                "w": 8,
+                "x": 8,
+                "y": 29
+            },
+            "targets": [
+                {
+                    "expr": "sum(rate(mktxp_interface_tx_byte_total{name=~\"back-to-home-vpn.*\"}[$__rate_interval])) * 8",
+                    "legendFormat": "back-to-home-vpn",
+                    "refId": "A"
+                }
+            ],
+            "fieldConfig": {
+                "defaults": {
+                    "custom": {
+                        "drawStyle": "line",
+                        "fillOpacity": 10,
+                        "lineWidth": 1,
+                        "showPoints": "never",
+                        "spanNulls": true
+                    },
+                    "min": 0,
+                    "unit": "bps"
+                }
+            },
+            "options": {
+                "legend": {
+                    "displayMode": "list",
+                    "placement": "bottom"
+                },
+                "tooltip": {
+                    "mode": "multi"
+                }
+            }
+        },
+        {
+            "id": 23,
+            "type": "timeseries",
+            "title": "VPN err / drop",
+            "datasource": "Prometheus",
+            "gridPos": {
+                "h": 7,
+                "w": 8,
+                "x": 16,
+                "y": 29
+            },
+            "targets": [
+                {
+                    "expr": "sum(rate(mktxp_interface_rx_error_total{name=~\"back-to-home-vpn.*\"}[$__rate_interval])) + sum(rate(mktxp_interface_rx_drop_total{name=~\"back-to-home-vpn.*\"}[$__rate_interval]))",
+                    "legendFormat": "RX err + drop",
+                    "refId": "A"
+                },
+                {
+                    "expr": "sum(rate(mktxp_interface_tx_error_total{name=~\"back-to-home-vpn.*\"}[$__rate_interval])) + sum(rate(mktxp_interface_tx_drop_total{name=~\"back-to-home-vpn.*\"}[$__rate_interval]))",
+                    "legendFormat": "TX err + drop",
+                    "refId": "B"
+                }
+            ],
+            "fieldConfig": {
+                "defaults": {
+                    "custom": {
+                        "drawStyle": "line",
+                        "fillOpacity": 10,
+                        "lineWidth": 1,
+                        "showPoints": "never",
+                        "spanNulls": true
+                    },
+                    "min": 0,
+                    "unit": "pps"
+                }
+            },
+            "options": {
+                "legend": {
+                    "displayMode": "list",
+                    "placement": "bottom"
+                },
+                "tooltip": {
+                    "mode": "multi"
+                }
+            }
+        }
+    ]
+}

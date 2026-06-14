@@ -1,0 +1,1208 @@
+{
+    "title": "Host",
+    "uid": "host-overview",
+    "tags": [
+        "infra",
+        "host"
+    ],
+    "schemaVersion": 39,
+    "timezone": "",
+    "editable": true,
+    "graphTooltip": 1,
+    "time": {
+        "from": "now-1h",
+        "to": "now"
+    },
+    "refresh": "30s",
+    "templating": {
+        "list": []
+    },
+    "annotations": {
+        "list": []
+    },
+    "panels": [
+        {
+            "id": 1,
+            "type": "stat",
+            "title": "Host up",
+            "description": "node_exporter scrape healthy. 0 = scrape failing; if this is red, every other panel is stale.",
+            "datasource": "Prometheus",
+            "gridPos": {
+                "h": 4,
+                "w": 3,
+                "x": 0,
+                "y": 0
+            },
+            "targets": [
+                {
+                    "expr": "up{job=\"mac-host\"}",
+                    "refId": "A",
+                    "instant": true
+                }
+            ],
+            "fieldConfig": {
+                "defaults": {
+                    "color": {
+                        "mode": "thresholds"
+                    },
+                    "mappings": [
+                        {
+                            "options": {
+                                "0": {
+                                    "color": "red",
+                                    "text": "DOWN"
+                                },
+                                "1": {
+                                    "color": "green",
+                                    "text": "UP"
+                                }
+                            },
+                            "type": "value"
+                        }
+                    ],
+                    "thresholds": {
+                        "mode": "absolute",
+                        "steps": [
+                            {
+                                "color": "red",
+                                "value": null
+                            },
+                            {
+                                "color": "green",
+                                "value": 1
+                            }
+                        ]
+                    }
+                }
+            },
+            "options": {
+                "colorMode": "background",
+                "graphMode": "none",
+                "reduceOptions": {
+                    "calcs": [
+                        "lastNotNull"
+                    ]
+                },
+                "textMode": "value"
+            }
+        },
+        {
+            "id": 2,
+            "type": "stat",
+            "title": "Colima",
+            "description": "Colima profile runtime status. Reads `mac_colima_running`; red = VM not running (cluster is dead).",
+            "datasource": "Prometheus",
+            "gridPos": {
+                "h": 4,
+                "w": 3,
+                "x": 3,
+                "y": 0
+            },
+            "targets": [
+                {
+                    "expr": "max(mac_colima_running)",
+                    "refId": "A",
+                    "instant": true
+                }
+            ],
+            "fieldConfig": {
+                "defaults": {
+                    "color": {
+                        "mode": "thresholds"
+                    },
+                    "mappings": [
+                        {
+                            "options": {
+                                "0": {
+                                    "color": "red",
+                                    "text": "DOWN"
+                                },
+                                "1": {
+                                    "color": "green",
+                                    "text": "UP"
+                                }
+                            },
+                            "type": "value"
+                        }
+                    ],
+                    "thresholds": {
+                        "mode": "absolute",
+                        "steps": [
+                            {
+                                "color": "red",
+                                "value": null
+                            },
+                            {
+                                "color": "green",
+                                "value": 1
+                            }
+                        ]
+                    }
+                }
+            },
+            "options": {
+                "colorMode": "background",
+                "graphMode": "none",
+                "reduceOptions": {
+                    "calcs": [
+                        "lastNotNull"
+                    ]
+                },
+                "textMode": "value"
+            }
+        },
+        {
+            "id": 3,
+            "type": "stat",
+            "title": "Host uptime",
+            "description": "Seconds since boot, derived from `node_boot_time_seconds` (darwin build).",
+            "datasource": "Prometheus",
+            "gridPos": {
+                "h": 4,
+                "w": 4,
+                "x": 6,
+                "y": 0
+            },
+            "targets": [
+                {
+                    "expr": "time() - node_boot_time_seconds{host=\"mac\"}",
+                    "refId": "A",
+                    "instant": true
+                }
+            ],
+            "fieldConfig": {
+                "defaults": {
+                    "color": {
+                        "fixedColor": "blue",
+                        "mode": "fixed"
+                    },
+                    "unit": "s"
+                }
+            },
+            "options": {
+                "colorMode": "value",
+                "graphMode": "none",
+                "reduceOptions": {
+                    "calcs": [
+                        "lastNotNull"
+                    ]
+                },
+                "textMode": "value"
+            }
+        },
+        {
+            "id": 4,
+            "type": "stat",
+            "title": "AC power",
+            "description": "1 = on AC, 0 = on battery. A Mac mini server flapping here means PSU / UPS trouble.",
+            "datasource": "Prometheus",
+            "gridPos": {
+                "h": 4,
+                "w": 3,
+                "x": 10,
+                "y": 0
+            },
+            "targets": [
+                {
+                    "expr": "mac_power_on_ac",
+                    "refId": "A",
+                    "instant": true
+                }
+            ],
+            "fieldConfig": {
+                "defaults": {
+                    "color": {
+                        "mode": "thresholds"
+                    },
+                    "mappings": [
+                        {
+                            "options": {
+                                "0": {
+                                    "color": "red",
+                                    "text": "BATTERY"
+                                },
+                                "1": {
+                                    "color": "green",
+                                    "text": "AC"
+                                }
+                            },
+                            "type": "value"
+                        }
+                    ],
+                    "thresholds": {
+                        "mode": "absolute",
+                        "steps": [
+                            {
+                                "color": "red",
+                                "value": null
+                            },
+                            {
+                                "color": "green",
+                                "value": 1
+                            }
+                        ]
+                    }
+                }
+            },
+            "options": {
+                "colorMode": "background",
+                "graphMode": "none",
+                "reduceOptions": {
+                    "calcs": [
+                        "lastNotNull"
+                    ]
+                },
+                "textMode": "value"
+            }
+        },
+        {
+            "id": 5,
+            "type": "stat",
+            "title": "CPU throttle %",
+            "description": "`mac_cpu_speed_limit_percent` from `pmset -g therm`. 100 = unthrottled. <100 = thermal pressure capping CPU clock.",
+            "datasource": "Prometheus",
+            "gridPos": {
+                "h": 4,
+                "w": 4,
+                "x": 13,
+                "y": 0
+            },
+            "targets": [
+                {
+                    "expr": "mac_cpu_speed_limit_percent",
+                    "refId": "A",
+                    "instant": true
+                }
+            ],
+            "fieldConfig": {
+                "defaults": {
+                    "color": {
+                        "mode": "thresholds"
+                    },
+                    "max": 100,
+                    "min": 0,
+                    "thresholds": {
+                        "mode": "absolute",
+                        "steps": [
+                            {
+                                "color": "red",
+                                "value": null
+                            },
+                            {
+                                "color": "orange",
+                                "value": 80
+                            },
+                            {
+                                "color": "green",
+                                "value": 100
+                            }
+                        ]
+                    },
+                    "unit": "percent"
+                }
+            },
+            "options": {
+                "colorMode": "value",
+                "graphMode": "none",
+                "reduceOptions": {
+                    "calcs": [
+                        "lastNotNull"
+                    ]
+                },
+                "textMode": "value"
+            }
+        },
+        {
+            "id": 6,
+            "type": "stat",
+            "title": "Textfile scrape OK",
+            "description": "node_textfile_scrape_error: 0 = mac-extras.prom parses cleanly; 1 = parser rejected the file, all `mac_*` series go stale.",
+            "datasource": "Prometheus",
+            "gridPos": {
+                "h": 4,
+                "w": 3,
+                "x": 17,
+                "y": 0
+            },
+            "targets": [
+                {
+                    "expr": "node_textfile_scrape_error{host=\"mac\"}",
+                    "refId": "A",
+                    "instant": true
+                }
+            ],
+            "fieldConfig": {
+                "defaults": {
+                    "color": {
+                        "mode": "thresholds"
+                    },
+                    "mappings": [
+                        {
+                            "options": {
+                                "0": {
+                                    "color": "green",
+                                    "text": "OK"
+                                },
+                                "1": {
+                                    "color": "red",
+                                    "text": "FAIL"
+                                }
+                            },
+                            "type": "value"
+                        }
+                    ],
+                    "thresholds": {
+                        "mode": "absolute",
+                        "steps": [
+                            {
+                                "color": "green",
+                                "value": null
+                            },
+                            {
+                                "color": "red",
+                                "value": 1
+                            }
+                        ]
+                    }
+                }
+            },
+            "options": {
+                "colorMode": "background",
+                "graphMode": "none",
+                "reduceOptions": {
+                    "calcs": [
+                        "lastNotNull"
+                    ]
+                },
+                "textMode": "value"
+            }
+        },
+        {
+            "id": 7,
+            "type": "stat",
+            "title": "CPU temp",
+            "description": "`mac_cpu_temp_celsius` from osx-cpu-temp. Thresholds 60/75°C.",
+            "datasource": "Prometheus",
+            "gridPos": {
+                "h": 4,
+                "w": 4,
+                "x": 20,
+                "y": 0
+            },
+            "targets": [
+                {
+                    "expr": "mac_cpu_temp_celsius",
+                    "refId": "A",
+                    "instant": true
+                }
+            ],
+            "fieldConfig": {
+                "defaults": {
+                    "color": {
+                        "mode": "thresholds"
+                    },
+                    "thresholds": {
+                        "mode": "absolute",
+                        "steps": [
+                            {
+                                "color": "green",
+                                "value": null
+                            },
+                            {
+                                "color": "orange",
+                                "value": 60
+                            },
+                            {
+                                "color": "red",
+                                "value": 75
+                            }
+                        ]
+                    },
+                    "unit": "celsius"
+                }
+            },
+            "options": {
+                "colorMode": "value",
+                "graphMode": "area",
+                "reduceOptions": {
+                    "calcs": [
+                        "lastNotNull"
+                    ]
+                },
+                "textMode": "value"
+            }
+        },
+        {
+            "id": 8,
+            "type": "timeseries",
+            "title": "CPU usage",
+            "description": "1 - idle, averaged across cores. Independent of cluster CPU (which is the Colima VM).",
+            "datasource": "Prometheus",
+            "gridPos": {
+                "h": 8,
+                "w": 8,
+                "x": 0,
+                "y": 4
+            },
+            "targets": [
+                {
+                    "expr": "1 - avg by (host) (rate(node_cpu_seconds_total{host=\"mac\",mode=\"idle\"}[$__rate_interval]))",
+                    "legendFormat": "host CPU",
+                    "refId": "A"
+                }
+            ],
+            "fieldConfig": {
+                "defaults": {
+                    "custom": {
+                        "drawStyle": "line",
+                        "fillOpacity": 10,
+                        "lineWidth": 1,
+                        "showPoints": "never",
+                        "spanNulls": true
+                    },
+                    "max": 1,
+                    "min": 0,
+                    "unit": "percentunit"
+                }
+            },
+            "options": {
+                "legend": {
+                    "displayMode": "list",
+                    "placement": "bottom"
+                },
+                "tooltip": {
+                    "mode": "multi"
+                }
+            }
+        },
+        {
+            "id": 9,
+            "type": "timeseries",
+            "title": "RAM usage",
+            "description": "Bytes used (total - free). darwin node_exporter exposes `_total` and `_free_bytes`.",
+            "datasource": "Prometheus",
+            "gridPos": {
+                "h": 8,
+                "w": 8,
+                "x": 8,
+                "y": 4
+            },
+            "targets": [
+                {
+                    "expr": "node_memory_total_bytes{host=\"mac\"} - node_memory_free_bytes{host=\"mac\"}",
+                    "legendFormat": "used",
+                    "refId": "A"
+                }
+            ],
+            "fieldConfig": {
+                "defaults": {
+                    "custom": {
+                        "drawStyle": "line",
+                        "fillOpacity": 10,
+                        "lineWidth": 1,
+                        "showPoints": "never",
+                        "spanNulls": true
+                    },
+                    "unit": "bytes"
+                }
+            },
+            "options": {
+                "legend": {
+                    "displayMode": "list",
+                    "placement": "bottom"
+                },
+                "tooltip": {
+                    "mode": "multi"
+                }
+            }
+        },
+        {
+            "id": 10,
+            "type": "timeseries",
+            "title": "Disk I/O (read up / write down)",
+            "datasource": "Prometheus",
+            "gridPos": {
+                "h": 8,
+                "w": 8,
+                "x": 16,
+                "y": 4
+            },
+            "targets": [
+                {
+                    "expr": "sum(rate(node_disk_read_bytes_total{host=\"mac\"}[$__rate_interval]))",
+                    "legendFormat": "read",
+                    "refId": "A"
+                },
+                {
+                    "expr": "-sum(rate(node_disk_written_bytes_total{host=\"mac\"}[$__rate_interval]))",
+                    "legendFormat": "write",
+                    "refId": "B"
+                }
+            ],
+            "fieldConfig": {
+                "defaults": {
+                    "custom": {
+                        "drawStyle": "line",
+                        "fillOpacity": 5,
+                        "lineWidth": 1,
+                        "showPoints": "never",
+                        "spanNulls": true
+                    },
+                    "unit": "Bps"
+                }
+            },
+            "options": {
+                "legend": {
+                    "displayMode": "list",
+                    "placement": "bottom"
+                },
+                "tooltip": {
+                    "mode": "multi"
+                }
+            }
+        },
+        {
+            "id": 11,
+            "type": "timeseries",
+            "title": "CPU temperature",
+            "datasource": "Prometheus",
+            "gridPos": {
+                "h": 7,
+                "w": 12,
+                "x": 0,
+                "y": 12
+            },
+            "targets": [
+                {
+                    "expr": "mac_cpu_temp_celsius",
+                    "legendFormat": "cpu",
+                    "refId": "A"
+                }
+            ],
+            "fieldConfig": {
+                "defaults": {
+                    "color": {
+                        "mode": "thresholds"
+                    },
+                    "custom": {
+                        "drawStyle": "line",
+                        "fillOpacity": 5,
+                        "lineWidth": 1,
+                        "showPoints": "never",
+                        "spanNulls": true
+                    },
+                    "thresholds": {
+                        "mode": "absolute",
+                        "steps": [
+                            {
+                                "color": "green",
+                                "value": null
+                            },
+                            {
+                                "color": "orange",
+                                "value": 60
+                            },
+                            {
+                                "color": "red",
+                                "value": 75
+                            }
+                        ]
+                    },
+                    "unit": "celsius"
+                }
+            },
+            "options": {
+                "legend": {
+                    "displayMode": "list",
+                    "placement": "bottom"
+                },
+                "tooltip": {
+                    "mode": "multi"
+                }
+            }
+        },
+        {
+            "id": 12,
+            "type": "timeseries",
+            "title": "Fan RPM",
+            "description": "One series per detected fan. Empty plot on fanless Mac models (M-series MacBook Air, etc.); see the small Fan status tile to the right.",
+            "datasource": "Prometheus",
+            "gridPos": {
+                "h": 7,
+                "w": 9,
+                "x": 12,
+                "y": 12
+            },
+            "targets": [
+                {
+                    "expr": "mac_fan_rpm",
+                    "legendFormat": "{{fan}}",
+                    "refId": "A"
+                }
+            ],
+            "fieldConfig": {
+                "defaults": {
+                    "custom": {
+                        "drawStyle": "line",
+                        "fillOpacity": 5,
+                        "lineWidth": 1,
+                        "showPoints": "never",
+                        "spanNulls": true
+                    },
+                    "unit": "rotrpm"
+                }
+            },
+            "options": {
+                "legend": {
+                    "displayMode": "list",
+                    "placement": "bottom"
+                },
+                "tooltip": {
+                    "mode": "multi"
+                }
+            }
+        },
+        {
+            "id": 13,
+            "type": "stat",
+            "title": "Fan present",
+            "description": "1 if powermetrics reported at least one fan, 0 on fanless hardware (cluster-relevant: thermal headroom relies on cooling).",
+            "datasource": "Prometheus",
+            "gridPos": {
+                "h": 7,
+                "w": 3,
+                "x": 21,
+                "y": 12
+            },
+            "targets": [
+                {
+                    "expr": "mac_fan_up",
+                    "refId": "A",
+                    "instant": true
+                }
+            ],
+            "fieldConfig": {
+                "defaults": {
+                    "color": {
+                        "mode": "thresholds"
+                    },
+                    "mappings": [
+                        {
+                            "options": {
+                                "0": {
+                                    "color": "orange",
+                                    "text": "NO FAN"
+                                },
+                                "1": {
+                                    "color": "green",
+                                    "text": "FAN OK"
+                                }
+                            },
+                            "type": "value"
+                        }
+                    ],
+                    "thresholds": {
+                        "mode": "absolute",
+                        "steps": [
+                            {
+                                "color": "orange",
+                                "value": null
+                            },
+                            {
+                                "color": "green",
+                                "value": 1
+                            }
+                        ]
+                    }
+                }
+            },
+            "options": {
+                "colorMode": "background",
+                "graphMode": "none",
+                "reduceOptions": {
+                    "calcs": [
+                        "lastNotNull"
+                    ]
+                },
+                "textMode": "value"
+            }
+        },
+        {
+            "id": 14,
+            "type": "stat",
+            "title": "SMART health",
+            "description": "1 per device if smartctl reports PASSED. 0 = drive failing.",
+            "datasource": "Prometheus",
+            "gridPos": {
+                "h": 5,
+                "w": 8,
+                "x": 0,
+                "y": 19
+            },
+            "targets": [
+                {
+                    "expr": "mac_smart_health",
+                    "legendFormat": "{{device}}",
+                    "refId": "A",
+                    "instant": true
+                }
+            ],
+            "fieldConfig": {
+                "defaults": {
+                    "color": {
+                        "mode": "thresholds"
+                    },
+                    "mappings": [
+                        {
+                            "options": {
+                                "0": {
+                                    "color": "red",
+                                    "text": "FAIL"
+                                },
+                                "1": {
+                                    "color": "green",
+                                    "text": "PASS"
+                                }
+                            },
+                            "type": "value"
+                        }
+                    ],
+                    "thresholds": {
+                        "mode": "absolute",
+                        "steps": [
+                            {
+                                "color": "red",
+                                "value": null
+                            },
+                            {
+                                "color": "green",
+                                "value": 1
+                            }
+                        ]
+                    }
+                }
+            },
+            "options": {
+                "colorMode": "background",
+                "graphMode": "none",
+                "reduceOptions": {
+                    "calcs": [
+                        "lastNotNull"
+                    ],
+                    "values": true
+                },
+                "textMode": "value_and_name"
+            }
+        },
+        {
+            "id": 15,
+            "type": "stat",
+            "title": "SMART wear (%)",
+            "description": "NVMe `Percentage Used`. >80 means the drive is near its rated endurance.",
+            "datasource": "Prometheus",
+            "gridPos": {
+                "h": 5,
+                "w": 8,
+                "x": 8,
+                "y": 19
+            },
+            "targets": [
+                {
+                    "expr": "mac_smart_percent_used",
+                    "legendFormat": "{{device}}",
+                    "refId": "A",
+                    "instant": true
+                }
+            ],
+            "fieldConfig": {
+                "defaults": {
+                    "color": {
+                        "mode": "thresholds"
+                    },
+                    "max": 100,
+                    "min": 0,
+                    "thresholds": {
+                        "mode": "absolute",
+                        "steps": [
+                            {
+                                "color": "green",
+                                "value": null
+                            },
+                            {
+                                "color": "orange",
+                                "value": 60
+                            },
+                            {
+                                "color": "red",
+                                "value": 80
+                            }
+                        ]
+                    },
+                    "unit": "percent"
+                }
+            },
+            "options": {
+                "colorMode": "value",
+                "graphMode": "area",
+                "reduceOptions": {
+                    "calcs": [
+                        "lastNotNull"
+                    ],
+                    "values": true
+                },
+                "textMode": "value_and_name"
+            }
+        },
+        {
+            "id": 16,
+            "type": "stat",
+            "title": "SMART spare (%)",
+            "description": "NVMe `Available Spare`. Drops as bad blocks accumulate; <50% = stage 1 wear-out warning per spec.",
+            "datasource": "Prometheus",
+            "gridPos": {
+                "h": 5,
+                "w": 8,
+                "x": 16,
+                "y": 19
+            },
+            "targets": [
+                {
+                    "expr": "mac_smart_available_spare",
+                    "legendFormat": "{{device}}",
+                    "refId": "A",
+                    "instant": true
+                }
+            ],
+            "fieldConfig": {
+                "defaults": {
+                    "color": {
+                        "mode": "thresholds"
+                    },
+                    "max": 100,
+                    "min": 0,
+                    "thresholds": {
+                        "mode": "absolute",
+                        "steps": [
+                            {
+                                "color": "red",
+                                "value": null
+                            },
+                            {
+                                "color": "orange",
+                                "value": 50
+                            },
+                            {
+                                "color": "green",
+                                "value": 80
+                            }
+                        ]
+                    },
+                    "unit": "percent"
+                }
+            },
+            "options": {
+                "colorMode": "value",
+                "graphMode": "area",
+                "reduceOptions": {
+                    "calcs": [
+                        "lastNotNull"
+                    ],
+                    "values": true
+                },
+                "textMode": "value_and_name"
+            }
+        },
+        {
+            "id": 17,
+            "type": "timeseries",
+            "title": "Process CPU% (homelab daemons)",
+            "description": "Sum of %CPU per matched process name from `ps`. Useful for spotting runaway Colima/dockerd/k3d.",
+            "datasource": "Prometheus",
+            "gridPos": {
+                "h": 8,
+                "w": 12,
+                "x": 0,
+                "y": 24
+            },
+            "targets": [
+                {
+                    "expr": "mac_process_cpu_percent",
+                    "legendFormat": "{{process}}",
+                    "refId": "A"
+                }
+            ],
+            "fieldConfig": {
+                "defaults": {
+                    "custom": {
+                        "drawStyle": "line",
+                        "fillOpacity": 5,
+                        "lineWidth": 1,
+                        "showPoints": "never",
+                        "spanNulls": true
+                    },
+                    "unit": "percent"
+                }
+            },
+            "options": {
+                "legend": {
+                    "calcs": [
+                        "lastNotNull",
+                        "max"
+                    ],
+                    "displayMode": "table",
+                    "placement": "right"
+                },
+                "tooltip": {
+                    "mode": "multi"
+                }
+            }
+        },
+        {
+            "id": 18,
+            "type": "timeseries",
+            "title": "Process RSS",
+            "description": "Sum of resident set size per matched process name. macOS reports raw bytes (post 1024 multiplier in mac-extras.sh).",
+            "datasource": "Prometheus",
+            "gridPos": {
+                "h": 8,
+                "w": 12,
+                "x": 12,
+                "y": 24
+            },
+            "targets": [
+                {
+                    "expr": "mac_process_rss_bytes",
+                    "legendFormat": "{{process}}",
+                    "refId": "A"
+                }
+            ],
+            "fieldConfig": {
+                "defaults": {
+                    "custom": {
+                        "drawStyle": "line",
+                        "fillOpacity": 5,
+                        "lineWidth": 1,
+                        "showPoints": "never",
+                        "spanNulls": true
+                    },
+                    "unit": "bytes"
+                }
+            },
+            "options": {
+                "legend": {
+                    "calcs": [
+                        "lastNotNull",
+                        "max"
+                    ],
+                    "displayMode": "table",
+                    "placement": "right"
+                },
+                "tooltip": {
+                    "mode": "multi"
+                }
+            }
+        },
+        {
+            "id": 19,
+            "type": "table",
+            "title": "LaunchDaemons (com.homelab.*)",
+            "description": "1 = loaded, 0 = unloaded. Catches the 'k3d daemon silently unloaded after macOS update' failure class.",
+            "datasource": "Prometheus",
+            "gridPos": {
+                "h": 8,
+                "w": 12,
+                "x": 0,
+                "y": 32
+            },
+            "targets": [
+                {
+                    "expr": "mac_launchd_loaded",
+                    "refId": "A",
+                    "instant": true,
+                    "format": "table"
+                }
+            ],
+            "transformations": [
+                {
+                    "id": "labelsToFields",
+                    "options": {}
+                },
+                {
+                    "id": "organize",
+                    "options": {
+                        "excludeByName": {
+                            "__name__": true,
+                            "host": true,
+                            "instance": true,
+                            "job": true,
+                            "source": true,
+                            "Time": true
+                        },
+                        "indexByName": {
+                            "label": 0,
+                            "Value": 1
+                        },
+                        "renameByName": {
+                            "label": "Daemon",
+                            "Value": "Loaded"
+                        }
+                    }
+                }
+            ],
+            "fieldConfig": {
+                "defaults": {
+                    "custom": {
+                        "align": "left"
+                    }
+                },
+                "overrides": [
+                    {
+                        "matcher": {
+                            "id": "byName",
+                            "options": "Loaded"
+                        },
+                        "properties": [
+                            {
+                                "id": "mappings",
+                                "value": [
+                                    {
+                                        "options": {
+                                            "0": {
+                                                "color": "red",
+                                                "text": "OFF"
+                                            },
+                                            "1": {
+                                                "color": "green",
+                                                "text": "ON"
+                                            }
+                                        },
+                                        "type": "value"
+                                    }
+                                ]
+                            },
+                            {
+                                "id": "custom.cellOptions",
+                                "value": {
+                                    "mode": "basic",
+                                    "type": "color-background"
+                                }
+                            }
+                        ]
+                    }
+                ]
+            },
+            "options": {
+                "showHeader": true,
+                "sortBy": [
+                    {
+                        "desc": false,
+                        "displayName": "Daemon"
+                    }
+                ]
+            }
+        },
+        {
+            "id": 20,
+            "type": "table",
+            "title": "Colima profile detail",
+            "description": "Per-profile allocation snapshot. CPU is a count; memory and disk are bytes.",
+            "datasource": "Prometheus",
+            "gridPos": {
+                "h": 8,
+                "w": 12,
+                "x": 12,
+                "y": 32
+            },
+            "targets": [
+                {
+                    "expr": "mac_colima_cpu_allocated",
+                    "legendFormat": "{{profile}}",
+                    "refId": "A",
+                    "instant": true,
+                    "format": "table"
+                },
+                {
+                    "expr": "mac_colima_memory_bytes_allocated",
+                    "legendFormat": "{{profile}}",
+                    "refId": "B",
+                    "instant": true,
+                    "format": "table"
+                },
+                {
+                    "expr": "mac_colima_disk_bytes_allocated",
+                    "legendFormat": "{{profile}}",
+                    "refId": "C",
+                    "instant": true,
+                    "format": "table"
+                }
+            ],
+            "transformations": [
+                {
+                    "id": "merge",
+                    "options": {}
+                },
+                {
+                    "id": "organize",
+                    "options": {
+                        "excludeByName": {
+                            "__name__": true,
+                            "host": true,
+                            "instance": true,
+                            "job": true,
+                            "source": true,
+                            "Time": true
+                        },
+                        "indexByName": {
+                            "profile": 0,
+                            "Value #A": 1,
+                            "Value #B": 2,
+                            "Value #C": 3
+                        },
+                        "renameByName": {
+                            "profile": "Profile",
+                            "Value #A": "CPUs",
+                            "Value #B": "RAM (bytes)",
+                            "Value #C": "Disk (bytes)"
+                        }
+                    }
+                }
+            ],
+            "fieldConfig": {
+                "defaults": {
+                    "custom": {
+                        "align": "left"
+                    }
+                },
+                "overrides": [
+                    {
+                        "matcher": {
+                            "id": "byName",
+                            "options": "RAM (bytes)"
+                        },
+                        "properties": [
+                            {
+                                "id": "unit",
+                                "value": "bytes"
+                            }
+                        ]
+                    },
+                    {
+                        "matcher": {
+                            "id": "byName",
+                            "options": "Disk (bytes)"
+                        },
+                        "properties": [
+                            {
+                                "id": "unit",
+                                "value": "bytes"
+                            }
+                        ]
+                    }
+                ]
+            },
+            "options": {
+                "showHeader": true
+            }
+        }
+    ]
+}

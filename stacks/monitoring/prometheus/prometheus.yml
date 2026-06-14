@@ -1,0 +1,58 @@
+# Prometheus scrape config for the monitoring stack.
+# Templated/edited by hand; updates require: docker exec
+# homelab-monitoring-prometheus kill -HUP 1  (or compose restart).
+
+global:
+  scrape_interval: 30s
+  scrape_timeout: 20s
+  external_labels:
+    homelab: v2
+
+rule_files:
+  - /etc/prometheus/rules/*.yaml
+
+scrape_configs:
+  # Self
+  - job_name: prometheus
+    static_configs:
+      - targets: ["localhost:9090"]
+
+  # macOS host (node-exporter LaunchDaemon on the LAN IP).
+  # host.docker.internal isn't resolved inside the Colima VM by default;
+  # use the literal LAN IP. Update if hostIp changes.
+  - job_name: mac-host
+    static_configs:
+      - targets:
+          - "192.168.10.3:9100"
+        labels:
+          host: mac
+          source: host-native
+
+  # DNS stack — reached over the `homelab` external network by service name.
+  # DNS stack exporters — reach by container name via the shared `homelab`
+  # external docker network.
+  - job_name: adguard
+    static_configs:
+      - targets: ["homelab-dns-adguard-exporter:9617"]
+
+  - job_name: unbound
+    static_configs:
+      - targets: ["homelab-dns-unbound-exporter:9167"]
+
+  # MikroTik exporter — sibling container in this same stack.
+  - job_name: mikrotik
+    static_configs:
+      - targets: ["mikrotik-exporter:49090"]
+
+  # Home Assistant /api/prometheus — HA runs network_mode: host in the
+  # Colima VM, so we scrape via the VM's vmnet IP. Requires
+  # HOMEASSISTANT_PROMETHEUS_TOKEN in .env (Profile → Long-Lived Access
+  # Tokens in the HA UI). Without it the scrape returns 401.
+  - job_name: home-assistant
+    scheme: http
+    metrics_path: /api/prometheus
+    authorization:
+      type: Bearer
+      credentials_file: /etc/prometheus/secrets/ha_token
+    static_configs:
+      - targets: ["192.168.64.2:8123"]

@@ -1,0 +1,53 @@
+apiVersion: 1
+templates:
+  - orgId: 1
+    name: homelab-slack
+    template: |-
+      {{ define "slack.homelab.title" -}}
+      {{- if eq .Status "resolved" -}}
+      🟢 RESOLVED · {{ .CommonLabels.alertname }}
+      {{- else if eq (index .CommonLabels "severity") "critical" -}}
+      🔴 CRITICAL · {{ .CommonLabels.alertname }}
+      {{- else -}}
+      🟠 WARNING · {{ .CommonLabels.alertname }}
+      {{- end -}}
+      {{ end }}
+
+      {{ define "slack.homelab.color" -}}
+      {{- if eq .Status "resolved" -}}#2EB67D
+      {{- else if eq (index .CommonLabels "severity") "critical" -}}#E01E5A
+      {{- else -}}#ECB22E
+      {{- end -}}
+      {{ end }}
+
+      {{ define "slack.homelab.text" -}}
+      {{- if and (eq .Status "firing") (eq (index .CommonLabels "severity") "critical") -}}
+      <!here>
+      {{ end -}}
+      {{ range .Alerts -}}
+      *{{ .Annotations.summary }}*
+
+      `entity`     {{ .Labels.entity }}
+      `component`  {{ .Labels.component }}
+      {{ if .Labels.instance -}}
+      `instance`   {{ .Labels.instance }}
+      {{ end -}}
+      {{ if .Labels.node -}}
+      `node`       {{ .Labels.node }}
+      {{ end -}}
+      {{ if .Labels.namespace -}}
+      `namespace`  {{ .Labels.namespace }}/{{ .Labels.pod }}
+      {{ end -}}
+      `started`    {{ .StartsAt.Format "15:04 MST" }}
+      {{ if and (ne .Status "resolved") .Annotations.description }}
+
+      {{ .Annotations.description }}
+      {{- end }}
+      {{ if ne .Status "resolved" }}
+
+      {{ if .Annotations.dashboard_url -}}<{{ .Annotations.dashboard_url }}|📊 Dashboard>  ·  {{ end -}}
+      <{{ .SilenceURL }}|🔕 Silence>  ·  <{{ .GeneratorURL }}|🔗 Grafana>
+      {{- end }}
+
+      {{ end -}}
+      {{ end }}
