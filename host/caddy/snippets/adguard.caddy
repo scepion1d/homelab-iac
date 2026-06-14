@@ -1,0 +1,9 @@
+# AdGuard UI — DNS configuration / query log.
+# Container publishes :80 on the Colima VM as 0.0.0.0:8080.
+# We reverse-proxy to 127.0.0.1:8080 (Colima auto-forwards published
+# TCP ports to Mac localhost).
+
+adguard.int {
+    import homelab_tls
+    reverse_proxy 127.0.0.1:8080
+}

@@ -1,0 +1,46 @@
+---
+# Two-tier caddy reload:
+#
+#   reload-caddy   — Caddyfile changed; try `caddy reload` via admin API,
+#                    fall back to a full daemon restart if admin is off
+#                    (our Caddyfile sets `admin off` for safety, so the
+#                    fallback is the actual code path that runs).
+#   restart-caddy  — plist changed; bootout/enable/bootstrap to fully
+#                    re-register the daemon.
+#
+# Caddy v2 does NOT support SIGUSR1 for reload (a previous version of
+# this handler tried that and silently no-op'd, leaving caddy stuck on
+# the original config for hours). Fall back to launchctl restart instead.
+
+- name: reload-caddy
+  become: true
+  ansible.builtin.shell: |
+    set -e
+    # Try the admin API first (zero-downtime). Caddyfile sets `admin off`,
+    # so this fails fast; kept in case we ever flip admin back on.
+    if caddy reload \
+         --config /usr/local/etc/caddy/Caddyfile \
+         --adapter caddyfile \
+         --address localhost:2019 >/dev/null 2>&1; then
+      exit 0
+    fi
+    # Admin disabled (or reload failed) — full daemon restart. Caddy
+    # restarts in <1s; the brief blip is acceptable for an internal LAN.
+    launchctl bootout system/com.homelab.caddy 2>/dev/null || true
+    sleep 1
+    launchctl enable system/com.homelab.caddy
+    launchctl bootstrap system /Library/LaunchDaemons/com.homelab.caddy.plist
+  listen: reload-caddy
+
+- name: restart-caddy
+  become: true
+  ansible.builtin.shell: |
+    set -e
+    plist=/Library/LaunchDaemons/com.homelab.caddy.plist
+    svc=system/com.homelab.caddy
+    launchctl bootout "$svc" 2>/dev/null || true
+    # Sleep briefly so the disabled flag flush completes before we re-enable.
+    sleep 1
+    launchctl enable "$svc"
+    launchctl bootstrap system "$plist"
+  listen: restart-caddy

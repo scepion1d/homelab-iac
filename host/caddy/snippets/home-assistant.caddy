@@ -1,0 +1,9 @@
+# Home Assistant — UI + API.
+# HA runs network_mode: host in the Colima VM, listening on :8123.
+# Reach via the VM's vmnet IP from the Mac (Caddy proxies through).
+# Both `homeassistant.int` (HA's own preferred spelling) and the
+# hyphenated `home-assistant.int` resolve; pick whichever feels natural.
+homeassistant.int, home-assistant.int {
+    import homelab_tls
+    reverse_proxy 192.168.64.2:8123
+}

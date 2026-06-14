@@ -1,0 +1,48 @@
+---
+# Extract the CA private key from the v1-style Secret YAML into a raw
+# PEM file Caddy can read. Idempotent: only writes if the extracted
+# content differs from what's already on disk.
+#
+# Inputs (from group_vars):
+#   caddy_ca_yaml — path to the Secret YAML (tls.crt + tls.key, base64'd)
+#   caddy_ca_key  — destination for the extracted PEM key (mode 0600)
+
+- name: "caddy/ca: stat source Secret YAML"
+  ansible.builtin.stat:
+    path: "{{ caddy_ca_yaml }}"
+  register: ca_yaml_stat
+
+- name: "caddy/ca: fail if Secret YAML is missing"
+  ansible.builtin.fail:
+    msg: |
+      CA secret YAML not found at {{ caddy_ca_yaml }}. Set CERT_YAML in .env,
+      or run the one-time extraction documented in docs/migration-v1-v2.md
+      (Phase 2).
+  when: not ca_yaml_stat.stat.exists
+
+- name: "caddy/ca: parse Secret YAML"
+  ansible.builtin.set_fact:
+    ca_secret: "{{ lookup('file', caddy_ca_yaml) | from_yaml }}"
+
+- name: "caddy/ca: extract base64-decoded private key"
+  ansible.builtin.set_fact:
+    ca_key_pem: "{{ ca_secret.data['tls.key'] | b64decode }}"
+
+- name: "caddy/ca: ensure destination directory"
+  become: true
+  ansible.builtin.file:
+    path: "{{ caddy_ca_key | dirname }}"
+    state: directory
+    owner: root
+    group: wheel
+    mode: "0755"
+
+- name: "caddy/ca: write extracted PEM key"
+  become: true
+  ansible.builtin.copy:
+    dest: "{{ caddy_ca_key }}"
+    content: "{{ ca_key_pem }}"
+    owner: root
+    group: wheel
+    mode: "0600"
+  no_log: true

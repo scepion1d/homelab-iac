@@ -1,0 +1,31 @@
+---
+# Phase 2: full Caddy install + Caddyfile composition + LaunchDaemon.
+
+- name: "caddy: extract CA private key from v1-style Secret YAML"
+  ansible.builtin.include_tasks: extract-ca.yml
+
+- name: "caddy: ensure /usr/local/etc/caddy + place CA cert"
+  become: true
+  block:
+    - ansible.builtin.file:
+        path: /usr/local/etc/caddy
+        state: directory
+        owner: root
+        group: wheel
+        mode: "0755"
+    - ansible.builtin.copy:
+        src: "{{ caddy_ca_cert }}"
+        dest: /usr/local/etc/caddy/homelab-ca.crt
+        owner: root
+        group: wheel
+        mode: "0644"
+        remote_src: true
+
+- name: "caddy: install"
+  ansible.builtin.include_tasks: install.yml
+
+- name: "caddy: render Caddyfile + validate"
+  ansible.builtin.include_tasks: config.yml
+
+- name: "caddy: install LaunchDaemon + bootstrap"
+  ansible.builtin.include_tasks: daemon.yml

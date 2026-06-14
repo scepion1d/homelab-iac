@@ -1,0 +1,98 @@
+---
+# Assemble /usr/local/etc/caddy/Caddyfile from host/caddy/Caddyfile.template
+# (global config) + host/caddy/snippets/*.caddy (per-app stanzas).
+#
+# Idempotent: only writes if content changed; reload (via handler) only
+# fires on actual change.
+
+- name: "caddy/config: ensure /usr/local/etc/caddy"
+  become: true
+  ansible.builtin.file:
+    path: /usr/local/etc/caddy
+    state: directory
+    owner: root
+    group: wheel
+    mode: "0755"
+
+- name: "caddy/config: stat Caddyfile template"
+  ansible.builtin.stat:
+    path: "{{ host_dir }}/caddy/Caddyfile.template"
+  register: caddyfile_tpl_stat
+
+- name: "caddy/config: fail if template missing"
+  ansible.builtin.fail:
+    msg: "Caddyfile.template not found at {{ host_dir }}/caddy/"
+  when: not caddyfile_tpl_stat.stat.exists
+
+- name: "caddy/config: discover snippets"
+  ansible.builtin.find:
+    paths: "{{ host_dir }}/caddy/snippets"
+    patterns: "*.caddy"
+    file_type: file
+  register: caddy_snippets
+  changed_when: false
+
+- name: "caddy/config: read template body"
+  ansible.builtin.set_fact:
+    caddyfile_base: "{{ lookup('file', host_dir ~ '/caddy/Caddyfile.template') }}"
+
+- name: "caddy/config: read each snippet"
+  ansible.builtin.set_fact:
+    caddyfile_snippets: >-
+      {{ caddy_snippets.files
+         | sort(attribute='path')
+         | map(attribute='path')
+         | map('regex_replace', '^', '')
+         | list }}
+
+- name: "caddy/config: render Caddyfile"
+  become: true
+  ansible.builtin.copy:
+    dest: /usr/local/etc/caddy/Caddyfile
+    owner: root
+    group: wheel
+    mode: "0644"
+    content: |
+      # MANAGED BY ANSIBLE — do not hand-edit.
+      # Source: host/caddy/Caddyfile.template + host/caddy/snippets/*.caddy
+      # Regenerated on every reconcile.
+      {{ caddyfile_base }}
+
+      {% for snippet in caddyfile_snippets %}
+      # ── from {{ snippet | basename }} ──
+      {{ lookup('file', snippet) }}
+
+      {% endfor %}
+  notify: reload-caddy   # Caddyfile-only change → in-place reload (safe)
+
+- name: "caddy/config: validate Caddyfile syntax"
+  become: true
+  ansible.builtin.command:
+    cmd: "{{ caddy_bin }} validate --config /usr/local/etc/caddy/Caddyfile --adapter caddyfile"
+  changed_when: false
+
+# Self-heal: detect a Caddyfile that's newer than the running caddy
+# process (i.e. handler was missed, or someone touched the file). On
+# drift, notify reload so the running daemon picks up the on-disk config.
+- name: "caddy/config: check if running caddy is older than Caddyfile"
+  become: true
+  ansible.builtin.shell: |
+    set -eu
+    cfg=/usr/local/etc/caddy/Caddyfile
+    pid="$(pgrep -x caddy | head -1)"
+    if [ -z "$pid" ]; then
+      echo "NO_PID"
+      exit 0
+    fi
+    cfg_mtime=$(stat -f %m "$cfg")
+    # `ps -o lstart=` prints something like "Sat Jun 13 09:20:42 2026"
+    pid_start_iso=$(ps -p "$pid" -o lstart= | sed 's/^ *//;s/  */ /g')
+    pid_start_epoch=$(date -j -f "%a %b %d %T %Y" "$pid_start_iso" +%s 2>/dev/null || echo 0)
+    if [ "$cfg_mtime" -gt "$pid_start_epoch" ]; then
+      echo "STALE: cfg=$cfg_mtime pid_start=$pid_start_epoch delta=$((cfg_mtime - pid_start_epoch))s"
+    else
+      echo "FRESH"
+    fi
+  register: caddy_freshness
+  changed_when: "'STALE' in caddy_freshness.stdout"
+  notify: reload-caddy

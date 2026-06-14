@@ -1,0 +1,10 @@
+# Grafana UI — dashboards + alerts.
+# Use Colima VM IP rather than 127.0.0.1 — Colima auto-forwards published
+# ports to localhost only for the first published TCP port per container
+# (a known quirk). Grafana publishes on 3001 (3000 collides with AdGuard
+# wizard), and Colima may not forward it; the vmnet IP is reliable.
+# TODO: replace literal IP once host/caddy templating from globals lands.
+grafana.int {
+    import homelab_tls
+    reverse_proxy 192.168.64.2:3001
+}

@@ -1,0 +1,27 @@
+---
+# Install the LaunchDaemon plist and ensure it's loaded.
+
+- name: "caddy/daemon: write plist"
+  become: true
+  ansible.builtin.template:
+    src: com.homelab.caddy.plist.j2
+    dest: /Library/LaunchDaemons/com.homelab.caddy.plist
+    owner: root
+    group: wheel
+    mode: "0644"
+  notify: restart-caddy
+
+- name: "caddy/daemon: check if loaded"
+  become: true
+  ansible.builtin.command: launchctl print system/com.homelab.caddy
+  register: caddy_loaded
+  changed_when: false
+  failed_when: false
+
+- name: "caddy/daemon: enable + bootstrap if not loaded"
+  become: true
+  ansible.builtin.shell: |
+    launchctl enable system/com.homelab.caddy
+    launchctl bootstrap system /Library/LaunchDaemons/com.homelab.caddy.plist
+  when: caddy_loaded.rc != 0
+  changed_when: true

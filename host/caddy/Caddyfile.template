@@ -1,0 +1,43 @@
+# Caddyfile global config — managed by ansible/roles/caddy.
+# Snippets for per-app reverse proxies live in host/caddy/snippets/*.caddy
+# and are concatenated after this base by ansible at render time.
+
+{
+    # Disable automatic Let's Encrypt — we use the homelab internal CA.
+    auto_https disable_redirects
+    admin off
+
+    # Skip attempts to install our CA into the macOS system keychain;
+    # clients trust homelab-ca out-of-band (see bootstrap/tools/export-ca.sh).
+    skip_install_trust
+
+    # Use the homelab CA as the root for `tls internal` directives below.
+    # In Caddy 2.11 the pki/ca block uses root { format pem; cert <path>; key <path> }
+    # — the single-line `root <cert> <key>` shortcut is gone.
+    pki {
+        ca homelab {
+            name "Homelab CA"
+            root_cn "homelab-ca"
+            root {
+                format pem_file
+                cert /usr/local/etc/caddy/homelab-ca.crt
+                key  /usr/local/etc/caddy/homelab-ca.key
+            }
+        }
+    }
+
+    # Default log: stderr → captured by LaunchDaemon to /var/log/homelab-caddy.log
+    log default {
+        format console
+        level INFO
+    }
+}
+
+# Snippet that every site can `import` to use the homelab CA for TLS.
+(homelab_tls) {
+    tls {
+        issuer internal {
+            ca homelab
+        }
+    }
+}

@@ -1,0 +1,24 @@
+---
+# Install Caddy via Homebrew (idempotent — Homebrew skips when satisfied).
+# Caddy runs as a root LaunchDaemon so it can bind :80/:443.
+
+- name: "caddy/install: ensure caddy installed"
+  community.general.homebrew:
+    name: caddy
+    state: present
+  register: caddy_install
+
+- name: "caddy/install: resolve caddy binary path"
+  ansible.builtin.shell: |
+    for p in /opt/homebrew/bin/caddy /usr/local/bin/caddy; do
+      if [ -x "$p" ]; then echo "$p"; exit 0; fi
+    done
+    command -v caddy
+  args:
+    executable: /bin/bash
+  register: caddy_which
+  changed_when: false
+
+- name: "caddy/install: set caddy_bin fact"
+  ansible.builtin.set_fact:
+    caddy_bin: "{{ caddy_which.stdout | trim }}"
