@@ -34,3 +34,171 @@
   delay: 2
   until: prom_reload.status == 200
   changed_when: false
+
+# --- Grafana provisioning sync + folder cleanup --------------------------
+# Grafana re-scans provisioning every `updateIntervalSeconds` (30s), but to
+# keep reconcile deterministic we POST the admin reload endpoints right
+# after `compose up`. Then we delete any UI folder that isn't part of the
+# current dashboard layout — Grafana's dashboard provisioner creates a
+# folder for each parent directory under dashboards/, but it never removes
+# folders that go empty after a reorg (e.g. the old `adguard/`, `host/`,
+# `cluster/` slug folders that pre-dated commit 252a922's move into the
+# DNS/ and infra/ buckets). DELETE /api/folders/<uid> cascades through any
+# remaining dashboards inside that folder, so paired with the providers'
+# `disableDeletion: false` this also cleans up dashboards whose JSON file
+# has been removed from the repo (e.g. the old Cluster dashboard).
+#
+# Allowlist is built dynamically from the repo:
+#   - subdirectories of stacks/monitoring/grafana/dashboards/  (dashboard
+#     folders — must match Grafana's foldersFromFilesStructure mapping)
+#   - `folder:` values found in alerting/*-rules.yaml  (alert folders)
+#   - "General" — Grafana's built-in root, never listed by /api/folders
+#     but guarded against in case that ever changes.
+# We assert the result is non-empty before any DELETE so a glitch in
+# the lookup can never nuke every folder.
+- name: "monitoring/setup: enumerate dashboard folder dirs"
+  ansible.builtin.find:
+    paths: "{{ stacks_dir }}/monitoring/grafana/dashboards"
+    file_type: directory
+    depth: 1
+  delegate_to: localhost
+  register: monitoring_dashboard_dirs
+
+- name: "monitoring/setup: enumerate alerting rule files"
+  ansible.builtin.find:
+    paths: "{{ stacks_dir }}/monitoring/grafana/provisioning/alerting"
+    patterns: "*-rules.yaml"
+    file_type: file
+  delegate_to: localhost
+  register: monitoring_alerting_rule_files
+
+- name: "monitoring/setup: extract folder: values from each rule file"
+  ansible.builtin.set_fact:
+    monitoring_alerting_folders: >-
+      {{
+        (monitoring_alerting_folders | default([]))
+        +
+        ((lookup('file', item.path) | from_yaml).get('groups', [])
+         | map(attribute='folder')
+         | select('string')
+         | list)
+      }}
+  loop: "{{ monitoring_alerting_rule_files.files }}"
+  loop_control:
+    label: "{{ item.path | basename }}"
+
+- name: "monitoring/setup: build grafana folder allowlist"
+  ansible.builtin.set_fact:
+    monitoring_grafana_folder_allowlist: >-
+      {{
+        (
+          (monitoring_dashboard_dirs.files | map(attribute='path') | map('basename') | list)
+          + (monitoring_alerting_folders | default([]))
+          + ['General']
+        ) | unique
+      }}
+
+- name: "monitoring/setup: assert allowlist contains current alert folders"
+  ansible.builtin.assert:
+    that:
+      - grafana_admin_password | length > 0
+      - monitoring_grafana_folder_allowlist | length >= 2
+      - "'DNS' in monitoring_grafana_folder_allowlist"
+      - "'infra' in monitoring_grafana_folder_allowlist"
+    fail_msg: "Grafana folder allowlist looks wrong: {{ monitoring_grafana_folder_allowlist }}"
+
+- name: "monitoring/setup: wait for grafana /api/health"
+  ansible.builtin.uri:
+    url: "http://127.0.0.1:3001/api/health"
+    method: GET
+    status_code: [200]
+    timeout: 5
+  register: grafana_ready
+  retries: 30
+  delay: 2
+  until: grafana_ready.status == 200
+  changed_when: false
+
+- name: "monitoring/setup: reload grafana dashboard provisioning"
+  ansible.builtin.uri:
+    url: "http://127.0.0.1:3001/api/admin/provisioning/dashboards/reload"
+    method: POST
+    user: admin
+    password: "{{ grafana_admin_password }}"
+    force_basic_auth: true
+    status_code: [200]
+  changed_when: false
+
+- name: "monitoring/setup: reload grafana alerting provisioning"
+  ansible.builtin.uri:
+    url: "http://127.0.0.1:3001/api/admin/provisioning/alerting/reload"
+    method: POST
+    user: admin
+    password: "{{ grafana_admin_password }}"
+    force_basic_auth: true
+    status_code: [200]
+  changed_when: false
+
+- name: "monitoring/setup: list grafana folders"
+  ansible.builtin.uri:
+    url: "http://127.0.0.1:3001/api/folders?limit=1000"
+    method: GET
+    user: admin
+    password: "{{ grafana_admin_password }}"
+    force_basic_auth: true
+    status_code: [200]
+    return_content: true
+  register: grafana_folders
+  changed_when: false
+
+# DELETE /api/folders/<uid> cascades through dashboards inside the folder.
+# forceDeleteRules=true also cascades any alert rules in the folder (we
+# wouldn't expect any since rule folders are DNS/infra, but be explicit).
+# 200 only — 404 means our snapshot is stale, 412 means a precondition
+# failed (e.g. forceDeleteRules wasn't honoured); both should surface
+# instead of being silently accepted.
+- name: "monitoring/setup: delete orphan grafana folders"
+  ansible.builtin.uri:
+    url: "http://127.0.0.1:3001/api/folders/{{ item.uid }}?forceDeleteRules=true"
+    method: DELETE
+    user: admin
+    password: "{{ grafana_admin_password }}"
+    force_basic_auth: true
+    status_code: [200]
+  loop: "{{ grafana_folders.json | default([]) }}"
+  loop_control:
+    label: "{{ item.title }} (uid={{ item.uid }})"
+  when:
+    - grafana_folders is defined
+    - monitoring_grafana_folder_allowlist | length > 0
+    - item.title not in monitoring_grafana_folder_allowlist
+  register: grafana_folder_delete
+  changed_when: grafana_folder_delete.status | default(0) == 200
+
+# Confirm cleanup landed: re-list folders and assert every remaining
+# title is in the allowlist. Catches partial deletes or fresh folders
+# created mid-play (e.g. by a concurrent alerting reload).
+- name: "monitoring/setup: re-list grafana folders (verify cleanup)"
+  ansible.builtin.uri:
+    url: "http://127.0.0.1:3001/api/folders?limit=1000"
+    method: GET
+    user: admin
+    password: "{{ grafana_admin_password }}"
+    force_basic_auth: true
+    status_code: [200]
+    return_content: true
+  register: grafana_folders_after
+  changed_when: false
+
+- name: "monitoring/setup: assert no orphan folders remain"
+  ansible.builtin.assert:
+    that:
+      - >-
+        (grafana_folders_after.json | default([])
+          | rejectattr('title', 'in', monitoring_grafana_folder_allowlist)
+          | list | length) == 0
+    fail_msg: >-
+      Orphan grafana folders survived cleanup:
+      {{ grafana_folders_after.json
+         | rejectattr('title', 'in', monitoring_grafana_folder_allowlist)
+         | map(attribute='title') | list }}

@@ -1,0 +1,315 @@
+apiVersion: 1
+# DNS-side alerts (AdGuard + Unbound). UI folder: DNS.
+# Slack: channel=dns → routed to slack-dns by alerting/policies.yaml.
+#
+# This file MUST live at the top of provisioning/alerting/ — Grafana's
+# alerting provisioner does NOT recurse into subdirectories. It logs
+# "file has invalid suffix 'rules'" and skips them if you nest.
+#
+# v2 adaptations from v1 cluster/apps/grafana-alerts/rules/adguard/rules.yaml:
+#   service="adguard-exporter"  → job="adguard"   (v2 prometheus scrape job name)
+#   (Unbound rules added: source v2 stack didn't have any in v1.)
+groups:
+  - orgId: 1
+    name: adguard.homelab
+    folder: DNS
+    interval: 1m
+    rules:
+      # ─────────────────────────────────────────────────────────────────────
+      # Inhibits every other adguard-* rule via alerting/inhibit-rules.yaml.
+      - uid: adguard-exporter-down
+        title: adguard-exporter-down
+        condition: B
+        for: 2m
+        noDataState: Alerting
+        execErrState: Error
+        data:
+          - refId: A
+            datasourceUid: prometheus
+            relativeTimeRange: {from: 600, to: 0}
+            model:
+              refId: A
+              instant: true
+              editorMode: code
+              expr: 'up{job="adguard"}'
+          - refId: B
+            datasourceUid: __expr__
+            relativeTimeRange: {from: 0, to: 0}
+            model:
+              refId: B
+              type: math
+              expression: '$A < 1'
+              datasource: {type: __expr__, uid: __expr__}
+        labels:
+          severity: critical
+          entity: adguard
+          component: exporter
+          channel: dns
+        annotations:
+          summary: 'AdGuard exporter down'
+          description: 'adguard-exporter has been down for 2m. DNS observability lost; downstream DNS alerts suppressed.'
+          dashboard_url: 'https://grafana.int/d/adguard/adguard'
+          value_label: 'up'
+        isPaused: false
+
+      # ─────────────────────────────────────────────────────────────────────
+      - uid: adguard-upstream-p95-warning
+        title: adguard-upstream-p95-warning
+        condition: B
+        for: 10m
+        noDataState: OK
+        execErrState: Error
+        data:
+          - refId: A
+            datasourceUid: prometheus
+            relativeTimeRange: {from: 600, to: 0}
+            model:
+              refId: A
+              instant: true
+              editorMode: code
+              expr: 'histogram_quantile(0.95, sum by(le)(rate(adguard_upstream_latency_seconds_bucket[5m]))) * 1000'
+          - refId: B
+            datasourceUid: __expr__
+            relativeTimeRange: {from: 0, to: 0}
+            model:
+              refId: B
+              type: math
+              expression: '$A > 1000'
+              datasource: {type: __expr__, uid: __expr__}
+        labels:
+          severity: warning
+          entity: adguard
+          component: upstream
+          channel: dns
+        annotations:
+          summary: 'AdGuard upstream p95 {{ printf "%.0f" $values.A.Value }}ms'
+          description: 'Upstream DNS resolver p95 latency above 1s for 10m.'
+          dashboard_url: 'https://grafana.int/d/adguard/adguard'
+          value_label: 'p95 ms'
+        isPaused: false
+
+      - uid: adguard-upstream-p95-critical
+        title: adguard-upstream-p95-critical
+        condition: B
+        for: 5m
+        noDataState: OK
+        execErrState: Error
+        data:
+          - refId: A
+            datasourceUid: prometheus
+            relativeTimeRange: {from: 600, to: 0}
+            model:
+              refId: A
+              instant: true
+              editorMode: code
+              expr: 'histogram_quantile(0.95, sum by(le)(rate(adguard_upstream_latency_seconds_bucket[5m]))) * 1000'
+          - refId: B
+            datasourceUid: __expr__
+            relativeTimeRange: {from: 0, to: 0}
+            model:
+              refId: B
+              type: math
+              expression: '$A > 2000'
+              datasource: {type: __expr__, uid: __expr__}
+        labels:
+          severity: critical
+          entity: adguard
+          component: upstream
+          channel: dns
+        annotations:
+          summary: 'AdGuard upstream p95 {{ printf "%.0f" $values.A.Value }}ms (critical)'
+          description: 'Upstream DNS resolver p95 latency above 2s for 5m.'
+          dashboard_url: 'https://grafana.int/d/adguard/adguard'
+          value_label: 'p95 ms'
+        isPaused: false
+
+      # ─────────────────────────────────────────────────────────────────────
+      # AdGuard-internal processing time (excludes upstream wait).
+      - uid: adguard-processing-time-high
+        title: adguard-processing-time-high
+        condition: B
+        for: 10m
+        noDataState: OK
+        execErrState: Error
+        data:
+          - refId: A
+            datasourceUid: prometheus
+            relativeTimeRange: {from: 600, to: 0}
+            model:
+              refId: A
+              instant: true
+              editorMode: code
+              expr: 'adguard_avg_processing_time * 1000'
+          - refId: B
+            datasourceUid: __expr__
+            relativeTimeRange: {from: 0, to: 0}
+            model:
+              refId: B
+              type: math
+              expression: '$A > 100'
+              datasource: {type: __expr__, uid: __expr__}
+        labels:
+          severity: warning
+          entity: adguard
+          component: processing
+          channel: dns
+        annotations:
+          summary: 'AdGuard internal processing {{ printf "%.0f" $values.A.Value }}ms'
+          description: 'AdGuard-internal average processing time >100ms for 10m (excludes upstream wait).'
+          dashboard_url: 'https://grafana.int/d/adguard/adguard'
+          value_label: 'avg ms'
+        isPaused: false
+
+      # ─────────────────────────────────────────────────────────────────────
+      # Query rate diverges >200% from 1h rolling baseline.
+      - uid: adguard-query-rate-anomaly
+        title: adguard-query-rate-anomaly
+        condition: B
+        for: 10m
+        noDataState: OK
+        execErrState: Error
+        data:
+          - refId: A
+            datasourceUid: prometheus
+            relativeTimeRange: {from: 3600, to: 0}
+            model:
+              refId: A
+              instant: true
+              editorMode: code
+              expr: '100 * abs(sum(rate(adguard_query_domain_total[5m])) - avg_over_time(sum(rate(adguard_query_domain_total[5m]))[1h:5m])) / clamp_min(avg_over_time(sum(rate(adguard_query_domain_total[5m]))[1h:5m]), 0.1)'
+          - refId: B
+            datasourceUid: __expr__
+            relativeTimeRange: {from: 0, to: 0}
+            model:
+              refId: B
+              type: math
+              expression: '$A > 200'
+              datasource: {type: __expr__, uid: __expr__}
+        labels:
+          severity: warning
+          entity: adguard
+          component: query-rate
+          channel: dns
+        annotations:
+          summary: 'DNS query rate anomaly ({{ printf "%.0f" $values.A.Value }}% off baseline)'
+          description: 'Current query rate diverges >200% from the rolling 1h baseline for 10m.'
+          dashboard_url: 'https://grafana.int/d/dns-overview/dns-overview'
+          value_label: 'Δ vs baseline (%)'
+        isPaused: false
+
+  # ─────────────────────────────────────────────────────────────────────────
+  # Unbound recursive resolver. Uses the unbound-exporter (job="unbound").
+  - orgId: 1
+    name: unbound.homelab
+    folder: DNS
+    interval: 1m
+    rules:
+      - uid: unbound-exporter-down
+        title: unbound-exporter-down
+        condition: B
+        for: 2m
+        noDataState: Alerting
+        execErrState: Error
+        data:
+          - refId: A
+            datasourceUid: prometheus
+            relativeTimeRange: {from: 600, to: 0}
+            model:
+              refId: A
+              instant: true
+              editorMode: code
+              expr: 'up{job="unbound"}'
+          - refId: B
+            datasourceUid: __expr__
+            relativeTimeRange: {from: 0, to: 0}
+            model:
+              refId: B
+              type: math
+              expression: '$A < 1'
+              datasource: {type: __expr__, uid: __expr__}
+        labels:
+          severity: critical
+          entity: unbound
+          component: exporter
+          channel: dns
+        annotations:
+          summary: 'Unbound exporter down'
+          description: 'unbound-exporter has been down for 2m. Recursive resolver health visibility lost.'
+          dashboard_url: 'https://grafana.int/d/unbound/unbound'
+          value_label: 'up'
+        isPaused: false
+
+      # SERVFAIL ratio above 5% sustained — upstream auth-server outage or
+      # broken DNSSEC chain on a popular domain.
+      - uid: unbound-servfail-high
+        title: unbound-servfail-high
+        condition: B
+        for: 10m
+        noDataState: OK
+        execErrState: Error
+        data:
+          - refId: A
+            datasourceUid: prometheus
+            relativeTimeRange: {from: 600, to: 0}
+            model:
+              refId: A
+              instant: true
+              editorMode: code
+              expr: '100 * sum(rate(unbound_answer_rcodes_total{rcode="SERVFAIL"}[5m])) / clamp_min(sum(rate(unbound_answer_rcodes_total[5m])), 0.001)'
+          - refId: B
+            datasourceUid: __expr__
+            relativeTimeRange: {from: 0, to: 0}
+            model:
+              refId: B
+              type: math
+              expression: '$A > 5'
+              datasource: {type: __expr__, uid: __expr__}
+        labels:
+          severity: warning
+          entity: unbound
+          component: rcodes
+          channel: dns
+        annotations:
+          summary: 'Unbound SERVFAIL ratio {{ printf "%.1f" $values.A.Value }}%'
+          description: 'Sustained >5% SERVFAIL responses for 10m. Check upstream reachability.'
+          dashboard_url: 'https://grafana.int/d/unbound/unbound'
+          value_label: 'servfail %'
+        isPaused: false
+
+      # Cache hit ratio dropping below 50% during normal traffic suggests
+      # something flushed (restart without cache-dump warmup, or burst of
+      # uncached lookups).
+      - uid: unbound-cache-hit-low
+        title: unbound-cache-hit-low
+        condition: B
+        for: 30m
+        noDataState: OK
+        execErrState: Error
+        data:
+          - refId: A
+            datasourceUid: prometheus
+            relativeTimeRange: {from: 1800, to: 0}
+            model:
+              refId: A
+              instant: true
+              editorMode: code
+              expr: '100 * sum(rate(unbound_cache_hits_total[5m])) / clamp_min(sum(rate(unbound_queries_total[5m])), 0.001)'
+          - refId: B
+            datasourceUid: __expr__
+            relativeTimeRange: {from: 0, to: 0}
+            model:
+              refId: B
+              type: math
+              expression: '$A < 50'
+              datasource: {type: __expr__, uid: __expr__}
+        labels:
+          severity: warning
+          entity: unbound
+          component: cache
+          channel: dns
+        annotations:
+          summary: 'Unbound cache hit {{ printf "%.0f" $values.A.Value }}%'
+          description: 'Cache hit ratio sustained below 50% for 30m. Check cache-dumper sidecar and serve-expired.'
+          dashboard_url: 'https://grafana.int/d/unbound/unbound'
+          value_label: 'hit %'
+        isPaused: false

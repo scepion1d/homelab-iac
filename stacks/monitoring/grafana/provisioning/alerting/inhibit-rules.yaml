@@ -1,4 +1,6 @@
 apiVersion: 1
+# Inhibit rules: silence a derivative alert while its source-of-truth fires.
+# Cluster-specific entry (cluster-nothing-ready) removed in v2 — no k3d.
 inhibitRules:
   # Generic: a critical alert silences a warning of the same entity+component.
   - orgId: 1
@@ -7,15 +9,6 @@ inhibitRules:
     targetMatchers:
       - severity = warning
     equal: [entity, component]
-
-  # Cluster catastrophic state silences node/pod/container alerts within
-  # the cluster (they're all symptoms of the same underlying outage).
-  - orgId: 1
-    sourceMatchers:
-      - alertname = cluster-nothing-ready
-    targetMatchers:
-      - alertname =~ "cluster-(node-not-ready|pod-crashloop|containers-not-ready)"
-    equal: [entity]
 
   # When the router exporter is dead, every other router-* alert is just
   # stale/missing data. Suppress them; the exporter-down alert is enough.
@@ -34,6 +27,15 @@ inhibitRules:
     targetMatchers:
       - entity = adguard
       - alertname != adguard-exporter-down
+    equal: [entity]
+
+  # Same idea for Unbound.
+  - orgId: 1
+    sourceMatchers:
+      - alertname = unbound-exporter-down
+    targetMatchers:
+      - entity = unbound
+      - alertname != unbound-exporter-down
     equal: [entity]
 
   # Same idea for the mac host. When Prometheus can't reach node_exporter on

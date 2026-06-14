@@ -1,17 +1,22 @@
 apiVersion: 1
+# Router (MikroTik) alerts. UI folder: infra.
+# Slack routing: temperature/cpu/memory/exporter → #infra (channel=infra);
+#                interface flapping → #network (channel=network).
+#
+# v2 adaptations from v1 cluster/apps/grafana-alerts/rules/router/rules.yaml:
+#   service="mikrotik-exporter" → job="mikrotik" (v2 prometheus scrape name)
+#
+# Dropped from v1:
+#   - router-dhcp-quarantined-lease (CAPsMAN-only; revisit if/when
+#     mktxp_capsman_* series appears with usable labels in v2).
 groups:
   - orgId: 1
     name: router.homelab
-    folder: Router
+    folder: infra
     interval: 1m
     rules:
       # ─────────────────────────────────────────────────────────────────────
-      # When the in-cluster mktxp exporter goes blind we route to #cluster
-      # (it's a cluster-side failure: the cluster's view of the router is
-      # broken, not the router itself). The inhibit rule in
-      # notifications/inhibit-rules.yaml uses this alert to suppress every
-      # other router-* rule for the duration — once the scraper is dead,
-      # downstream values are stale and would all flap.
+      # mktxp exporter down: inhibits every other router-* rule.
       - uid: router-mktxp-exporter-down
         title: router-mktxp-exporter-down
         condition: B
@@ -26,7 +31,7 @@ groups:
               refId: A
               instant: true
               editorMode: code
-              expr: 'up{service="mikrotik-exporter"}'
+              expr: 'up{job="mikrotik"}'
           - refId: B
             datasourceUid: __expr__
             relativeTimeRange: {from: 0, to: 0}
@@ -43,53 +48,8 @@ groups:
         annotations:
           summary: 'Router exporter (mktxp) down'
           description: 'mktxp exporter has been down for 2m. Router visibility lost; downstream router alerts suppressed.'
-          dashboard_url: 'https://grafana.int/d/router-overview/router-overview?viewPanel=1'
+          dashboard_url: 'https://grafana.int/d/router-overview/router'
           value_label: 'up'
-        isPaused: false
-
-      # ─────────────────────────────────────────────────────────────────────
-      # Quarantine = CAPsMAN client without a static DHCP lease
-      - uid: router-dhcp-quarantined-lease
-        title: router-dhcp-quarantined-lease
-        condition: B
-        for: 0m
-        noDataState: OK
-        execErrState: Error
-        data:
-          - refId: A
-            datasourceUid: prometheus
-            relativeTimeRange: {from: 600, to: 0}
-            model:
-              refId: A
-              instant: true
-              editorMode: code
-              expr: 'count(mktxp_capsman_clients_devices_info{dhcp_address="No DHCP Record"}) or vector(0)'
-          - refId: C
-            datasourceUid: prometheus
-            relativeTimeRange: {from: 600, to: 0}
-            model:
-              refId: C
-              instant: true
-              editorMode: code
-              expr: 'mktxp_capsman_clients_devices_info{dhcp_address="No DHCP Record"}'
-          - refId: B
-            datasourceUid: __expr__
-            relativeTimeRange: {from: 0, to: 0}
-            model:
-              refId: B
-              type: math
-              expression: '$A > 0'
-              datasource: {type: __expr__, uid: __expr__}
-        labels:
-          severity: critical
-          entity: router
-          component: dhcp
-          channel: network
-        annotations:
-          summary: '{{ printf "%.0f" $values.A.Value }} quarantined device(s) on WiFi'
-          description: "Unknown device(s) connected to CAPsMAN without a static DHCP lease.\n{{ range $k, $v := $values }}{{ if and (ne $k \"A\") (ne $k \"B\") }}\n`{{ $v.Labels.mac_address }}`  SSID={{ $v.Labels.ssid }}  IF={{ $v.Labels.interface }}{{ end }}{{ end }}\n\nCheck: https://grafana.int/d/router-overview"
-          dashboard_url: 'https://grafana.int/d/router-overview'
-          value_label: 'devices'
         isPaused: false
 
       # ─────────────────────────────────────────────────────────────────────
@@ -124,11 +84,10 @@ groups:
         annotations:
           summary: 'Router CPU temp {{ printf "%.0f" $values.A.Value }}°C'
           description: 'mktxp reports CPU temperature ≥60°C for 5m on `{{ $labels.routerboard_name }}`.'
-          dashboard_url: 'https://grafana.int/d/router-overview/router-overview?viewPanel=3'
+          dashboard_url: 'https://grafana.int/d/router-overview/router'
           value_label: '°C'
         isPaused: false
 
-      # ─────────────────────────────────────────────────────────────────────
       - uid: router-temperature-critical
         title: router-temperature-critical
         condition: B
@@ -160,13 +119,12 @@ groups:
         annotations:
           summary: 'Router CPU temp {{ printf "%.0f" $values.A.Value }}°C (critical)'
           description: 'mktxp reports CPU temperature ≥75°C for 2m on `{{ $labels.routerboard_name }}`. Investigate cooling.'
-          dashboard_url: 'https://grafana.int/d/router-overview/router-overview?viewPanel=3'
+          dashboard_url: 'https://grafana.int/d/router-overview/router'
           value_label: '°C'
         isPaused: false
 
       # ─────────────────────────────────────────────────────────────────────
-      # RouterOS CPU load metric is already a percentage 0..100.
-      # Threshold 15% is intentionally low — owner wants early visibility.
+      # RouterOS CPU load is already a percentage 0..100.
       - uid: router-cpu-load-warning
         title: router-cpu-load-warning
         condition: B
@@ -198,11 +156,10 @@ groups:
         annotations:
           summary: 'Router CPU load {{ printf "%.0f" $values.A.Value }}%'
           description: 'RouterOS CPU load ≥15% for 10m on `{{ $labels.routerboard_name }}`.'
-          dashboard_url: 'https://grafana.int/d/router-overview/router-overview?viewPanel=4'
+          dashboard_url: 'https://grafana.int/d/router-overview/router'
           value_label: 'load%'
         isPaused: false
 
-      # ─────────────────────────────────────────────────────────────────────
       - uid: router-cpu-load-critical
         title: router-cpu-load-critical
         condition: B
@@ -234,7 +191,7 @@ groups:
         annotations:
           summary: 'Router CPU load {{ printf "%.0f" $values.A.Value }}% (critical)'
           description: 'RouterOS CPU load ≥50% for 5m on `{{ $labels.routerboard_name }}`.'
-          dashboard_url: 'https://grafana.int/d/router-overview/router-overview?viewPanel=4'
+          dashboard_url: 'https://grafana.int/d/router-overview/router'
           value_label: 'load%'
         isPaused: false
 
@@ -270,11 +227,10 @@ groups:
         annotations:
           summary: 'Router RAM {{ printf "%.0f" $values.A.Value }}% used'
           description: 'RouterOS memory ≥50% used for 10m on `{{ $labels.routerboard_name }}`.'
-          dashboard_url: 'https://grafana.int/d/router-overview/router-overview?viewPanel=5'
+          dashboard_url: 'https://grafana.int/d/router-overview/router'
           value_label: 'used%'
         isPaused: false
 
-      # ─────────────────────────────────────────────────────────────────────
       - uid: router-memory-critical
         title: router-memory-critical
         condition: B
@@ -306,14 +262,12 @@ groups:
         annotations:
           summary: 'Router RAM {{ printf "%.0f" $values.A.Value }}% used (critical)'
           description: 'RouterOS memory ≥75% used for 5m on `{{ $labels.routerboard_name }}`.'
-          dashboard_url: 'https://grafana.int/d/router-overview/router-overview?viewPanel=5'
+          dashboard_url: 'https://grafana.int/d/router-overview/router'
           value_label: 'used%'
         isPaused: false
 
       # ─────────────────────────────────────────────────────────────────────
-      # Interface flapping: ≥4 state changes within 15m. Excludes the
-      # back-to-home-vpn tunnel (flapping is expected on roaming VPN) and
-      # anything else with "vpn" in the interface name.
+      # Interface flapping: ≥4 state changes in 15m. Excludes vpn ifaces.
       - uid: router-iface-flapping
         title: router-iface-flapping
         condition: B
@@ -345,6 +299,6 @@ groups:
         annotations:
           summary: 'Interface {{ $labels.name }} flapping'
           description: 'Interface `{{ $labels.name }}` changed state {{ printf "%.0f" $values.A.Value }}× in 15m.'
-          dashboard_url: 'https://grafana.int/d/homelab-overview/home-lab?viewPanel=20'
+          dashboard_url: 'https://grafana.int/d/router-overview/router'
           value_label: 'changes/15m'
         isPaused: false

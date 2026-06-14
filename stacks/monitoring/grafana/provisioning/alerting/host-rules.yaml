@@ -1,14 +1,23 @@
 apiVersion: 1
+# Mac mini host alerts. UI folder: infra. Slack: channel=infra (slack-infra).
+#
+# v2 adaptations from v1 cluster/apps/grafana-alerts/rules/host/rules.yaml:
+#   - host-mac-exporter-down: job="mac-host" (v2 prometheus scrape name)
+#   - dashboard_url: https://grafana.int/d/host-overview/host (matches v2
+#     dashboard path stacks/monitoring/grafana/dashboards/infra/host.json
+#     with uid=host-overview)
+#   - host-colima-down / host-launchd-core-unloaded dropped: no k3d cluster
+#     to protect, and the up{job="mac-host"} alert already fires if Colima/
+#     mac-extras goes away.
 groups:
   - orgId: 1
     name: host.homelab
-    folder: Host
+    folder: infra
     interval: 1m
     rules:
       # ─────────────────────────────────────────────────────────────────────
-      # Mac-host scrape is dead from the cluster's point of view. Inhibits
-      # every other host-* rule (see notifications/inhibit-rules.yaml) since
-      # missing values would otherwise flap all of them at once.
+      # Mac host scrape is dead. Inhibits every other host-* rule via
+      # alerting/inhibit-rules.yaml.
       - uid: host-mac-exporter-down
         title: host-mac-exporter-down
         condition: B
@@ -38,18 +47,16 @@ groups:
           component: exporter
           channel: infra
         annotations:
-          summary: 'Mac host exporter unreachable from cluster'
-          description: 'Prometheus has not scraped the macOS host exporter (node_exporter + mac-extras) for 2m. Host visibility lost; downstream host alerts suppressed.'
-          dashboard_url: 'https://grafana.int/d/host-overview/host-overview?viewPanel=1'
+          summary: 'Mac host exporter unreachable'
+          description: 'Prometheus has not scraped the macOS host exporter for 2m. Host visibility lost; downstream host alerts suppressed.'
+          dashboard_url: 'https://grafana.int/d/host-overview/host'
           value_label: 'up'
         isPaused: false
 
       # ─────────────────────────────────────────────────────────────────────
-      # Textfile collector itself failing — node_exporter is up but
-      # mac-extras.prom doesn't parse. Distinct from exporter-down because
-      # node_exporter standard metrics still flow; only the mac_* family is
-      # lost. Common cause: HELP/TYPE ordering bug, malformed line, leftover
-      # tempfile (mac-extras.sh now cleans these on startup).
+      # Textfile collector failing — node_exporter up but mac-extras.prom
+      # doesn't parse. mac_* metrics stale, standard node_exporter metrics
+      # still flow.
       - uid: host-textfile-scrape-error
         title: host-textfile-scrape-error
         condition: B
@@ -80,93 +87,13 @@ groups:
           channel: infra
         annotations:
           summary: 'mac-extras.prom textfile parse failing'
-          description: 'node_exporter reports textfile_scrape_error=1 for 10m. mac_* metrics are stale. Check /var/log/homelab-mac-extras.log and `cat /usr/local/var/mac-exporter/mac-extras.prom | promtool check metrics`.'
-          dashboard_url: 'https://grafana.int/d/host-overview/host-overview?viewPanel=6'
+          description: 'node_exporter reports textfile_scrape_error=1 for 10m. Check /var/log/homelab-mac-extras.log.'
+          dashboard_url: 'https://grafana.int/d/host-overview/host'
           value_label: 'err'
         isPaused: false
 
       # ─────────────────────────────────────────────────────────────────────
-      # Colima down ⇒ k3d is down ⇒ cluster is dead. Route to #infra (it's a
-      # host-side failure: the VM the cluster runs in is gone), not #cluster
-      # (which is for in-cluster control-plane / workload signals).
-      - uid: host-colima-down
-        title: host-colima-down
-        condition: B
-        for: 2m
-        noDataState: OK
-        execErrState: Error
-        data:
-          - refId: A
-            datasourceUid: prometheus
-            relativeTimeRange: {from: 600, to: 0}
-            model:
-              refId: A
-              instant: true
-              editorMode: code
-              expr: 'max(mac_colima_running)'
-          - refId: B
-            datasourceUid: __expr__
-            relativeTimeRange: {from: 0, to: 0}
-            model:
-              refId: B
-              type: math
-              expression: '$A < 1'
-              datasource: {type: __expr__, uid: __expr__}
-        labels:
-          severity: critical
-          entity: host
-          component: colima
-          channel: infra
-        annotations:
-          summary: 'Colima VM not running'
-          description: 'mac_colima_running=0 for 2m. The Colima profile that hosts the k3d cluster is down. Run `colima start` or check the com.homelab.colima LaunchDaemon.'
-          dashboard_url: 'https://grafana.int/d/host-overview/host-overview?viewPanel=2'
-          value_label: 'running'
-        isPaused: false
-
-      # ─────────────────────────────────────────────────────────────────────
-      # A homelab LaunchDaemon is unloaded. Scoped to colima + k3d explicitly
-      # — those are the ones that taking down the cluster. node-exporter /
-      # mac-extras going unloaded triggers their own exporter-down /
-      # textfile-error alerts above.
-      - uid: host-launchd-core-unloaded
-        title: host-launchd-core-unloaded
-        condition: B
-        for: 2m
-        noDataState: OK
-        execErrState: Error
-        data:
-          - refId: A
-            datasourceUid: prometheus
-            relativeTimeRange: {from: 600, to: 0}
-            model:
-              refId: A
-              instant: true
-              editorMode: code
-              expr: 'min(mac_launchd_loaded{label=~"com.homelab.(colima|k3d)"}) by (label)'
-          - refId: B
-            datasourceUid: __expr__
-            relativeTimeRange: {from: 0, to: 0}
-            model:
-              refId: B
-              type: math
-              expression: '$A < 1'
-              datasource: {type: __expr__, uid: __expr__}
-        labels:
-          severity: critical
-          entity: host
-          component: launchd
-          channel: infra
-        annotations:
-          summary: 'LaunchDaemon {{ $labels.label }} unloaded'
-          description: '{{ $labels.label }} is not loaded in launchctl. Catches the "macOS update silently unloaded the daemon" failure class.'
-          dashboard_url: 'https://grafana.int/d/host-overview/host-overview?viewPanel=50'
-          value_label: 'loaded'
-        isPaused: false
-
-      # ─────────────────────────────────────────────────────────────────────
-      # AC power lost. Mac mini servers should always be on AC; flapping = PSU
-      # or UPS event worth investigating immediately.
+      # AC power lost. Mac mini should always be on AC.
       - uid: host-on-battery
         title: host-on-battery
         condition: B
@@ -197,14 +124,13 @@ groups:
           channel: infra
         annotations:
           summary: 'Host on battery power'
-          description: 'mac_power_on_ac=0 for 1m. The host has switched to battery — investigate AC / UPS state.'
-          dashboard_url: 'https://grafana.int/d/host-overview/host-overview?viewPanel=4'
+          description: 'mac_power_on_ac=0 for 1m. Investigate AC / UPS state.'
+          dashboard_url: 'https://grafana.int/d/host-overview/host'
           value_label: 'on_ac'
         isPaused: false
 
       # ─────────────────────────────────────────────────────────────────────
-      # CPU temperature warning / critical. Thresholds match the mktxp router
-      # rules (60/75°C) so dashboards read consistently.
+      # CPU temperature warning / critical. Match router thresholds (60/75).
       - uid: host-cpu-temp-warning
         title: host-cpu-temp-warning
         condition: B
@@ -236,7 +162,7 @@ groups:
         annotations:
           summary: 'Host CPU temp {{ printf "%.0f" $values.A.Value }}°C'
           description: 'CPU temperature ≥60°C for 5m. Check airflow / vent obstruction.'
-          dashboard_url: 'https://grafana.int/d/host-overview/host-overview?viewPanel=20'
+          dashboard_url: 'https://grafana.int/d/host-overview/host'
           value_label: '°C'
         isPaused: false
 
@@ -270,14 +196,13 @@ groups:
           channel: infra
         annotations:
           summary: 'Host CPU temp {{ printf "%.0f" $values.A.Value }}°C (critical)'
-          description: 'CPU temperature ≥75°C for 2m. Thermal throttle imminent if not already. Investigate cooling immediately.'
-          dashboard_url: 'https://grafana.int/d/host-overview/host-overview?viewPanel=20'
+          description: 'CPU temperature ≥75°C for 2m. Thermal throttle imminent. Investigate cooling.'
+          dashboard_url: 'https://grafana.int/d/host-overview/host'
           value_label: '°C'
         isPaused: false
 
       # ─────────────────────────────────────────────────────────────────────
       # Thermal throttle active — macOS has capped the CPU clock.
-      # `pmset -g therm` returns 100 when unthrottled, <100 when capped.
       - uid: host-thermal-throttle
         title: host-thermal-throttle
         condition: B
@@ -308,16 +233,13 @@ groups:
           channel: infra
         annotations:
           summary: 'CPU thermal throttle at {{ printf "%.0f" $values.A.Value }}%'
-          description: 'macOS has capped the CPU clock for 5m. Sustained throttle slows everything in the Colima VM (and so the cluster).'
-          dashboard_url: 'https://grafana.int/d/host-overview/host-overview?viewPanel=5'
+          description: 'macOS has capped the CPU clock for 5m. Sustained throttle slows everything in the Colima VM.'
+          dashboard_url: 'https://grafana.int/d/host-overview/host'
           value_label: '% of max clock'
         isPaused: false
 
       # ─────────────────────────────────────────────────────────────────────
-      # Fan stalled while CPU is hot. A fan reporting 0 RPM at low CPU temp
-      # is OK on Mac minis (the fan idles); 0 RPM while CPU is ≥60°C is bad.
-      # min() across fans so a single stalled fan triggers even if the
-      # other(s) are spinning.
+      # Fan stalled while CPU is hot.
       - uid: host-fan-stalled
         title: host-fan-stalled
         condition: B
@@ -356,15 +278,13 @@ groups:
           channel: infra
         annotations:
           summary: 'Fan stalled while CPU is hot'
-          description: 'At least one fan reports 0 RPM while CPU temp ≥60°C for 5m. Check `powermetrics --samplers smc` and physical airflow.'
-          dashboard_url: 'https://grafana.int/d/host-overview/host-overview?viewPanel=21'
+          description: 'At least one fan reports 0 RPM while CPU temp ≥60°C for 5m.'
+          dashboard_url: 'https://grafana.int/d/host-overview/host'
           value_label: 'min RPM'
         isPaused: false
 
       # ─────────────────────────────────────────────────────────────────────
-      # Root filesystem fill. Uses the darwin node_exporter mount point `/`.
-      # Excludes synthetic FS types so a full APFS snapshot mount doesn't
-      # flap. Tuned to the same 80/92 thresholds the cluster disk rules use.
+      # Root filesystem fill (80/92 thresholds).
       - uid: host-disk-warning
         title: host-disk-warning
         condition: B
@@ -396,7 +316,7 @@ groups:
         annotations:
           summary: 'Host root disk {{ printf "%.0f" $values.A.Value }}% used'
           description: 'Mac host `/` filesystem above 80% for 10m. Plan cleanup; this is the disk Colima images live on.'
-          dashboard_url: 'https://grafana.int/d/host-overview/host-overview?viewPanel=12'
+          dashboard_url: 'https://grafana.int/d/host-overview/host'
           value_label: 'used%'
         isPaused: false
 
@@ -431,13 +351,12 @@ groups:
         annotations:
           summary: 'Host root disk {{ printf "%.0f" $values.A.Value }}% used (critical)'
           description: 'Mac host `/` >92% full for 5m. Colima writes will start failing soon; free space immediately.'
-          dashboard_url: 'https://grafana.int/d/host-overview/host-overview?viewPanel=12'
+          dashboard_url: 'https://grafana.int/d/host-overview/host'
           value_label: 'used%'
         isPaused: false
 
       # ─────────────────────────────────────────────────────────────────────
-      # SMART health = 0 means smartctl reports the drive failing. Critical
-      # by definition; you usually have hours-to-days to evacuate data.
+      # SMART health = drive failing.
       - uid: host-smart-failing
         title: host-smart-failing
         condition: B
@@ -469,14 +388,12 @@ groups:
         annotations:
           summary: 'SMART failing on {{ $labels.device }}'
           description: 'smartctl reports {{ $labels.device }} as NOT PASSED. Back up data and replace drive ASAP.'
-          dashboard_url: 'https://grafana.int/d/host-overview/host-overview?viewPanel=30'
+          dashboard_url: 'https://grafana.int/d/host-overview/host'
           value_label: 'health'
         isPaused: false
 
       # ─────────────────────────────────────────────────────────────────────
-      # NVMe wear-out — the percentage indicates how much of the rated
-      # endurance the drive has consumed. >80% means stage-1 wear-out per
-      # NVMe spec; the drive may still work for years, but plan replacement.
+      # NVMe wear-out >80%.
       - uid: host-smart-wear-high
         title: host-smart-wear-high
         condition: B
@@ -507,7 +424,7 @@ groups:
           channel: infra
         annotations:
           summary: 'SMART wear {{ printf "%.0f" $values.A.Value }}% on {{ $labels.device }}'
-          description: 'NVMe `Percentage Used` >80% on {{ $labels.device }}. Drive is near rated endurance; plan replacement.'
-          dashboard_url: 'https://grafana.int/d/host-overview/host-overview?viewPanel=31'
+          description: 'NVMe `Percentage Used` >80% on {{ $labels.device }}. Plan replacement.'
+          dashboard_url: 'https://grafana.int/d/host-overview/host'
           value_label: 'used %'
         isPaused: false
