@@ -6,14 +6,26 @@
 upstream_dns:
   # Local Unbound recursive resolver, reached at a pinned static IP on
   # the internal docker network (172.30.53.0/24 — see stacks/dns/compose.yaml).
-  # TCP avoids the UDP→TC→TCP retry on DNSSEC-bloated responses.
-  - "tcp://172.30.53.53:53"
+  # Plain UDP: AdGuard <-> Unbound are on the same docker bridge so the
+  # extra UDP->TC->TCP retry penalty on DNSSEC-bloated responses (the
+  # original reason for forcing tcp://) is irrelevant -- both sides
+  # advertise EDNS0 4096B buffers, and we don't DNSSEC-validate anyway
+  # (Unbound runs module-config: "iterator" only). TCP added ~1-2ms
+  # syscall round-trip per cold query and serialised in-flight queries
+  # on a single connection, which we don't want.
+  - "172.30.53.53"
 fallback_dns:
   - "192.168.10.1"             # MikroTik (LAN)
   - "1.1.1.1"                  # Cloudflare
 
 # Race upstream resolvers in parallel, use the first response.
+# (No-op with a single primary, but kept for when we add more.)
 upstream_mode: parallel
+
+# DNSSEC validation OFF -- mirrors Unbound's iterator-only setup, where
+# the validator module is not loaded. Set explicitly so the live config
+# can't drift to true via the UI without a corresponding repo change.
+enable_dnssec: false
 
 # Used at startup to resolve upstream hostnames (we have IPs + a docker
 # name here, so this is essentially unused, but kept for safety).

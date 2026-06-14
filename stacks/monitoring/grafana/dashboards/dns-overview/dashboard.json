@@ -2594,8 +2594,8 @@
             },
             "targets": [
                 {
-                    "expr": "sum by (upstream) (\r\n    rate(adguard_query_upstream_total[$__rate_interval])\r\n)",
-                    "legendFormat": "{{upstream}}",
+                    "expr": "sum by (norm_upstream) (\r\n    label_replace(\r\n        rate(adguard_query_upstream_total[$__rate_interval]),\r\n        \"norm_upstream\", \"$2\", \"upstream\", \"(tcp://|udp://)?(.+)\"\r\n    )\r\n)",
+                    "legendFormat": "{{norm_upstream}}",
                     "refId": "A",
                     "datasource": {
                         "type": "prometheus",
@@ -2664,8 +2664,8 @@
                 "overrides": [
                     {
                         "matcher": {
-                            "id": "byName",
-                            "options": "10.43.10.43:53"
+                            "id": "byRegexp",
+                            "options": "^(tcp://|udp://)?172\\.30\\.53\\.53:53$"
                         },
                         "properties": [
                             {
@@ -2754,8 +2754,8 @@
             },
             "targets": [
                 {
-                    "expr": "1000 * histogram_quantile(\r\n    0.95, \r\n    sum by (le, upstream) (\r\n        rate(adguard_upstream_latency_seconds_bucket{}[$__rate_interval])\r\n    )\r\n)",
-                    "legendFormat": "{{upstream}}",
+                    "expr": "1000 * histogram_quantile(\r\n    0.95, \r\n    sum by (le, norm_upstream) (\r\n        label_replace(\r\n            rate(adguard_upstream_latency_seconds_bucket{}[$__rate_interval]),\r\n            \"norm_upstream\", \"$2\", \"upstream\", \"(tcp://|udp://)?(.+)\"\r\n        )\r\n    )\r\n)",
+                    "legendFormat": "{{norm_upstream}}",
                     "refId": "A",
                     "format": "time_series",
                     "datasource": {
@@ -2822,8 +2822,8 @@
                 "overrides": [
                     {
                         "matcher": {
-                            "id": "byName",
-                            "options": "10.43.10.43:53"
+                            "id": "byRegexp",
+                            "options": "^(tcp://|udp://)?172\\.30\\.53\\.53:53$"
                         },
                         "properties": [
                             {

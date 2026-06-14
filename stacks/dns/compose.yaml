@@ -74,6 +74,16 @@ services:
       - ./unbound/cache-dumper:/opt/cache-dumper:ro
       - unbound-ctl:/var/run/unbound
       - unbound-cache:/var/cache/unbound
+    # Override the base image's healthcheck: it tries to query a local
+    # unbound, but this sidecar doesn't run unbound -- it only talks to
+    # the peer unbound's control socket. Use that socket as the liveness
+    # signal instead (matches what entrypoint.sh actually relies on).
+    healthcheck:
+      test: ["CMD", "unbound-control", "-c", "/opt/unbound/etc/unbound/unbound.conf", "status"]
+      interval: 60s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
 
   unbound-exporter:
     # Built locally from source — no public registry has a current image
