@@ -1,0 +1,43 @@
+homeassistant:
+  name: Home Lab
+  unit_system: metric
+  time_zone: Europe/Prague
+  external_url: "https://homeassistant.int"
+  internal_url: "https://homeassistant.int"
+http:
+  use_x_forwarded_for: true
+  trusted_proxies:
+    - 127.0.0.0/8
+    - ::1
+    - 10.0.0.0/8
+    - 172.16.0.0/12
+    - 192.168.0.0/16
+    - fd00::/8
+    - fe80::/10
+
+# Pulls in HA's recommended baseline integrations (mobile-app, system_log,
+# zone, person, etc.). Disable individual ones via separate component
+# entries below if needed.
+default_config:
+
+# HomeKit Bridge config lives in its own file because it's the one most
+# likely to grow as we add filter rules. The bridge starts empty until
+# you add helpers via the UI (Settings -> Devices & Services -> Helpers)
+# or expose real device entities -- see config/homekit.yaml for the
+# include_domains filter.
+homekit: !include homekit.yaml
+
+# Prometheus exporter at /api/prometheus. Bearer-token auth is enforced
+# by HA itself — the token is created in the UI (Profile -> Security ->
+# Long-Lived Access Tokens) and stored as a Kubernetes Secret that
+# Prometheus mounts into its pod (see prometheus-target.yaml).
+prometheus:
+  namespace: hass
+  default_metric: state
+
+# UI-managed extensions (automation / script / scene) live in HA's
+# .storage/ database by default — no YAML includes needed here. If you
+# later prefer YAML-edited automations, create empty automations.yaml /
+# scripts.yaml / scenes.yaml under ${APP_DATA}/config/ and add the
+# matching `!include` lines, then re-add those filenames to the sentinel
+# so they're picked up on the next reconcile.

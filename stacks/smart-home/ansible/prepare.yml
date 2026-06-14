@@ -1,0 +1,48 @@
+---
+# Pre-`compose up` for smart-home stack.
+#
+# 1. Ensure HA's data dir exists (compose bind-mounts ${DATA_ROOT}/smart-home/home-assistant/config).
+# 2. Sync managed config files from the repo INTO the data dir on every
+#    reconcile, but ONLY files listed in .managed-by-homelab-iac sentinel.
+#    UI-edited files (automations.yaml, scenes.yaml, .storage/*, etc.)
+#    survive untouched.
+
+# Cache paths into facts at the top — using `stack_dir` / `stack_data` from
+# the compose-stack role's defaults inside a `loop:` later breaks because
+# the loop's `item` var shadows lazy-evaluated Jinja references.
+- name: "smart-home/prepare: cache stack paths"
+  ansible.builtin.set_fact:
+    sh_stack_dir:  "{{ stack_dir }}"
+    sh_stack_data: "{{ stack_data }}"
+
+- name: "smart-home/prepare: ensure HA config dir"
+  ansible.builtin.file:
+    path: "{{ sh_stack_data }}/home-assistant/config"
+    state: directory
+    mode: "0755"
+
+- name: "smart-home/prepare: read managed file list"
+  ansible.builtin.slurp:
+    src: "{{ sh_stack_dir }}/home-assistant/config/.managed-by-homelab-iac"
+  register: ha_sentinel_raw
+
+- name: "smart-home/prepare: parse managed file list"
+  ansible.builtin.set_fact:
+    ha_managed_files: >-
+      {{
+        (ha_sentinel_raw.content | b64decode).splitlines()
+          | map('regex_replace', '#.*$', '')
+          | map('trim')
+          | reject('equalto', '')
+          | list
+      }}
+
+- name: "smart-home/prepare: sync managed HA config files"
+  ansible.builtin.copy:
+    src: "{{ sh_stack_dir }}/home-assistant/config/{{ ha_file }}"
+    dest: "{{ sh_stack_data }}/home-assistant/config/{{ ha_file }}"
+    mode: "0644"
+    force: true
+  loop: "{{ ha_managed_files }}"
+  loop_control:
+    loop_var: ha_file

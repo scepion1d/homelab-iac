@@ -1,0 +1,67 @@
+name: homelab-smart-home
+
+# Smart-home stack: Home Assistant + mDNS reflector (VM side).
+#
+# Both services use `network_mode: host` so they can:
+#   - HA: broadcast HomeKit _hap._tcp via mDNS on the VM's interfaces,
+#     accept HomeKit hub connections to the announced port.
+#   - mdns-reflector: bind UDP/5353 on both VM interfaces (eth0 user-mode
+#     NAT and col0 vmnet bridge) to relay broadcasts between them.
+#
+# Trade-off: neither container joins the `homelab` shared network, so
+# Prometheus can't scrape them by name. HA's /api/prometheus is scraped
+# via host.docker.internal-style — see stacks/monitoring/prometheus/prometheus.yml.
+#
+# Caddy fronts HA on https://homeassistant.int (snippet at host/caddy/snippets).
+
+# No networks block — both services use host networking.
+
+services:
+  home-assistant:
+    image: ghcr.io/home-assistant/home-assistant:2026.5
+    container_name: homelab-home-assistant
+    restart: unless-stopped
+    network_mode: host
+    environment:
+      TZ: ${TZ:-Europe/Warsaw}
+    volumes:
+      - ${DATA_ROOT}/smart-home/home-assistant/config:/config
+      - /etc/localtime:/etc/localtime:ro
+    # Probe the unauthenticated PWA manifest; /api/ would require auth
+    # and HA would IP-ban the loopback after enough rejected probes.
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:8123/manifest.json"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 60s
+
+  mdns-reflector:
+    # VM-internal mDNS hop: bridges HA's broadcasts from eth0 (user-mode
+    # NAT) onto col0 (vmnet) so the Mac-side reflector can pick them up
+    # and re-publish on the LAN. See bootstrap/services/mdns-reflector.py
+    # for the implementation (shared with the LaunchDaemon).
+    image: python:3.12-alpine
+    container_name: homelab-smart-home-mdns-reflector
+    restart: unless-stopped
+    network_mode: host
+    environment:
+      MDNS_SRC_IP: ${MDNS_VM_USERMODE_IP:-192.168.5.1}
+      MDNS_DST_IP: ${MDNS_VM_VMNET_IP:-192.168.64.3}
+      MDNS_SERVICE_TYPES: _hap._tcp.local.
+      MDNS_LOG_LEVEL: INFO
+      PIP_DISABLE_PIP_VERSION_CHECK: "1"
+    volumes:
+      # Canonical script lives in bootstrap/services/. compose.yaml is at
+      # stacks/smart-home/, so ../../bootstrap/services/ resolves correctly
+      # inside the Colima VM (Colima mounts the user home at the same path).
+      - ../../bootstrap/services/mdns-reflector.py:/app/mdns-reflector.py:ro
+    command: >
+      sh -c 'pip install --quiet --no-cache-dir --root-user-action=ignore zeroconf==0.132.2 &&
+             exec python3 /app/mdns-reflector.py'
+    healthcheck:
+      test: ["CMD", "python3", "-c", "import zeroconf, sys; sys.exit(0)"]
+      interval: 60s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
