@@ -1,56 +1,82 @@
 ---
-# Idempotent reconcile — run on boot and every 5 minutes.
-# Ensures the full homelab stack is healthy.
-- name: Reconcile homelab
+# v2 reconcile — idempotent, runs on boot and every 5 min via launchd.
+#
+# `.env` is parsed in-process (see ansible/group_vars/all.yml's `dotenv`
+# fact) so secrets reach roles regardless of how this playbook is invoked.
+# You can just run `ansible-playbook ansible/reconcile.yml` — no shell
+# wrapper needed for the LaunchDaemon either.
+#
+# Pipeline:
+#   1. Resolve hostIp (auto-detect if globals says 'auto')
+#   2. Ensure Colima VM running with the right config; export DOCKER_HOST
+#   3. Ensure host-side services (node-exporter, mac-extras, dns-proxy,
+#      mdns-reflector, caddy) are installed and loaded
+#   4. Reconcile each stack via compose-stack role
+#   5. Slack summary if anything changed
+- name: Reconcile homelab (v2)
   hosts: localhost
   environment:
-    DOCKER_HOST: "{{ docker_host | default('') }}"
     PATH: "/usr/local/bin:/opt/homebrew/bin:/usr/bin:/bin"
     HOME: "{{ homelab_home }}"
 
+  vars:
+    # Default stacks to bring up. Override with:
+    #   ansible-playbook ansible/reconcile.yml -e stack=dns           # single
+    #   ansible-playbook ansible/reconcile.yml -e '{"stacks_enabled":["dns","monitoring"]}'
+    #   ansible-playbook ansible/reconcile.yml -e stack=none          # skip all
+    stacks_default:
+      - dns
+      - monitoring
+      - smart-home
+    stacks_enabled: "{{ [stack] if (stack | default('') | length > 0 and stack != 'none')
+                       else ([] if (stack | default('') == 'none')
+                       else stacks_default) }}"
+
   pre_tasks:
-    - name: Load .env file
-      ansible.builtin.shell: |
-        set -a
-        source {{ env_file }}
-        set +a
-        env
-      register: env_vars
-      changed_when: false
-      args:
-        executable: /bin/zsh
+    - name: Resolve host IP
+      ansible.builtin.set_fact:
+        host_ip: >-
+          {{ dotenv.HOST_IP_OVERRIDE
+             | default((host_ip_raw if host_ip_raw != 'auto'
+                                    else ansible_facts.default_ipv4.address), true) }}
 
-  roles:
-    - role: host
-    - role: cluster
+  tasks:
+    - name: Reconcile
+      block:
+        - name: "reconcile: common (pip deps)"
+          ansible.builtin.include_role:
+            name: common
 
-  post_tasks:
-    - name: Reconcile summary
-      ansible.builtin.uri:
-        url: https://slack.com/api/chat.postMessage
-        method: POST
-        headers:
-          Authorization: "Bearer {{ slack_ansible_token }}"
-          Content-Type: "application/json"
-        body_format: json
-        body:
-          channel: "{{ slack_channels.deploy }}"
-          attachments:
-            - title: "Homelab Reconcile"
-              color: "{{ 'good' if (dns_healthy | default(false)) else 'danger' }}"
-              fields:
-                - title: Colima
-                  value: "{{ colima_vm_ip | default('unknown') }}"
-                  short: true
-                - title: DNS
-                  value: "{{ 'healthy' if (dns_healthy | default(false)) else 'down' }}"
-                  short: true
-                - title: Ingress
-                  value: "{{ 'healthy' if (ingress_healthy | default(false)) else 'down' }}"
-                  short: true
-        status_code: [200]
-      when:
-        - slack_ansible_token | default('') | length > 0
-        - cluster_created is defined and cluster_created is changed
-      ignore_errors: true
-      no_log: true
+        - name: "reconcile: colima (VM lifecycle)"
+          ansible.builtin.include_role:
+            name: colima
+
+        - name: "reconcile: host (LaunchDaemons)"
+          ansible.builtin.include_role:
+            name: host
+
+        - name: "reconcile: caddy"
+          ansible.builtin.include_role:
+            name: caddy
+
+        - name: "reconcile: each enabled stack"
+          ansible.builtin.include_role:
+            name: compose-stack
+          vars:
+            stack: "{{ item }}"
+            stack_action: up
+          loop: "{{ stacks_enabled | default([]) }}"
+          when: (stacks_enabled | default([]) | length) > 0
+
+      rescue:
+        - name: "reconcile: capture failure context"
+          ansible.builtin.set_fact:
+            play_failed: true
+            failed_task_name: "{{ ansible_failed_task.name | default('unknown') }}"
+            failed_task_msg: "{{ ansible_failed_result.msg | default(ansible_failed_result | to_nice_yaml) }}"
+
+        - name: "reconcile: re-raise after summary"
+          ansible.builtin.fail:
+            msg: "Reconcile failed at task: {{ failed_task_name }}"
+          # The Slack summary is sent automatically by the callback plugin
+          # (ansible/callback_plugins/slack_summary.py) at play end.

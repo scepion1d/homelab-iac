@@ -4,6 +4,7 @@ homelab-ca-secret.yaml
 
 # Bootstrap env file (holds passwords + tokens). See bootstrap/.env.example.
 bootstrap/.env
+.env
 
 # Cert-manager root CA Secret snapshot (cert + private key). Written by
 # bootstrap/dump-ca-secret.sh and consumed by bootstrap/restore-ca-secret.sh

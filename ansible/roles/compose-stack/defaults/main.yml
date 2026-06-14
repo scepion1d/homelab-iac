@@ -1,0 +1,9 @@
+---
+# Defaults for compose-stack role.
+
+stack: ""              # required; caller must set
+stack_action: up       # up | down | pull | restart
+compose_project: "homelab-{{ stack }}"
+stack_dir: "{{ stacks_dir }}/{{ stack }}"
+stack_data: "{{ data_root }}/{{ stack }}"
+compose_file: "{{ stack_dir }}/compose.yaml"

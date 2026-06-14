@@ -2,3 +2,8 @@ all:
   hosts:
     localhost:
       ansible_connection: local
+      # Pin to the system Python rather than whatever brew last installed.
+      # Brewed pythons rotate fast and often arrive missing `packaging`,
+      # `setuptools`, etc, which breaks the ansible.builtin.pip module.
+      # The system Python 3.9 ships with a complete stdlib + std modules.
+      ansible_python_interpreter: /usr/bin/python3

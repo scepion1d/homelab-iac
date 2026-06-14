@@ -1,52 +1,74 @@
 ---
-# Paths
-homelab_user: homelab-admin
-homelab_home: "/Users/{{ homelab_user }}"
-repo_root: "{{ playbook_dir }}/.."
-cluster_dir: "{{ repo_root }}/cluster"
+# v2 group vars. Reads globals.yaml (single source of truth) + .env
+# (secrets). Anything stack-specific belongs in stacks/<name>/, not here.
+
+# --- Paths ---------------------------------------------------------------
+homelab_user: "{{ lookup('env', 'USER') | default('homelab-admin', true) }}"
+homelab_home: "{{ lookup('env', 'HOME') | default('/Users/' ~ homelab_user, true) }}"
+repo_root:    "{{ playbook_dir }}/.."
+env_file:     "{{ repo_root }}/.env"
+globals_file: "{{ repo_root }}/globals.yaml"
+stacks_dir:   "{{ repo_root }}/stacks"
+host_dir:     "{{ repo_root }}/host"
+
+# Back-compat aliases — the existing roles/host LaunchDaemon tasks
+# reference these names. Removed in Phase 6 with the rest of v1 cleanup.
 bootstrap_dir: "{{ repo_root }}/bootstrap"
-env_file: "{{ bootstrap_dir }}/.env"
+lan_ip:        "192.168.10.3"
 
-# Colima
-colima_profile: "{{ lookup('env', 'COLIMA_PROFILE') | default('homelab', true) }}"
-colima_cpu: "{{ lookup('env', 'COLIMA_CPU') | default(10, true) }}"
-colima_memory: "{{ lookup('env', 'COLIMA_MEMORY') | default(32, true) }}"
-colima_disk: "{{ lookup('env', 'COLIMA_DISK') | default(250, true) }}"
-colima_network_address: "{{ lookup('env', 'COLIMA_NETWORK_ADDRESS') | default('true', true) }}"
+# --- Globals (parsed from globals.yaml at runtime) ----------------------
+globals: "{{ lookup('file', globals_file) | from_yaml }}"
 
-# k3d
-k3d_cluster_name: homelab
-k3d_config: "{{ cluster_dir }}/k3d-config.yaml"
+# --- .env (parsed in-process; no shell sourcing required) --------------
+# Ansible's `lookup('env', X)` only reads the parent process's env, so
+# secrets disappeared whenever ansible-playbook was invoked without first
+# running `set -a; source .env; set +a` (notably the launchd reconcile
+# daemon). We instead parse .env ourselves into a `dotenv` dict and
+# reference it everywhere below. Supported formats:
+#   KEY=value          (unquoted)
+#   KEY="value"        (double-quoted; quotes stripped)
+#   KEY='value'        (single-quoted; quotes stripped — \x27 in regex)
+# Lines starting with `#` or without `=` are ignored by the regex.
+# Values containing the OTHER quote char or spanning newlines are not
+# supported — keep .env simple.
+dotenv: >-
+  {{
+    dict(
+      (lookup('file', env_file, errors='ignore') | default('', true))
+      | regex_findall('(?m)^([A-Z_][A-Z0-9_]*)=["\x27]?([^"\x27\n]*)["\x27]?$')
+    )
+  }}
 
-# ArgoCD
-argocd_git_user: "{{ lookup('env', 'ARGOCD_GIT_USER') }}"
-argocd_git_pat: "{{ lookup('env', 'ARGOCD_GIT_PAT') }}"
-argocd_password: "{{ lookup('env', 'ARGOCD_PASSWORD') }}"
-argocd_repo_url: "{{ lookup('pipe', 'yq -r .repoUrl ' ~ cluster_dir ~ '/globals.yaml') }}"
+lan_domain:   "{{ globals.lanDomain }}"
+data_root:    "{{ globals.dataRoot | regex_replace('^~', homelab_home) }}"
+network_name: "{{ globals.networkName }}"
+host_ip_raw:  "{{ globals.hostIp }}"
 
-# AdGuard
-adguard_user: "{{ lookup('env', 'ADGUARD_USER') | default('admin', true) }}"
-adguard_password: "{{ lookup('env', 'ADGUARD_PASSWORD') }}"
+# --- Colima (.env > globals > hardcoded) --------------------------------
+colima_profile:         "{{ dotenv.COLIMA_PROFILE         | default(globals.colima.profile,        true) }}"
+colima_cpu:             "{{ dotenv.COLIMA_CPU             | default(globals.colima.cpu,            true) }}"
+colima_memory:          "{{ dotenv.COLIMA_MEMORY          | default(globals.colima.memory,         true) }}"
+colima_disk:            "{{ dotenv.COLIMA_DISK            | default(globals.colima.disk,           true) }}"
+colima_network_address: "{{ dotenv.COLIMA_NETWORK_ADDRESS | default(globals.colima.networkAddress, true) }}"
 
-# Secrets
-grafana_admin_password: "{{ lookup('env', 'GRAFANA_ADMIN_PASSWORD') }}"
-mikrotik_user: "{{ lookup('env', 'MIKROTIK_USER') }}"
-mikrotik_password: "{{ lookup('env', 'MIKROTIK_PASSWORD') }}"
+# --- Caddy / CA ----------------------------------------------------------
+caddy_ca_cert: "{{ dotenv.CERT      | default(globals.caddy.caCert, true) | regex_replace('^~', homelab_home) }}"
+caddy_ca_yaml: "{{ dotenv.CERT_YAML | default(globals.caddy.caYaml, true) | regex_replace('^~', homelab_home) }}"
+caddy_ca_key:  "{{ globals.caddy.caKey | regex_replace('^~', homelab_home) }}"
 
-# Cert
-cert_yaml: "{{ lookup('env', 'CERT_YAML') | default(bootstrap_dir ~ '/.ca-secret.yaml', true) }}"
-cert_crt: "{{ lookup('env', 'CERT') | default('', true) }}"
+# --- Slack ---------------------------------------------------------------
+slack_ansible_token: "{{ dotenv.ANSIBLE_SLACK_TOKEN     | default('', true) }}"
+slack_grafana_token: "{{ dotenv.GRAFANA_SLACK_BOT_TOKEN | default('', true) }}"
+slack_channels:      "{{ globals.slack.channels }}"
 
-# Slack — 3 separate bot tokens for different purposes
-slack_ansible_token: "{{ lookup('env', 'ANSIBLE_SLACK_TOKEN') }}"
-slack_grafana_token: "{{ lookup('env', 'GRAFANA_SLACK_BOT_TOKEN') }}"
-slack_argocd_token: "{{ lookup('env', 'ARGOCD_SLACK_TOKEN') }}"
-slack_channels:
-  infra: "infra"
-  deploy: "deploy"
-  dns: "dns"
-  network: "network"
+# --- App-level secrets ---------------------------------------------------
+adguard_user:                   "{{ dotenv.ADGUARD_USER                   | default('admin', true) }}"
+adguard_password:               "{{ dotenv.ADGUARD_PASSWORD               | default('', true) }}"
+grafana_admin_password:         "{{ dotenv.GRAFANA_ADMIN_PASSWORD         | default('', true) }}"
+mikrotik_user:                  "{{ dotenv.MIKROTIK_USER                  | default('', true) }}"
+mikrotik_password:              "{{ dotenv.MIKROTIK_PASSWORD              | default('', true) }}"
+homeassistant_prometheus_token: "{{ dotenv.HOMEASSISTANT_PROMETHEUS_TOKEN | default('', true) }}"
+tz:                             "{{ dotenv.TZ                             | default('UTC', true) }}"
 
-# Host
-lan_ip: "192.168.10.3"
-mdns_vm_vmnet_ip: "{{ lookup('env', 'MDNS_VM_VMNET_IP') | default('192.168.64.2', true) }}"
+# --- Host extras ---------------------------------------------------------
+mdns_vm_vmnet_ip: "{{ dotenv.MDNS_VM_VMNET_IP | default('192.168.64.2', true) }}"

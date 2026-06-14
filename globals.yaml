@@ -1,0 +1,56 @@
+# Single source of truth for v2 homelab.
+# Consumed by ansible (via group_vars) and the host-side dns-proxy/mDNS
+# scripts. Keep this minimal — anything truly app-specific belongs in
+# the relevant stack's compose.yaml.
+
+# --- Host identity ---------------------------------------------------------
+# LAN IPv4 of the Mac. Bound by dns-proxy, Caddy, and used in Prometheus
+# scrape targets. `auto` makes ansible detect it via outbound interface.
+hostIp: auto
+
+# LAN domain suffix for *.int (e.g. grafana.int). Must match the suffix
+# MikroTik DNS resolves to hostIp.
+lanDomain: int
+
+# --- Filesystem ------------------------------------------------------------
+# Root directory under which every stack stores its persistent data.
+# Tilde-expanded by ansible. Backup = `rsync ${dataRoot}`.
+dataRoot: ~/homelab-data
+
+# --- Docker / networking ---------------------------------------------------
+# Shared external docker network all stacks attach to. Cross-stack DNS
+# uses service.<networkName> names. Ansible creates this on first run.
+networkName: homelab
+
+# --- Colima VM tunables ----------------------------------------------------
+# These have defaults in roles/colima; override here if you need to.
+colima:
+  profile: homelab
+  cpu: 10
+  memory: 32        # GiB
+  disk: 250         # GiB
+  networkAddress: true   # gives the VM a vmnet IP on the LAN
+
+# --- Slack notification channels ------------------------------------------
+# Bot tokens come from .env. Channel names (no leading #) are used by
+# ansible Slack tasks.
+slack:
+  channels:
+    infra: infra
+    deploy: deploy
+    dns: dns
+    network: network
+
+# --- Caddy / TLS -----------------------------------------------------------
+# CA used by Caddy in `tls internal` PKI mode. Caddy needs raw PEM
+# files; v1 stores the CA as a k8s-style Secret YAML (with base64-encoded
+# tls.crt + tls.key). Ansible extracts the key from caYaml into caKey at
+# reconcile time, then points Caddy at the standalone .crt + extracted .key.
+#
+# Override via .env: CERT (the .crt) and CERT_YAML (the full Secret YAML).
+# caKey is written by ansible into Caddy's etc dir (root-owned, daemon-readable).
+caddy:
+  caCert: ~/.cert/homelab-ca.crt              # standalone PEM cert (matches v1 export-ca.sh output)
+  caYaml: ~/.cert/homelab-ca-secret.yaml      # k8s Secret form with tls.crt + tls.key (matches v1 dump-ca-secret.sh)
+  caKey:  /usr/local/etc/caddy/homelab-ca.key # extracted from caYaml at reconcile time; never edited by hand
+  email:  homelab@local                       # used only by Caddy's internal logger

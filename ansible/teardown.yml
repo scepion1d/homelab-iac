@@ -1,0 +1,94 @@
+---
+# v2 destructive teardown. Removes everything reconcile created.
+#
+# Variables:
+#   purge=true   → also `colima delete` (loses cached images / VM disk)
+#   nuke=true    → purge + rm -rf data_root (DESTROYS PERSISTENT DATA)
+#
+# Usage:
+#   ansible-playbook ansible/teardown.yml
+#   ansible-playbook ansible/teardown.yml -e purge=true
+#   ansible-playbook ansible/teardown.yml -e nuke=true
+- name: Teardown homelab (v2)
+  hosts: localhost
+  environment:
+    PATH: "/usr/local/bin:/opt/homebrew/bin:/usr/bin:/bin"
+    HOME: "{{ homelab_home }}"
+
+  vars:
+    purge: false
+    nuke: false
+    stacks_enabled:
+      - smart-home
+      - monitoring
+      - dns
+    launchdaemons:
+      - com.homelab.caddy
+      - com.homelab.dns-proxy
+      - com.homelab.mdns-reflector
+      - com.homelab.node-exporter
+      - com.homelab.mac-extras
+      - com.homelab.ansible-reconcile
+      - com.homelab.shutdown-hook
+
+  pre_tasks:
+    - name: Set DOCKER_HOST
+      ansible.builtin.set_fact:
+        docker_host: "unix://{{ homelab_home }}/.colima/{{ colima_profile }}/docker.sock"
+
+    - name: Confirm --nuke
+      ansible.builtin.pause:
+        prompt: "NUKE will rm -rf {{ data_root }}. Type 'homelab-iac' to confirm"
+      register: nuke_confirm
+      when: nuke | bool
+
+    - name: Abort if --nuke not confirmed
+      ansible.builtin.fail:
+        msg: "Aborted — did not type confirmation."
+      when:
+        - nuke | bool
+        - nuke_confirm.user_input | default('') != 'homelab-iac'
+
+  tasks:
+    # 1. Stacks down
+    - name: Compose down each stack
+      ansible.builtin.include_role:
+        name: compose-stack
+      vars:
+        stack: "{{ item }}"
+        stack_action: down
+      loop: "{{ stacks_enabled }}"
+      failed_when: false
+
+    # 2. Host LaunchDaemons unloaded + plists removed
+    - name: Bootout each LaunchDaemon
+      become: true
+      ansible.builtin.command: launchctl bootout system/{{ item }}
+      loop: "{{ launchdaemons }}"
+      failed_when: false
+      changed_when: false
+
+    - name: Remove plist files
+      become: true
+      ansible.builtin.file:
+        path: "/Library/LaunchDaemons/{{ item }}.plist"
+        state: absent
+      loop: "{{ launchdaemons }}"
+
+    # 3. Colima stop (and optional delete)
+    - name: Stop Colima
+      ansible.builtin.command: colima stop --profile {{ colima_profile }}
+      failed_when: false
+
+    - name: Delete Colima profile (--purge)
+      ansible.builtin.command: colima delete --profile {{ colima_profile }} --force
+      when: purge | bool or nuke | bool
+      failed_when: false
+
+    # 4. NUKE: wipe persistent data
+    - name: Wipe persistent data (--nuke)
+      become: true
+      ansible.builtin.file:
+        path: "{{ data_root }}"
+        state: absent
+      when: nuke | bool

@@ -1,27 +1,25 @@
 ---
-# Graceful shutdown — called by the shutdown-hook LaunchDaemon.
-- name: Stop homelab
+# v2 graceful stop — invoked by the shutdown-hook LaunchDaemon at
+# system shutdown, or run manually.
+#
+#   set -a; source .env; set +a
+#   ansible-playbook ansible/stop.yml
+- name: Stop homelab (v2)
   hosts: localhost
   environment:
-    DOCKER_HOST: "{{ docker_host | default('') }}"
     PATH: "/usr/local/bin:/opt/homebrew/bin:/usr/bin:/bin"
     HOME: "{{ homelab_home }}"
 
-  pre_tasks:
-    - name: Load .env file
-      ansible.builtin.shell: |
-        set -a
-        source {{ env_file }}
-        set +a
-        env
-      register: env_vars
-      changed_when: false
-      args:
-        executable: /bin/zsh
+  vars:
+    stacks_enabled:
+      - smart-home   # reverse order from reconcile — apps first, infra last
+      - monitoring
+      - dns
 
+  pre_tasks:
     - name: Set DOCKER_HOST
       ansible.builtin.set_fact:
-        docker_host: "unix:///Users/{{ ansible_facts['user_id'] }}/.colima/{{ colima_profile }}/docker.sock"
+        docker_host: "unix://{{ homelab_home }}/.colima/{{ colima_profile }}/docker.sock"
 
   tasks:
     - name: Notify Slack — shutting down
@@ -30,27 +28,15 @@
         slack_notify_channel: "{{ slack_channels.infra }}"
         slack_notify_msg: "Homelab shutting down gracefully"
         slack_notify_color: warning
+      when: slack_ansible_token | length > 0
 
-    - name: Dump CA secret
-      ansible.builtin.command: "{{ bootstrap_dir }}/tools/dump-ca-secret.sh"
-      environment:
-        CA_SECRET_BACKUP_PATH: "{{ cert_yaml }}"
-      failed_when: false
-      changed_when: false
-
-    - name: Stop host app containers
-      ansible.builtin.shell: |
-        for c in $(docker ps --filter "name=^homelab-" --format '{{ '{{' }}.Names{{ '}}' }}'); do
-          docker stop "$c" 2>/dev/null || true
-        done
-      environment:
-        DOCKER_HOST: "{{ docker_host }}"
-      changed_when: false
-
-    - name: Stop k3d cluster
-      ansible.builtin.command: k3d cluster stop {{ k3d_cluster_name }}
-      environment:
-        DOCKER_HOST: "{{ docker_host }}"
+    - name: Compose down each stack
+      ansible.builtin.include_role:
+        name: compose-stack
+      vars:
+        stack: "{{ item }}"
+        stack_action: down
+      loop: "{{ stacks_enabled }}"
       failed_when: false
 
     - name: Stop Colima
@@ -63,3 +49,4 @@
         slack_notify_channel: "{{ slack_channels.infra }}"
         slack_notify_msg: "Homelab stopped cleanly"
         slack_notify_color: good
+      when: slack_ansible_token | length > 0

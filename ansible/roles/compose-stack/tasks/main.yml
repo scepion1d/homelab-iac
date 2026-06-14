@@ -1,0 +1,100 @@
+---
+- name: "compose-stack/{{ stack }}: validate inputs"
+  ansible.builtin.assert:
+    that:
+      - stack | length > 0
+      - stack_action in ['up', 'down', 'pull', 'restart']
+    fail_msg: "stack={{ stack | default('') }} stack_action={{ stack_action }}"
+
+- name: "compose-stack/{{ stack }}: check compose file exists"
+  ansible.builtin.stat:
+    path: "{{ compose_file }}"
+  register: compose_stat
+
+- name: "compose-stack/{{ stack }}: fail if compose file missing"
+  ansible.builtin.fail:
+    msg: "Compose file not found: {{ compose_file }}"
+  when: not compose_stat.stat.exists
+
+- name: "compose-stack/{{ stack }}: ensure data dir exists"
+  ansible.builtin.file:
+    path: "{{ stack_data }}"
+    state: directory
+    mode: "0755"
+
+- name: "compose-stack/{{ stack }}: ensure shared docker network"
+  community.docker.docker_network:
+    name: "{{ network_name }}"
+    state: present
+  environment:
+    DOCKER_HOST: "{{ docker_host }}"
+  when: stack_action in ['up', 'pull', 'restart']
+
+# Compose execution. Sync managed configs into data dir first (each
+# stack may ship a tasks/sync-configs.yml; missing = no-op).
+- name: "compose-stack/{{ stack }}: sync managed configs if present"
+  ansible.builtin.include_tasks: "{{ stack_dir }}/ansible/sync.yml"
+  when: ( stack_dir ~ '/ansible/sync.yml' ) is exists
+
+# Stack-specific PRE-up hook (render config files into data dir BEFORE
+# compose tries to mount them, otherwise docker auto-creates directories
+# at the bind-mount source). Optional; missing = no-op.
+- name: "compose-stack/{{ stack }}: pre-up prepare"
+  ansible.builtin.include_tasks: "{{ stack_dir }}/ansible/prepare.yml"
+  when: ( stack_dir ~ '/ansible/prepare.yml' ) is exists
+
+- name: "compose-stack/{{ stack }}: docker compose {{ stack_action }}"
+  ansible.builtin.command:
+    cmd: >-
+      docker compose
+      -p {{ compose_project }}
+      -f {{ compose_file }}
+      {{ compose_action_cmd }}
+    chdir: "{{ stack_dir }}"
+  environment:
+    DOCKER_HOST: "{{ docker_host }}"
+    DATA_ROOT:   "{{ data_root }}"
+    HOST_IP:     "{{ host_ip }}"
+    NETWORK_NAME: "{{ network_name }}"
+    TZ:          "{{ tz }}"
+    # Bind mounts in compose.yaml use ./relative-paths (resolved against
+    # the compose file's location). No PWD env needed.
+    # Pass-through secrets the stack might need (compose substitutes
+    # ${VAR} into its yaml at parse time; nothing leaks unless the
+    # stack actually references the var).
+    ADGUARD_USER:                   "{{ adguard_user | default('admin') }}"
+    ADGUARD_PASSWORD:               "{{ adguard_password | default('') }}"
+    DNS_PORT:                       "{{ dotenv.DNS_PORT | default('53', true) }}"
+    GRAFANA_ADMIN_PASSWORD:         "{{ grafana_admin_password | default('admin') }}"
+    GRAFANA_SLACK_BOT_TOKEN:        "{{ slack_grafana_token | default('') }}"
+    MIKROTIK_USER:                  "{{ mikrotik_user | default('') }}"
+    MIKROTIK_PASSWORD:              "{{ mikrotik_password | default('') }}"
+    HOMEASSISTANT_PROMETHEUS_TOKEN: "{{ homeassistant_prometheus_token | default('') }}"
+  register: compose_run
+  changed_when: >-
+    stack_action != 'down' and
+    ('Started' in (compose_run.stderr | default(''))
+     or 'Created' in (compose_run.stderr | default(''))
+     or 'Recreated' in (compose_run.stderr | default(''))
+     or 'Pulled' in (compose_run.stderr | default('')))
+  vars:
+    compose_action_cmd: >-
+      {{ {
+        'up':      ('up -d --build --remove-orphans' ~ (' --force-recreate' if (recreate | default(false) | bool) else '')),
+        'down':    'down',
+        'pull':    'pull',
+        'restart': 'restart'
+      }[stack_action] }}
+
+- name: "compose-stack/{{ stack }}: record changed fact"
+  ansible.builtin.set_fact:
+    # Hyphens are invalid in Ansible var names; underscore the stack.
+    "compose_changed_{{ stack | replace('-', '_') }}": "{{ compose_run.changed | default(false) }}"
+
+# Stack-specific post-up setup (wizard completion, config seeding, etc.).
+# Optional: only runs if stacks/<stack>/ansible/setup.yml exists.
+- name: "compose-stack/{{ stack }}: post-up setup"
+  ansible.builtin.include_tasks: "{{ stack_dir }}/ansible/setup.yml"
+  when:
+    - stack_action in ['up', 'restart']
+    - ( stack_dir ~ '/ansible/setup.yml' ) is exists

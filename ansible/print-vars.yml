@@ -1,0 +1,46 @@
+---
+# Tiny debug playbook for sanity-checking group_vars + globals resolution.
+# Use: ansible-playbook ansible/print-vars.yml
+- name: Print resolved vars
+  hosts: localhost
+  gather_facts: false
+  tasks:
+    - name: globals (parsed from globals.yaml)
+      ansible.builtin.debug:
+        var: globals
+
+    - name: derived paths + identity
+      ansible.builtin.debug:
+        msg:
+          repo_root:     "{{ repo_root }}"
+          stacks_dir:    "{{ stacks_dir }}"
+          data_root:     "{{ data_root }}"
+          lan_domain:    "{{ lan_domain }}"
+          host_ip_raw:   "{{ host_ip_raw }}"
+          network_name:  "{{ network_name }}"
+
+    - name: colima settings
+      ansible.builtin.debug:
+        msg:
+          profile: "{{ colima_profile }}"
+          cpu:     "{{ colima_cpu }}"
+          memory:  "{{ colima_memory }}"
+          disk:    "{{ colima_disk }}"
+
+    - name: caddy / CA
+      ansible.builtin.debug:
+        msg:
+          ca_cert: "{{ caddy_ca_cert }}"
+          ca_yaml: "{{ caddy_ca_yaml }}"
+          ca_key:  "{{ caddy_ca_key }}"
+
+    - name: secret presence (true/false only — values not printed)
+      ansible.builtin.debug:
+        msg:
+          adguard_password:               "{{ (adguard_password | default('')) | length > 0 }}"
+          grafana_admin_password:         "{{ (grafana_admin_password | default('')) | length > 0 }}"
+          slack_ansible_token:            "{{ (slack_ansible_token | default('')) | length > 0 }}"
+          slack_grafana_token:            "{{ (slack_grafana_token | default('')) | length > 0 }}"
+          mikrotik_user:                  "{{ (mikrotik_user | default('')) | length > 0 }}"
+          mikrotik_password:              "{{ (mikrotik_password | default('')) | length > 0 }}"
+          homeassistant_prometheus_token: "{{ (homeassistant_prometheus_token | default('')) | length > 0 }}"
