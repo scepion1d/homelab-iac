@@ -1,0 +1,34 @@
+---
+# Ensure the python deps the ansible.builtin / community.* modules expect
+# are present in the interpreter we're pinned to (inventory.yml sets
+# ansible_python_interpreter=/usr/bin/python3).
+#
+# - requests + docker: community.docker.* modules
+# - pyyaml: ships with stdlib (yaml) but the wheel-based version is needed
+#   by ansible.builtin.copy when transforming yaml between systems
+#
+# Idempotent: pip skips already-installed.
+
+- name: "common/python-deps: ensure pip is available"
+  ansible.builtin.command: "{{ ansible_python_interpreter | default('/usr/bin/python3') }} -m pip --version"
+  register: pip_check
+  changed_when: false
+  failed_when: false
+
+- name: "common/python-deps: bootstrap pip if missing"
+  become: true
+  ansible.builtin.command: "{{ ansible_python_interpreter | default('/usr/bin/python3') }} -m ensurepip --upgrade"
+  when: pip_check.rc != 0
+  changed_when: true
+
+- name: "common/python-deps: install requests + docker into ansible's python"
+  become: true
+  ansible.builtin.pip:
+    name:
+      - requests
+      - docker
+    state: present
+    # The pip module imports pip from ansible's interpreter
+    # (set in inventory.yml as /usr/bin/python3) and installs there.
+  register: pip_install
+  changed_when: pip_install.stdout is defined and 'Successfully installed' in pip_install.stdout

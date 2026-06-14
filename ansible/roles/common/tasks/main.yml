@@ -1,0 +1,3 @@
+---
+- name: Include python-deps
+  ansible.builtin.include_tasks: python-deps.yml
