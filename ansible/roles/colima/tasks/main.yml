@@ -1,0 +1,80 @@
+---
+# Ensure Colima VM is running, healthy, and Docker is reachable.
+# Promoted out of v1's roles/host/tasks/runtime.yml so v2 reconcile is
+# self-sufficient (doesn't need the user to `colima start` by hand).
+
+- name: "colima: check status"
+  ansible.builtin.command: colima status --profile {{ colima_profile }}
+  register: colima_status
+  changed_when: false
+  failed_when: false
+
+- name: "colima: start if down"
+  when: colima_status.rc != 0
+  block:
+    - name: "colima: start VM"
+      ansible.builtin.command: >
+        colima start
+        --profile {{ colima_profile }}
+        --cpu {{ colima_cpu }}
+        --memory {{ colima_memory }}
+        --disk {{ colima_disk }}
+        {{ '--network-address' if colima_network_address == 'true' else '' }}
+      register: colima_start
+      failed_when: false
+      changed_when: true
+
+    - name: "colima: wait for it to come up"
+      ansible.builtin.command: colima status --profile {{ colima_profile }}
+      register: colima_verify
+      retries: 15
+      delay: 4
+      until: colima_verify.rc == 0
+
+    - name: "colima: notify Slack"
+      ansible.builtin.include_tasks: ../../common/tasks/slack.yml
+      vars:
+        slack_notify_channel: "{{ slack_channels.infra }}"
+        slack_notify_msg: "Colima started ({{ colima_cpu }} CPU, {{ colima_memory }}Gi RAM)"
+        slack_notify_color: good
+      when: slack_ansible_token | default('') | length > 0
+
+- name: "colima: resolve VM address"
+  ansible.builtin.shell: |
+    colima status --profile {{ colima_profile }} 2>&1 \
+      | grep -oE 'address:[[:space:]]+[0-9.]+' \
+      | awk '{print $2}'
+  register: colima_address_raw
+  changed_when: false
+
+- name: "colima: set colima_vm_ip"
+  ansible.builtin.set_fact:
+    colima_vm_ip: "{{ colima_address_raw.stdout | trim }}"
+
+- name: "colima: fix in-VM DNS (mask dnsmasq, point at public resolvers)"
+  ansible.builtin.command: >
+    colima ssh --profile {{ colima_profile }} --
+    sudo sh -c 'printf "nameserver 1.1.1.1\nnameserver 9.9.9.9\noptions ndots:0\n" > /etc/resolv.conf'
+  when: colima_vm_ip | length > 0
+  changed_when: false
+
+- name: "colima: mask dnsmasq inside VM"
+  ansible.builtin.command: >
+    colima ssh --profile {{ colima_profile }} --
+    sudo systemctl mask dnsmasq
+  changed_when: false
+  failed_when: false
+
+- name: "colima: set docker_host"
+  ansible.builtin.set_fact:
+    docker_host: "unix://{{ homelab_home }}/.colima/{{ colima_profile }}/docker.sock"
+
+- name: "colima: wait for Docker daemon"
+  ansible.builtin.command: docker info
+  environment:
+    DOCKER_HOST: "{{ docker_host }}"
+  register: docker_info
+  retries: 30
+  delay: 2
+  until: docker_info.rc == 0
+  changed_when: false
