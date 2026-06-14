@@ -24,3 +24,7 @@ Thumbs.db
 # Scratch files used by interactive commit-message workflows on Windows
 # (pwsh + git struggles with multi-line `-m`; we use `-F .commit-msg.tmp`).
 .commit-msg.tmp
+
+# Python bytecode (ansible callback plugins compile to __pycache__ at runtime)
+__pycache__/
+*.pyc

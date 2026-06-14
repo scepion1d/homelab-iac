@@ -41,6 +41,19 @@ slack:
     dns: dns
     network: network
 
+# --- GitOps reconcile loop -------------------------------------------------
+# Two LaunchDaemons drive reconcile:
+#   - com.homelab.git-pull        polls origin every gitPullIntervalSeconds;
+#                                 if HEAD moved, fast-forwards and exec's a
+#                                 reconcile inline (event-driven).
+#   - com.homelab.ansible-reconcile  runs reconcile every reconcileIntervalSeconds
+#                                    unconditionally (drift safety net).
+# They share a flock and never overlap.
+reconcile:
+  gitPullIntervalSeconds: 120     # 2 min — how often to poll origin
+  reconcileIntervalSeconds: 900   # 15 min — safety-net reconcile
+  branch: auto                    # tracked branch, or "auto" = current checkout
+
 # --- Caddy / TLS -----------------------------------------------------------
 # CA used by Caddy in `tls internal` PKI mode. Caddy needs raw PEM
 # files; v1 stores the CA as a k8s-style Secret YAML (with base64-encoded

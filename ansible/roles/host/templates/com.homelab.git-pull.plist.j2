@@ -1,0 +1,75 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN"
+  "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  com.homelab.git-pull — GitOps polling daemon.
+
+  Templated by ansible (roles/host/tasks/services.yml) from
+  globals.yaml > reconcile.gitPullIntervalSeconds (currently
+  {{ git_pull_interval_seconds }}s) and reconcile.branch
+  (currently "{{ reconcile_branch }}").
+
+  Runs /usr/local/lib/homelab/homelab-reconcile.sh --pull-from=<branch>,
+  which:
+    1. acquires the shared reconcile lock (or exits 0)
+    2. git fetch origin <branch>
+    3. compare HEAD to origin/<branch>; if equal → exit (no reconcile)
+    4. if different and fast-forward-able → git merge --ff-only, then
+       run ansible-playbook ansible/reconcile.yml
+  The lock spans fetch+pull+reconcile so a concurrent safety-net
+  reconcile (com.homelab.ansible-reconcile) cannot read files while
+  this one is rewriting them.
+
+  Decoupled from the safety-net reconcile timer so fresh code lands
+  within {{ git_pull_interval_seconds }}s regardless of how long the
+  safety-net reconcile takes.
+
+  After this file changes, plist contents are NOT auto-reloaded.
+  Apply manually:
+    sudo launchctl bootout system/com.homelab.git-pull
+    sudo launchctl bootstrap system /Library/LaunchDaemons/com.homelab.git-pull.plist
+-->
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>com.homelab.git-pull</string>
+
+  <key>ProgramArguments</key>
+  <array>
+    <string>/usr/local/lib/homelab/homelab-reconcile.sh</string>
+    <string>--pull-from={{ reconcile_branch }}</string>
+  </array>
+
+  <key>WorkingDirectory</key>
+  <string>/Users/homelab-admin/src/homelab-iac</string>
+
+  <key>EnvironmentVariables</key>
+  <dict>
+    <key>PATH</key>
+    <string>/usr/local/bin:/opt/homebrew/bin:/usr/bin:/bin</string>
+    <key>HOME</key>
+    <string>/Users/homelab-admin</string>
+    <key>ANSIBLE_CONFIG</key>
+    <string>/Users/homelab-admin/src/homelab-iac/ansible.cfg</string>
+    <!-- slack_summary callback uses this to suppress noisy "all-OK,
+         no-change" pings on scheduled (launchd) runs. Operator runs
+         from a shell don't set it → default "manual" → always notify. -->
+    <key>HOMELAB_RECONCILE_TRIGGER</key>
+    <string>scheduled</string>
+  </dict>
+
+  <key>UserName</key>
+  <string>homelab-admin</string>
+
+  <key>RunAtLoad</key>
+  <true/>
+
+  <key>StartInterval</key>
+  <integer>{{ git_pull_interval_seconds }}</integer>
+
+  <key>StandardOutPath</key>
+  <string>/var/log/homelab-git-pull.log</string>
+  <key>StandardErrorPath</key>
+  <string>/var/log/homelab-git-pull.err</string>
+</dict>
+</plist>

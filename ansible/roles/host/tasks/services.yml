@@ -166,34 +166,89 @@
     mode: "0644"
   notify: restart-mdns-reflector
 
-# --- ansible-reconcile LaunchDaemon (manages itself) ----------------------
-# The plist that runs THIS very playbook every 5 min. Tracked in
-# ansible/launchd/com.homelab.ansible-reconcile.plist; this task keeps
-# the copy at /Library/LaunchDaemons/ in sync with the repo.
+# --- ansible-reconcile + git-pull LaunchDaemons (GitOps loop) -------------
+# Two daemons drive reconcile, both pointing at homelab-reconcile.sh:
+#   - com.homelab.git-pull        homelab-reconcile.sh --pull-from=<branch>
+#                                 every git_pull_interval_seconds. Fetches
+#                                 origin, fast-forwards if HEAD moved, then
+#                                 reconciles. Event-driven GitOps.
+#   - com.homelab.ansible-reconcile  homelab-reconcile.sh (no args) every
+#                                    reconcile_interval_seconds. Drift
+#                                    safety net regardless of code changes.
+# Both invocations share a mkdir-based lock at /tmp/com.homelab.reconcile.lock.d
+# so they never overlap. Manual `./ansible/scripts/homelab-reconcile.sh`
+# from a checkout uses the same lock.
 #
-# NO auto-reload: a launchctl bootout/bootstrap from inside the running
-# daemon would terminate the in-flight playbook (race). On change, we
-# print the manual command. launchd also picks up the new plist on the
-# next boot, so doing nothing is also fine.
-- name: Ensure ansible-reconcile plist is installed
+# Auto-reload of these plists is NOT performed when their contents change:
+# bootout from inside the running reconcile would terminate the in-flight
+# playbook (race). On change we print the manual reload command. launchd
+# also picks up the new plist on the next boot, so doing nothing is also
+# fine for non-urgent changes.
+- name: Ensure homelab-reconcile.sh is installed
   become: true
   ansible.builtin.copy:
-    src: "{{ repo_root }}/ansible/launchd/com.homelab.ansible-reconcile.plist"
+    src: "{{ repo_root }}/ansible/scripts/homelab-reconcile.sh"
+    dest: /usr/local/lib/homelab/homelab-reconcile.sh
+    owner: root
+    group: wheel
+    mode: "0755"
+
+# Both daemons run as homelab-admin (UserName in plists) but log into
+# /var/log which is root-only. launchd opens StandardOutPath/ErrorPath as
+# the daemon's user, so if these files don't exist already the daemons
+# crash at exec with EX_CONFIG (78) and never produce output. Precreate
+# them root:wheel 0666 so the unprivileged daemon can append.
+- name: Ensure reconcile/git-pull log files exist (so launchd can open them)
+  become: true
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: touch
+    owner: root
+    group: wheel
+    mode: "0666"
+    modification_time: preserve
+    access_time: preserve
+  loop:
+    - /var/log/homelab-ansible.log
+    - /var/log/homelab-ansible.err
+    - /var/log/homelab-git-pull.log
+    - /var/log/homelab-git-pull.err
+
+- name: Ensure ansible-reconcile plist is installed
+  become: true
+  ansible.builtin.template:
+    src: com.homelab.ansible-reconcile.plist.j2
     dest: /Library/LaunchDaemons/com.homelab.ansible-reconcile.plist
     owner: root
     group: wheel
     mode: "0644"
   register: reconcile_plist
 
-- name: "host/services: reconcile plist changed — manual reload required"
+- name: Ensure git-pull plist is installed
+  become: true
+  ansible.builtin.template:
+    src: com.homelab.git-pull.plist.j2
+    dest: /Library/LaunchDaemons/com.homelab.git-pull.plist
+    owner: root
+    group: wheel
+    mode: "0644"
+  register: git_pull_plist
+
+- name: "host/services: reconcile/git-pull plist changed — manual reload required"
   ansible.builtin.debug:
     msg: |
-      com.homelab.ansible-reconcile.plist updated.
+      Plist(s) updated:{% if reconcile_plist.changed %} com.homelab.ansible-reconcile{% endif %}{% if git_pull_plist.changed %} com.homelab.git-pull{% endif %}.
       Apply with:
+      {% if reconcile_plist.changed %}
         sudo launchctl bootout system/com.homelab.ansible-reconcile
         sudo launchctl bootstrap system /Library/LaunchDaemons/com.homelab.ansible-reconcile.plist
+      {% endif %}
+      {% if git_pull_plist.changed %}
+        sudo launchctl bootout system/com.homelab.git-pull
+        sudo launchctl bootstrap system /Library/LaunchDaemons/com.homelab.git-pull.plist
+      {% endif %}
       (Or reboot — launchd reloads plists on boot.)
-  when: reconcile_plist.changed
+  when: reconcile_plist.changed or git_pull_plist.changed
 
 # Ensure all services are loaded with launchd (idempotent — bootstrap
 # is a no-op if already loaded).
@@ -211,6 +266,8 @@
     - com.homelab.node-exporter
     - com.homelab.mac-extras
     - com.homelab.mdns-reflector
+    - com.homelab.git-pull
+    - com.homelab.ansible-reconcile
   register: svc_loaded
   changed_when: false
   failed_when: false

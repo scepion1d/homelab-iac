@@ -72,3 +72,8 @@ tz:                             "{{ dotenv.TZ                             | defa
 
 # --- Host extras ---------------------------------------------------------
 mdns_vm_vmnet_ip: "{{ dotenv.MDNS_VM_VMNET_IP | default('192.168.64.2', true) }}"
+
+# --- GitOps reconcile loop (consumed by host/services.yml + plist templates) ---
+git_pull_interval_seconds:   "{{ globals.reconcile.gitPullIntervalSeconds   | default(120) }}"
+reconcile_interval_seconds:  "{{ globals.reconcile.reconcileIntervalSeconds | default(900) }}"
+reconcile_branch:            "{{ globals.reconcile.branch                   | default('auto', true) }}"

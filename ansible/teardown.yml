@@ -29,6 +29,7 @@
       - com.homelab.node-exporter
       - com.homelab.mac-extras
       - com.homelab.ansible-reconcile
+      - com.homelab.git-pull
       - com.homelab.shutdown-hook
 
   pre_tasks:
